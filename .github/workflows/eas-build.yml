@@ -9,7 +9,7 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 15
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -17,7 +17,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
 
       - name: Install dependencies
         run: npm ci --legacy-peer-deps
@@ -51,30 +51,24 @@ jobs:
             echo "Nothing to save."
           fi
 
-      - name: Build Android APK on EAS
-        run: npx eas-cli build --platform android --profile preview --non-interactive
+      - name: Start Android APK build on EAS (no wait)
+        run: |
+          npx eas-cli build --platform android --profile preview --non-interactive --no-wait --json > build.json
+          cat build.json
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
 
-      - name: Write download link to job summary
-        if: always()
+      - name: Write build page link to job summary
         run: |
-          npx eas-cli build:list --platform android --limit 1 --non-interactive --json > build.json || true
-          node -e "
-            try {
-              const list = JSON.parse(require('fs').readFileSync('build.json', 'utf8'));
-              const b = list[0];
-              const lines = [
-                '## Easyfen Android build',
-                '',
-                '- Status: ' + b.status,
-                '- Download the APK: ' + (b.artifacts && b.artifacts.buildUrl ? b.artifacts.buildUrl : '(not ready yet, check the build page below)'),
-                '- Build page (has a QR code to scan on your phone): https://expo.dev/accounts/' + b.project.ownerAccount.name + '/projects/' + b.project.name + '/builds/' + b.id,
-              ];
-              require('fs').appendFileSync(process.env.GITHUB_STEP_SUMMARY, lines.join('\n') + '\n');
-            } catch (e) {
-              require('fs').appendFileSync(process.env.GITHUB_STEP_SUMMARY, '## Easyfen Android build\n\nCould not parse build info automatically. Raw output:\n\n```\n' + require('fs').readFileSync('build.json', 'utf8') + '\n```\n');
-            }
-          "
-        env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          BUILD_ID=$(jq -r '.[0].id' build.json)
+          ACCOUNT=$(jq -r '.[0].project.ownerAccount.name' build.json)
+          PROJECT=$(jq -r '.[0].project.name' build.json)
+          {
+            echo "## Easyfen Android build started"
+            echo ""
+            echo "The build is running on Expo's servers and usually takes 15-60 minutes on the free tier."
+            echo ""
+            echo "**Open this page on your phone to watch progress and download the APK when it's done:**"
+            echo ""
+            echo "https://expo.dev/accounts/${ACCOUNT}/projects/${PROJECT}/builds/${BUILD_ID}"
+          } >> "$GITHUB_STEP_SUMMARY"
