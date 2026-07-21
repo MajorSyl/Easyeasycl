@@ -8,6 +8,12 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
+    "runtimeVersion": {
+      "policy": "sdkVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/f47d3108-b9d4-4959-9c1e-0688c4009cd0"
+    },
     "ios": {
       "supportsTablet": true
     },

@@ -1,0 +1,45 @@
+name: Publish preview update (fast)
+
+on:
+  push:
+    branches:
+      - claude/repo-overview-g2rgj1
+  workflow_dispatch: {}
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Publish update to Expo
+        run: |
+          npx eas-cli update --branch preview --message "${GITHUB_SHA::7}: $(git log -1 --pretty=%s)" --non-interactive --json > update.json
+          cat update.json
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          EXPO_PUBLIC_SUPABASE_URL: https://axeprqcffgwgocglijst.supabase.co
+          EXPO_PUBLIC_SUPABASE_ANON_KEY: sb_publishable_1ZQxUWvuub3ocwZJetw1jw_rWj6fdMD
+
+      - name: Write preview link to job summary
+        run: |
+          GROUP_ID=$(jq -r '.[0].group' update.json)
+          {
+            echo "## Easyfen preview published"
+            echo ""
+            echo "Open this page (it has a QR code / launch button for Expo Go):"
+            echo ""
+            echo "https://expo.dev/accounts/syl-express/projects/easyfen/updates/${GROUP_ID}"
+            echo ""
+            echo "Or browse all previews: https://expo.dev/accounts/syl-express/projects/easyfen/branches/preview"
+          } >> "$GITHUB_STEP_SUMMARY"

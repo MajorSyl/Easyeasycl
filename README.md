@@ -41,7 +41,23 @@ The two values in `.env`:
 
 Both are visible in the Supabase dashboard under Project Settings → API, and both also appear in `eas.json` (they are client-side values, safe to be public; data protection comes from Row Level Security, not from hiding these).
 
-## Building an installable Android APK
+## Fast previews with Expo Go (the usual way to test changes)
+
+Every push to the development branch automatically publishes the app's code to
+Expo's servers via the "Publish preview update (fast)" workflow — this takes
+~2 minutes, no build queue. To view it:
+
+1. Install the free **Expo Go** app (Play Store / App Store) and sign in with
+   the project's Expo account
+2. Open the link printed in the workflow run's Summary, or browse
+   https://expo.dev/accounts/syl-express/projects/easyfen/branches/preview and
+   open the newest update — each has a QR code / launch button for Expo Go
+
+Because the APK build profile shares the same "preview" channel, a phone with
+the installed APK also picks these updates up automatically on next launch —
+no reinstall needed for JavaScript-only changes.
+
+## Building an installable Android APK (occasional)
 
 Builds run automatically through GitHub Actions + Expo's EAS Build service — no computer needed:
 
