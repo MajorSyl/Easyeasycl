@@ -1,0 +1,80 @@
+name: Build Android APK
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Confirm Expo login
+        run: npx eas-cli whoami
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Link EAS project (first run only)
+        run: |
+          HAS_ID=$(node -p "require('./app.json').expo.extra?.eas?.projectId ? 'yes' : 'no'")
+          if [ "$HAS_ID" = "no" ]; then
+            echo "No EAS project linked yet — creating one now."
+            npx eas-cli init --non-interactive --force
+          else
+            echo "EAS project already linked, skipping."
+          fi
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Save the EAS project link back to the repo
+        run: |
+          if ! git diff --quiet -- app.json; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add app.json
+            git commit -m "chore: link EAS project [skip ci]"
+            git push
+          else
+            echo "Nothing to save."
+          fi
+
+      - name: Build Android APK on EAS
+        run: npx eas-cli build --platform android --profile preview --non-interactive
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Write download link to job summary
+        if: always()
+        run: |
+          npx eas-cli build:list --platform android --limit 1 --non-interactive --json > build.json || true
+          node -e "
+            try {
+              const list = JSON.parse(require('fs').readFileSync('build.json', 'utf8'));
+              const b = list[0];
+              const lines = [
+                '## Easyfen Android build',
+                '',
+                '- Status: ' + b.status,
+                '- Download the APK: ' + (b.artifacts && b.artifacts.buildUrl ? b.artifacts.buildUrl : '(not ready yet, check the build page below)'),
+                '- Build page (has a QR code to scan on your phone): https://expo.dev/accounts/' + b.project.ownerAccount.name + '/projects/' + b.project.name + '/builds/' + b.id,
+              ];
+              require('fs').appendFileSync(process.env.GITHUB_STEP_SUMMARY, lines.join('\n') + '\n');
+            } catch (e) {
+              require('fs').appendFileSync(process.env.GITHUB_STEP_SUMMARY, '## Easyfen Android build\n\nCould not parse build info automatically. Raw output:\n\n```\n' + require('fs').readFileSync('build.json', 'utf8') + '\n```\n');
+            }
+          "
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
