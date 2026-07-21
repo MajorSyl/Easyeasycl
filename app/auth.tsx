@@ -20,6 +20,7 @@ export default function AuthScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   const canSubmit =
@@ -29,11 +30,28 @@ export default function AuthScreen() {
     if (!canSubmit || submitting) return;
     setSubmitting(true);
     setError(null);
-    const message =
-      mode === 'sign_in' ? await signIn(email.trim(), password) : await signUp(email.trim(), password, fullName.trim());
+    setNotice(null);
+
+    if (mode === 'sign_in') {
+      const message = await signIn(email.trim(), password);
+      setSubmitting(false);
+      if (message) {
+        setError(message);
+        return;
+      }
+      if (router.canGoBack()) router.back();
+      return;
+    }
+
+    const result = await signUp(email.trim(), password, fullName.trim());
     setSubmitting(false);
-    if (message) {
-      setError(message);
+    if (result.error) {
+      setError(result.error);
+      return;
+    }
+    if (result.needsEmailConfirmation) {
+      setMode('sign_in');
+      setNotice('Account created! Check your email and tap the confirmation link, then log in here.');
       return;
     }
     if (router.canGoBack()) router.back();
@@ -80,6 +98,7 @@ export default function AuthScreen() {
       />
 
       {error && <Text style={styles.error}>{error}</Text>}
+      {notice && <Text style={styles.notice}>{notice}</Text>}
 
       <Pressable
         style={[styles.submitButton, !canSubmit && styles.submitButtonDisabled]}
@@ -119,6 +138,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   error: { color: colors.danger, fontSize: fontSize.sm, marginBottom: spacing.md },
+  notice: { color: colors.online, fontSize: fontSize.sm, marginBottom: spacing.md },
   submitButton: {
     backgroundColor: colors.accent,
     borderRadius: radius.md,

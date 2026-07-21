@@ -1,6 +1,7 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
 import { Badge } from './Badge';
 import { FavoriteButton } from './FavoriteButton';
 import { colors, fontSize, radius, spacing } from '../constants/theme';
@@ -9,7 +10,7 @@ import type { Listing } from '../lib/types';
 
 export function ListingCard({ listing }: { listing: Listing }) {
   return (
-    <View style={styles.card}>
+    <Pressable style={styles.card} onPress={() => router.push(`/listing/${listing.id}`)}>
       <View style={styles.imageWrap}>
         {listing.photos[0] ? (
           <Image source={{ uri: listing.photos[0] }} style={styles.image} contentFit="cover" />
@@ -68,7 +69,7 @@ export function ListingCard({ listing }: { listing: Listing }) {
           </View>
         </View>
       </View>
-    </View>
+    </Pressable>
   );
 }
 

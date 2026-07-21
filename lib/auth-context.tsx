@@ -16,7 +16,11 @@ type AuthContextValue = {
   profile: Profile | null;
   loading: boolean;
   onlineUserIds: Set<string>;
-  signUp: (email: string, password: string, fullName: string) => Promise<string | null>;
+  signUp: (
+    email: string,
+    password: string,
+    fullName: string
+  ) => Promise<{ error: string | null; needsEmailConfirmation: boolean }>;
   signIn: (email: string, password: string) => Promise<string | null>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
@@ -80,12 +84,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [session]);
 
   async function signUp(email: string, password: string, fullName: string) {
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: { data: { full_name: fullName } },
     });
-    return error?.message ?? null;
+    return {
+      error: error?.message ?? null,
+      // When Supabase requires email confirmation, sign-up succeeds but no
+      // session is returned until the user clicks the link in their inbox.
+      needsEmailConfirmation: !error && !data.session,
+    };
   }
 
   async function signIn(email: string, password: string) {
