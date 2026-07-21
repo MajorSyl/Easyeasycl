@@ -2,17 +2,21 @@ import { Stack } from 'expo-router';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
+import { AuthProvider } from '../lib/auth-context';
 
 export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
-        <StatusBar style="dark" />
-        <Stack screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="(tabs)" />
-          <Stack.Screen name="messages/index" options={{ presentation: 'card' }} />
-          <Stack.Screen name="messages/[id]" options={{ presentation: 'card' }} />
-        </Stack>
+        <AuthProvider>
+          <StatusBar style="dark" />
+          <Stack screenOptions={{ headerShown: false }}>
+            <Stack.Screen name="(tabs)" />
+            <Stack.Screen name="messages/index" options={{ presentation: 'card' }} />
+            <Stack.Screen name="messages/[id]" options={{ presentation: 'card' }} />
+            <Stack.Screen name="auth" options={{ presentation: 'modal' }} />
+          </Stack>
+        </AuthProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );
