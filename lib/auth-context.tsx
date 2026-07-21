@@ -15,6 +15,7 @@ type AuthContextValue = {
   session: Session | null;
   profile: Profile | null;
   loading: boolean;
+  onlineUserIds: Set<string>;
   signUp: (email: string, password: string, fullName: string) => Promise<string | null>;
   signIn: (email: string, password: string) => Promise<string | null>;
   signOut: () => Promise<void>;
@@ -27,6 +28,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [onlineUserIds, setOnlineUserIds] = useState<Set<string>>(new Set());
 
   async function loadProfile(userId: string) {
     const { data } = await supabase.from('profiles').select('*').eq('id', userId).single();
@@ -52,6 +54,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => listener.subscription.unsubscribe();
   }, []);
 
+  useEffect(() => {
+    if (!session) {
+      setOnlineUserIds(new Set());
+      return;
+    }
+
+    const channel = supabase.channel('online-users', {
+      config: { presence: { key: session.user.id } },
+    });
+
+    channel
+      .on('presence', { event: 'sync' }, () => {
+        setOnlineUserIds(new Set(Object.keys(channel.presenceState())));
+      })
+      .subscribe(async (status) => {
+        if (status === 'SUBSCRIBED') {
+          await channel.track({ online_at: new Date().toISOString() });
+        }
+      });
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [session]);
+
   async function signUp(email: string, password: string, fullName: string) {
     const { error } = await supabase.auth.signUp({
       email,
@@ -75,7 +102,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ session, profile, loading, signUp, signIn, signOut, refreshProfile }}>
+    <AuthContext.Provider
+      value={{ session, profile, loading, onlineUserIds, signUp, signIn, signOut, refreshProfile }}
+    >
       {children}
     </AuthContext.Provider>
   );

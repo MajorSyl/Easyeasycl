@@ -27,3 +27,29 @@ export function initialsFor(name: string | null) {
   if (!name) return '?';
   return name.trim().charAt(0).toUpperCase();
 }
+
+const roleLabels: Record<string, string> = {
+  agent: 'AGENT',
+  service_provider: 'SERVICE PROVIDER',
+  hotel_owner: 'HOTEL',
+};
+
+export function roleLabel(role: string | undefined | null) {
+  if (!role) return null;
+  return roleLabels[role] ?? null;
+}
+
+export function formatMessageTimestamp(isoDate: string) {
+  const date = new Date(isoDate);
+  const now = new Date();
+  const isToday = date.toDateString() === now.toDateString();
+  if (isToday) {
+    return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  }
+  const yesterday = new Date(now);
+  yesterday.setDate(now.getDate() - 1);
+  if (date.toDateString() === yesterday.toDateString()) {
+    return 'Yesterday';
+  }
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}

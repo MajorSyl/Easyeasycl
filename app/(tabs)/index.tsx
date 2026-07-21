@@ -1,14 +1,16 @@
 import { useCallback, useEffect, useState } from 'react';
-import { FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { Alert, FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../lib/auth-context';
+import { getOrCreateConversation } from '../../lib/conversations';
 import { colors, fontSize, radius, spacing } from '../../constants/theme';
 import { ListingCard } from '../../components/ListingCard';
+import { HotelCard } from '../../components/HotelCard';
+import { ServiceCard } from '../../components/ServiceCard';
 import { FilterPills, type PillOption } from '../../components/FilterPills';
-import { formatPrice, initialsFor } from '../../lib/format';
 import type { Hotel, Listing, ListingCategory, Service } from '../../lib/types';
 
 type Section = 'properties' | 'hotels' | 'services';
@@ -112,6 +114,19 @@ export default function HomeScreen() {
     router.push(session ? '/profile' : '/auth');
   }
 
+  async function handleHire(service: Service) {
+    if (!session) {
+      router.push('/auth');
+      return;
+    }
+    try {
+      const conversationId = await getOrCreateConversation(session.user.id, service.owner_id, null);
+      router.push(`/messages/${conversationId}`);
+    } catch (err) {
+      Alert.alert('Could not start conversation', err instanceof Error ? err.message : 'Please try again.');
+    }
+  }
+
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.topBar}>
@@ -167,16 +182,7 @@ export default function HomeScreen() {
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
-          renderItem={({ item }) => (
-            <View style={styles.simpleCard}>
-              <Text style={styles.simpleCardTitle}>{item.name}</Text>
-              <Text style={styles.simpleCardSubtitle}>{item.location}</Text>
-              <Text style={styles.simpleCardPrice}>
-                {formatPrice(item.rate, item.currency, item.rate_unit)} · {initialsFor(item.owner?.full_name ?? null)} ★{' '}
-                {item.rating.toFixed(1)} ({item.rating_count})
-              </Text>
-            </View>
-          )}
+          renderItem={({ item }) => <HotelCard hotel={item} />}
           ListEmptyComponent={!loading ? <EmptyState label="No hotels yet" /> : null}
         />
       )}
@@ -188,17 +194,7 @@ export default function HomeScreen() {
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
-          renderItem={({ item }) => (
-            <View style={styles.simpleCard}>
-              <Text style={styles.simpleCardTitle}>{item.business_name}</Text>
-              <Text style={styles.simpleCardSubtitle}>
-                {item.category} · {item.location}
-              </Text>
-              <Text style={styles.simpleCardPrice}>
-                {formatPrice(item.rate, item.currency, item.rate_unit)} · ★ {item.rating.toFixed(1)} ({item.rating_count})
-              </Text>
-            </View>
-          )}
+          renderItem={({ item }) => <ServiceCard service={item} onHire={() => handleHire(item)} />}
           ListEmptyComponent={!loading ? <EmptyState label="No services yet" /> : null}
         />
       )}
@@ -266,16 +262,6 @@ const styles = StyleSheet.create({
   pillsWrap: { paddingVertical: spacing.md },
   listContent: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl, gap: spacing.md },
   row: { gap: spacing.md },
-  simpleCard: {
-    backgroundColor: colors.card,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: spacing.md,
-  },
-  simpleCardTitle: { fontSize: fontSize.md, fontWeight: '700', color: colors.textPrimary },
-  simpleCardSubtitle: { fontSize: fontSize.sm, color: colors.textSecondary, marginTop: 2 },
-  simpleCardPrice: { fontSize: fontSize.sm, color: colors.accent, fontWeight: '600', marginTop: spacing.xs },
   emptyState: { paddingTop: spacing.xxl, alignItems: 'center' },
   emptyStateText: { color: colors.textMuted, fontSize: fontSize.sm },
 });
