@@ -13,6 +13,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../lib/auth-context';
+import { useBottomGap } from '../../lib/use-bottom-gap';
 import { getOrCreateConversation } from '../../lib/conversations';
 import { colors, fontSize, radius, spacing } from '../../constants/theme';
 import { FavoriteButton } from '../../components/FavoriteButton';
@@ -21,6 +22,7 @@ import type { Service } from '../../lib/types';
 
 export default function ServiceDetailScreen() {
   const insets = useSafeAreaInsets();
+  const bottomGap = useBottomGap();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { session } = useAuth();
   const [service, setService] = useState<Service | null>(null);
@@ -141,7 +143,7 @@ export default function ServiceDetailScreen() {
         </View>
       </ScrollView>
 
-      <View style={[styles.footer, { paddingBottom: insets.bottom + spacing.md }]}>
+      <View style={[styles.footer, { paddingBottom: bottomGap + spacing.md }]}>
         <Pressable style={styles.hireButton} onPress={handleHire} disabled={starting}>
           {starting ? (
             <ActivityIndicator color="#fff" />

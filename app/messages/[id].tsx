@@ -37,7 +37,19 @@ export default function ChatThreadScreen() {
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
   const listRef = useRef<FlatList<Message>>(null);
+  const inputRef = useRef<TextInput>(null);
   const keyboardHeight = useKeyboardHeight();
+
+  // Some Android skins (e.g. MIUI) report a zero bottom inset even though a
+  // system navigation bar overlays the app, leaving the composer buried under
+  // untappable system UI. Never trust a zero: assume a 3-button bar's height.
+  const bottomGap = Platform.OS === 'android' ? Math.max(insets.bottom, 48) : insets.bottom;
+
+  useEffect(() => {
+    if (keyboardHeight > 0) {
+      listRef.current?.scrollToEnd({ animated: true });
+    }
+  }, [keyboardHeight]);
 
   const loadConversation = useCallback(async () => {
     if (!session || !id) return;
@@ -171,17 +183,20 @@ export default function ChatThreadScreen() {
       <View
         style={[
           styles.composer,
-          { paddingBottom: keyboardHeight > 0 ? spacing.md : insets.bottom + spacing.md, marginBottom: keyboardHeight },
+          { paddingBottom: keyboardHeight > 0 ? spacing.md : bottomGap + spacing.md, marginBottom: keyboardHeight },
         ]}
       >
-        <TextInput
-          style={styles.composerInput}
-          placeholder="Type a message..."
-          placeholderTextColor={colors.textMuted}
-          value={draft}
-          onChangeText={setDraft}
-          multiline
-        />
+        <Pressable style={styles.composerInputWrap} onPress={() => inputRef.current?.focus()}>
+          <TextInput
+            ref={inputRef}
+            style={styles.composerInput}
+            placeholder="Type a message..."
+            placeholderTextColor={colors.textMuted}
+            value={draft}
+            onChangeText={setDraft}
+            multiline
+          />
+        </Pressable>
         <Pressable style={styles.sendButton} onPress={handleSend} disabled={!draft.trim() || sending}>
           <Ionicons name="send" size={18} color="#fff" />
         </Pressable>
@@ -247,8 +262,8 @@ const styles = StyleSheet.create({
     borderTopColor: colors.border,
     backgroundColor: colors.card,
   },
+  composerInputWrap: { flex: 1 },
   composerInput: {
-    flex: 1,
     maxHeight: 100,
     backgroundColor: colors.background,
     borderWidth: 1,
