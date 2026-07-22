@@ -16,6 +16,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '../../../lib/supabase';
 import { useAuth } from '../../../lib/auth-context';
+import { friendlyErrorMessage } from '../../../lib/errors';
 import { colors, fontSize, radius, spacing } from '../../../constants/theme';
 import { PhotoPicker } from '../../../components/PhotoPicker';
 import { SelectField, type SelectOption } from '../../../components/SelectField';
@@ -134,7 +135,7 @@ export default function EditListingScreen() {
 
     setSaving(false);
     if (error) {
-      Alert.alert('Could not save changes', error.message);
+      Alert.alert('Could not save changes', friendlyErrorMessage(error));
       return;
     }
     router.back();

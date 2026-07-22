@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -118,6 +118,11 @@ export default function MessagesScreen() {
         />
       </View>
 
+      {loading ? (
+        <View style={styles.centered}>
+          <ActivityIndicator color={colors.accent} />
+        </View>
+      ) : (
       <FlatList
         data={filtered}
         keyExtractor={(item) => item.id}
@@ -151,13 +156,16 @@ export default function MessagesScreen() {
           </Pressable>
         )}
         ListEmptyComponent={
-          !loading ? (
-            <View style={styles.emptyState}>
-              <Text style={styles.emptyStateText}>No conversations yet</Text>
-            </View>
-          ) : null
+          <View style={styles.emptyState}>
+            <Ionicons name="chatbubbles-outline" size={36} color={colors.textMuted} />
+            <Text style={styles.emptyStateTitle}>No conversations yet</Text>
+            <Text style={styles.emptyStateText}>
+              Message an agent or service provider from a listing to start chatting.
+            </Text>
+          </View>
         }
       />
+      )}
     </View>
   );
 }
@@ -241,6 +249,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 5,
   },
   unreadBadgeText: { color: '#fff', fontSize: 11, fontWeight: '700' },
-  emptyState: { paddingTop: spacing.xxl, alignItems: 'center' },
-  emptyStateText: { color: colors.textMuted, fontSize: fontSize.sm },
+  centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  emptyState: { paddingTop: spacing.xxl, alignItems: 'center', gap: spacing.sm, paddingHorizontal: spacing.xl },
+  emptyStateTitle: { fontSize: fontSize.md, fontWeight: '700', color: colors.textPrimary },
+  emptyStateText: { color: colors.textMuted, fontSize: fontSize.sm, textAlign: 'center' },
 });

@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { useAuth } from '../lib/auth-context';
+import { friendlyErrorMessage } from '../lib/errors';
 import { colors, fontSize, radius, spacing } from '../constants/theme';
 
 export default function AuthScreen() {
@@ -36,7 +37,7 @@ export default function AuthScreen() {
       const message = await signIn(email.trim(), password);
       setSubmitting(false);
       if (message) {
-        setError(message);
+        setError(friendlyErrorMessage(message));
         return;
       }
       if (router.canGoBack()) router.back();
@@ -46,7 +47,7 @@ export default function AuthScreen() {
     const result = await signUp(email.trim(), password, fullName.trim());
     setSubmitting(false);
     if (result.error) {
-      setError(result.error);
+      setError(friendlyErrorMessage(result.error));
       return;
     }
     if (result.needsEmailConfirmation) {

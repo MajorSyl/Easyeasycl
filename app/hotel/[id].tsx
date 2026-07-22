@@ -15,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '../../lib/supabase';
+import { friendlyErrorMessage } from '../../lib/errors';
 import { useAuth } from '../../lib/auth-context';
 import { useBottomGap } from '../../lib/use-bottom-gap';
 import { getOrCreateConversation } from '../../lib/conversations';
@@ -76,7 +77,7 @@ export default function HotelDetailScreen() {
       const conversationId = await getOrCreateConversation(session.user.id, hotel.owner_id, null);
       router.push(`/messages/${conversationId}`);
     } catch (err) {
-      Alert.alert('Could not start conversation', err instanceof Error ? err.message : 'Please try again.');
+      Alert.alert('Could not start conversation', friendlyErrorMessage(err));
     } finally {
       setStarting(false);
     }

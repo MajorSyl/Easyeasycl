@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
+  ActivityIndicator,
+  Alert,
   FlatList,
   KeyboardAvoidingView,
   Platform,
@@ -15,6 +17,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../lib/auth-context';
 import { useKeyboardHeight } from '../../lib/use-keyboard-height';
+import { friendlyErrorMessage } from '../../lib/errors';
 import { colors, fontSize, radius, spacing } from '../../constants/theme';
 import { initialsFor, roleLabel } from '../../lib/format';
 import type { OwnerSummary } from '../../lib/types';
@@ -34,6 +37,7 @@ export default function ChatThreadScreen() {
   const { session, onlineUserIds } = useAuth();
   const [otherUser, setOtherUser] = useState<(OwnerSummary & { id: string }) | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
+  const [loading, setLoading] = useState(true);
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
   const listRef = useRef<FlatList<Message>>(null);
@@ -81,6 +85,7 @@ export default function ChatThreadScreen() {
       .eq('conversation_id', id)
       .neq('sender_id', uid)
       .is('read_at', null);
+    setLoading(false);
   }, [session, id]);
 
   useFocusEffect(
@@ -122,7 +127,10 @@ export default function ChatThreadScreen() {
       body,
     });
     setSending(false);
-    if (error) setDraft(body);
+    if (error) {
+      setDraft(body);
+      Alert.alert('Message not sent', friendlyErrorMessage(error));
+    }
   }
 
   if (!session) return null;
@@ -156,6 +164,11 @@ export default function ChatThreadScreen() {
         </Pressable>
       </View>
 
+      {loading ? (
+        <View style={styles.centered}>
+          <ActivityIndicator color={colors.accent} />
+        </View>
+      ) : (
       <FlatList
         ref={listRef}
         data={messages}
@@ -179,6 +192,7 @@ export default function ChatThreadScreen() {
           </View>
         }
       />
+      )}
 
       <View
         style={[
@@ -251,6 +265,7 @@ const styles = StyleSheet.create({
   bubbleTheirs: { backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border, borderBottomLeftRadius: 4 },
   bubbleTextMine: { color: '#fff', fontSize: fontSize.sm },
   bubbleTextTheirs: { color: colors.textPrimary, fontSize: fontSize.sm },
+  centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   emptyState: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   emptyStateText: { color: colors.textMuted, fontSize: fontSize.sm },
   composer: {

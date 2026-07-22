@@ -14,6 +14,7 @@ import { router, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../lib/auth-context';
+import { friendlyErrorMessage } from '../../lib/errors';
 import { colors, fontSize, radius, spacing } from '../../constants/theme';
 import { formatPrice, initialsFor, roleLabel } from '../../lib/format';
 import { SelectField, type SelectOption } from '../../components/SelectField';
@@ -125,7 +126,7 @@ export default function ProfileScreen() {
       .eq('id', session.user.id);
     setSaving(false);
     if (error) {
-      Alert.alert('Could not save', error.message);
+      Alert.alert('Could not save', friendlyErrorMessage(error));
       return;
     }
     await refreshProfile();
@@ -143,7 +144,7 @@ export default function ProfileScreen() {
     const table = item.kind === 'listing' ? 'listings' : item.kind === 'hotel' ? 'hotels' : 'services';
     const { error } = await supabase.from(table).delete().eq('id', item.id);
     if (error) {
-      Alert.alert('Could not delete', error.message);
+      Alert.alert('Could not delete', friendlyErrorMessage(error));
       return;
     }
     setMyListings((prev) => prev.filter((l) => l.id !== item.id));
