@@ -14,6 +14,7 @@ import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../lib/auth-context';
+import { useKeyboardHeight } from '../../lib/use-keyboard-height';
 import { colors, fontSize, radius, spacing } from '../../constants/theme';
 import { initialsFor, roleLabel } from '../../lib/format';
 import type { OwnerSummary } from '../../lib/types';
@@ -36,6 +37,7 @@ export default function ChatThreadScreen() {
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
   const listRef = useRef<FlatList<Message>>(null);
+  const keyboardHeight = useKeyboardHeight();
 
   const loadConversation = useCallback(async () => {
     if (!session || !id) return;
@@ -142,6 +144,7 @@ export default function ChatThreadScreen() {
         data={messages}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
+        keyboardShouldPersistTaps="handled"
         onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: false })}
         renderItem={({ item }) => {
           const mine = item.sender_id === session.user.id;
@@ -160,7 +163,12 @@ export default function ChatThreadScreen() {
         }
       />
 
-      <View style={styles.composer}>
+      <View
+        style={[
+          styles.composer,
+          { paddingBottom: keyboardHeight > 0 ? spacing.md : insets.bottom + spacing.md, marginBottom: keyboardHeight },
+        ]}
+      >
         <TextInput
           style={styles.composerInput}
           placeholder="Type a message..."
