@@ -254,6 +254,13 @@ export default function ProfileScreen() {
             </Text>
             <Text style={styles.listingPrice}>{item.priceLabel}</Text>
           </View>
+          <Pressable
+            style={styles.editButtonRow}
+            onPress={() => router.push(`/edit/${item.kind}/${item.id}`)}
+            hitSlop={8}
+          >
+            <Ionicons name="pencil-outline" size={18} color={colors.accent} />
+          </Pressable>
           <Pressable style={styles.deleteButton} onPress={() => confirmDelete(item)} hitSlop={8}>
             <Ionicons name="trash-outline" size={18} color={colors.danger} />
           </Pressable>
@@ -378,6 +385,7 @@ const styles = StyleSheet.create({
   listingKind: { fontSize: 10, fontWeight: '700', color: colors.textMuted, letterSpacing: 0.4 },
   listingTitle: { fontSize: fontSize.sm, fontWeight: '700', color: colors.textPrimary, marginTop: 2 },
   listingPrice: { fontSize: fontSize.sm, color: colors.accent, fontWeight: '600', marginTop: 2 },
+  editButtonRow: { padding: spacing.sm },
   deleteButton: { padding: spacing.sm },
   emptyState: { paddingVertical: spacing.xl, alignItems: 'center' },
   emptyStateText: { color: colors.textMuted, fontSize: fontSize.sm },

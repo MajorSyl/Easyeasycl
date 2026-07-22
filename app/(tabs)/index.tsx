@@ -134,6 +134,14 @@ export default function HomeScreen() {
           <Ionicons name="search" size={18} color={colors.textMuted} />
           <Text style={styles.searchPlaceholder}>Search properties, land, services...</Text>
         </Pressable>
+        <Pressable style={styles.iconButton} onPress={() => router.push(session ? '/notifications' : '/auth')}>
+          <Ionicons name="notifications-outline" size={20} color={colors.textPrimary} />
+          {unreadCount > 0 && (
+            <View style={styles.unreadBadge}>
+              <Text style={styles.unreadBadgeText}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
+            </View>
+          )}
+        </Pressable>
         <Pressable style={styles.iconButton} onPress={openMessages}>
           <Ionicons name="chatbubble-outline" size={20} color={colors.textPrimary} />
           {unreadCount > 0 && <View style={styles.unreadDot} />}
@@ -243,6 +251,19 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     backgroundColor: colors.danger,
   },
+  unreadBadge: {
+    position: 'absolute',
+    top: -2,
+    right: -4,
+    minWidth: 15,
+    height: 15,
+    borderRadius: 8,
+    backgroundColor: colors.danger,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 3,
+  },
+  unreadBadgeText: { color: '#fff', fontSize: 9, fontWeight: '700' },
   sectionTabs: {
     flexDirection: 'row',
     paddingHorizontal: spacing.lg,

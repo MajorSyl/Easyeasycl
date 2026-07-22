@@ -189,7 +189,7 @@ export default function HotelDetailScreen() {
           )}
 
           <Text style={styles.sectionTitle}>Hosted by</Text>
-          <View style={styles.agentRow}>
+          <Pressable style={styles.agentRow} onPress={() => router.push(`/user/${hotel.owner_id}`)}>
             <View style={styles.agentAvatar}>
               <Text style={styles.agentAvatarText}>{initialsFor(hotel.owner?.full_name ?? null)}</Text>
             </View>
@@ -197,7 +197,8 @@ export default function HotelDetailScreen() {
               <Text style={styles.agentName}>{hotel.owner?.full_name ?? 'Easyfen User'}</Text>
               {hotel.owner?.role === 'hotel_owner' && <Text style={styles.agentRole}>HOTEL</Text>}
             </View>
-          </View>
+            <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+          </Pressable>
         </View>
       </ScrollView>
 

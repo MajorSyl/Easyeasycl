@@ -128,7 +128,7 @@ export default function ServiceDetailScreen() {
           )}
 
           <Text style={styles.sectionTitle}>Provider</Text>
-          <View style={styles.providerRow}>
+          <Pressable style={styles.providerRow} onPress={() => router.push(`/user/${service.owner_id}`)}>
             <View style={styles.providerAvatar}>
               <Text style={styles.providerAvatarText}>{initialsFor(service.owner?.full_name ?? null)}</Text>
             </View>
@@ -136,7 +136,8 @@ export default function ServiceDetailScreen() {
               <Text style={styles.providerName}>{service.owner?.full_name ?? 'Easyfen User'}</Text>
               <Text style={styles.providerRole}>SERVICE PROVIDER</Text>
             </View>
-          </View>
+            <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+          </Pressable>
         </View>
       </ScrollView>
 

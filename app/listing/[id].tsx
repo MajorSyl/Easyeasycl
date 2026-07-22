@@ -189,7 +189,7 @@ export default function ListingDetailScreen() {
           )}
 
           <Text style={styles.sectionTitle}>Agent</Text>
-          <View style={styles.agentRow}>
+          <Pressable style={styles.agentRow} onPress={() => router.push(`/user/${listing.owner_id}`)}>
             <View style={styles.agentAvatar}>
               <Text style={styles.agentAvatarText}>{initialsFor(listing.owner?.full_name ?? null)}</Text>
             </View>
@@ -197,7 +197,8 @@ export default function ListingDetailScreen() {
               <Text style={styles.agentName}>{listing.owner?.full_name ?? 'Easyfen User'}</Text>
               {listing.owner?.role === 'agent' && <Text style={styles.agentRole}>AGENT</Text>}
             </View>
-          </View>
+            <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+          </Pressable>
         </View>
       </ScrollView>
 

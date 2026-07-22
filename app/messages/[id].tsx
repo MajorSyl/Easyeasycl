@@ -125,18 +125,23 @@ export default function ChatThreadScreen() {
         <Pressable onPress={() => router.back()} hitSlop={8}>
           <Ionicons name="chevron-back" size={22} color={colors.textPrimary} />
         </Pressable>
-        <View style={styles.avatarWrap}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{initialsFor(otherUser?.full_name ?? null)}</Text>
+        <Pressable
+          style={styles.headerProfile}
+          onPress={() => otherUser && router.push(`/user/${otherUser.id}`)}
+        >
+          <View style={styles.avatarWrap}>
+            <View style={styles.avatar}>
+              <Text style={styles.avatarText}>{initialsFor(otherUser?.full_name ?? null)}</Text>
+            </View>
+            {otherUser && onlineUserIds.has(otherUser.id) && <View style={styles.onlineDot} />}
           </View>
-          {otherUser && onlineUserIds.has(otherUser.id) && <View style={styles.onlineDot} />}
-        </View>
-        <View style={styles.headerBody}>
-          <Text style={styles.headerName} numberOfLines={1}>
-            {otherUser?.full_name ?? 'Easyfen User'}
-          </Text>
-          {roleLabel(otherUser?.role) && <Text style={styles.headerRole}>{roleLabel(otherUser?.role)}</Text>}
-        </View>
+          <View style={styles.headerBody}>
+            <Text style={styles.headerName} numberOfLines={1}>
+              {otherUser?.full_name ?? 'Easyfen User'}
+            </Text>
+            {roleLabel(otherUser?.role) && <Text style={styles.headerRole}>{roleLabel(otherUser?.role)}</Text>}
+          </View>
+        </Pressable>
       </View>
 
       <FlatList
@@ -197,6 +202,7 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.border,
     backgroundColor: colors.card,
   },
+  headerProfile: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   avatarWrap: { position: 'relative' },
   avatar: {
     width: 36,

@@ -54,7 +54,7 @@ export default function AuthScreen() {
       setNotice('Account created! Check your email and tap the confirmation link, then log in here.');
       return;
     }
-    if (router.canGoBack()) router.back();
+    router.replace('/onboarding');
   }
 
   return (
