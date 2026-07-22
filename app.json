@@ -38,7 +38,8 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "Easyfen uses your photos to add pictures to your listings."
+          "photosPermission": "Easyfen uses your photos to add pictures to your listings.",
+          "cameraPermission": "Easyfen uses your camera to take pictures for your listings."
         }
       ]
     ],

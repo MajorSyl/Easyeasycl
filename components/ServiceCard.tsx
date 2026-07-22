@@ -1,5 +1,6 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
 import { FavoriteButton } from './FavoriteButton';
 import { colors, fontSize, radius, spacing } from '../constants/theme';
 import { formatPrice, initialsFor } from '../lib/format';
@@ -7,7 +8,7 @@ import type { Service } from '../lib/types';
 
 export function ServiceCard({ service, onHire }: { service: Service; onHire: () => void }) {
   return (
-    <View style={styles.card}>
+    <Pressable style={styles.card} onPress={() => router.push(`/service/${service.id}`)}>
       <View style={styles.avatar}>
         <Text style={styles.avatarText}>{initialsFor(service.business_name)}</Text>
       </View>
@@ -41,7 +42,7 @@ export function ServiceCard({ service, onHire }: { service: Service; onHire: () 
           </Pressable>
         </View>
       </View>
-    </View>
+    </Pressable>
   );
 }
 

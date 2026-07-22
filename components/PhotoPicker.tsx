@@ -19,24 +19,43 @@ export function PhotoPicker({
 }) {
   const [uploading, setUploading] = useState(false);
 
-  async function pickAndUpload() {
+  function pickAndUpload() {
+    const remaining = MAX_PHOTOS - photos.length;
+    if (remaining <= 0) return;
+    Alert.alert('Add photos', undefined, [
+      { text: 'Take a photo', onPress: () => captureFromCamera() },
+      { text: 'Choose from gallery', onPress: () => chooseFromGallery(remaining) },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
+  }
+
+  async function captureFromCamera() {
+    const permission = await ImagePicker.requestCameraPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert('Camera access needed', 'Please allow camera access to take listing photos.');
+      return;
+    }
+    const result = await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], quality: 0.7 });
+    await uploadAssets(result);
+  }
+
+  async function chooseFromGallery(remaining: number) {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
       Alert.alert('Photo access needed', 'Please allow photo library access to add listing photos.');
       return;
     }
-
-    const remaining = MAX_PHOTOS - photos.length;
-    if (remaining <= 0) return;
-
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
       allowsMultipleSelection: true,
       selectionLimit: remaining,
       quality: 0.7,
     });
-    if (result.canceled || result.assets.length === 0) return;
+    await uploadAssets(result);
+  }
 
+  async function uploadAssets(result: ImagePicker.ImagePickerResult) {
+    if (result.canceled || result.assets.length === 0) return;
     setUploading(true);
     try {
       const uploaded: string[] = [];

@@ -230,6 +230,14 @@ export default function ProfileScreen() {
           </View>
 
           {!editing && (
+            <Pressable style={styles.savedRow} onPress={() => router.push('/favorites')}>
+              <Ionicons name="heart" size={18} color={colors.favoriteIcon} />
+              <Text style={styles.savedRowText}>Saved</Text>
+              <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+            </Pressable>
+          )}
+
+          {!editing && (
             <View style={styles.sectionHeaderRow}>
               <Text style={styles.sectionTitle}>My Listings</Text>
               {loadingListings && <ActivityIndicator size="small" color={colors.accent} />}
@@ -342,6 +350,18 @@ const styles = StyleSheet.create({
   cancelButtonText: { color: colors.textSecondary, fontWeight: '600' },
   saveButton: { flex: 1, borderRadius: radius.md, backgroundColor: colors.accent, paddingVertical: spacing.md, alignItems: 'center' },
   saveButtonText: { color: '#fff', fontWeight: '700' },
+  savedRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    backgroundColor: colors.card,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.md,
+    marginBottom: spacing.lg,
+  },
+  savedRowText: { flex: 1, fontSize: fontSize.md, fontWeight: '600', color: colors.textPrimary },
   sectionHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.sm },
   sectionTitle: { fontSize: fontSize.md, fontWeight: '700', color: colors.textPrimary },
   listingRow: {
