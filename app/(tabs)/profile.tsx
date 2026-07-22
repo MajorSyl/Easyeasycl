@@ -15,6 +15,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../lib/auth-context';
 import { friendlyErrorMessage } from '../../lib/errors';
+import { notifyListingsChanged } from '../../lib/listings-cache-bus';
 import { colors, fontSize, radius, spacing } from '../../constants/theme';
 import { formatPrice, initialsFor, roleLabel } from '../../lib/format';
 import { SelectField, type SelectOption } from '../../components/SelectField';
@@ -148,6 +149,7 @@ export default function ProfileScreen() {
       return;
     }
     setMyListings((prev) => prev.filter((l) => l.id !== item.id));
+    notifyListingsChanged();
   }
 
   async function handleLogOut() {

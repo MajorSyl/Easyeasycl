@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
@@ -7,6 +7,7 @@ import { supabase } from '../../lib/supabase';
 import { friendlyErrorMessage } from '../../lib/errors';
 import { useAuth } from '../../lib/auth-context';
 import { getOrCreateConversation } from '../../lib/conversations';
+import { subscribeListingsChanged } from '../../lib/listings-cache-bus';
 import { colors, fontSize, radius, spacing } from '../../constants/theme';
 import { ListingCard } from '../../components/ListingCard';
 import { HotelCard } from '../../components/HotelCard';
@@ -43,34 +44,77 @@ export default function HomeScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
 
-  const load = useCallback(async () => {
-    if (section === 'properties') {
-      let query = supabase
-        .from('listings')
-        .select('*, owner:profiles(full_name, avatar_url, role)')
-        .order('created_at', { ascending: false });
-      if (categoryFilter !== 'all') query = query.eq('category', categoryFilter);
-      const { data } = await query;
-      setListings((data as Listing[]) ?? []);
-    } else if (section === 'hotels') {
-      const { data } = await supabase
-        .from('hotels')
-        .select('*, owner:profiles(full_name, avatar_url, role)')
-        .order('created_at', { ascending: false });
-      setHotels((data as Hotel[]) ?? []);
-    } else {
-      const { data } = await supabase
-        .from('services')
-        .select('*, owner:profiles(full_name, avatar_url, role)')
-        .order('created_at', { ascending: false });
-      setServices((data as Service[]) ?? []);
-    }
-  }, [section, categoryFilter]);
+  // Switching between Properties/Hotels/Services shouldn't re-hit the network
+  // every time if we already have recent data for that tab — only refetch
+  // once the cached copy is more than a minute old, or on pull-to-refresh.
+  const CACHE_TTL_MS = 60_000;
+  const cacheRef = useRef<{
+    listings: Map<CategoryFilter, { rows: Listing[]; fetchedAt: number }>;
+    hotels: { rows: Hotel[]; fetchedAt: number } | null;
+    services: { rows: Service[]; fetchedAt: number } | null;
+  }>({ listings: new Map(), hotels: null, services: null });
+
+  const load = useCallback(
+    async (force = false) => {
+      if (section === 'properties') {
+        const cached = cacheRef.current.listings.get(categoryFilter);
+        if (!force && cached && Date.now() - cached.fetchedAt < CACHE_TTL_MS) {
+          setListings(cached.rows);
+          return;
+        }
+        let query = supabase
+          .from('listings')
+          .select('*, owner:profiles(full_name, avatar_url, role)')
+          .order('created_at', { ascending: false });
+        if (categoryFilter !== 'all') query = query.eq('category', categoryFilter);
+        const { data } = await query;
+        const rows = (data as Listing[]) ?? [];
+        cacheRef.current.listings.set(categoryFilter, { rows, fetchedAt: Date.now() });
+        setListings(rows);
+      } else if (section === 'hotels') {
+        const cached = cacheRef.current.hotels;
+        if (!force && cached && Date.now() - cached.fetchedAt < CACHE_TTL_MS) {
+          setHotels(cached.rows);
+          return;
+        }
+        const { data } = await supabase
+          .from('hotels')
+          .select('*, owner:profiles(full_name, avatar_url, role)')
+          .order('created_at', { ascending: false });
+        const rows = (data as Hotel[]) ?? [];
+        cacheRef.current.hotels = { rows, fetchedAt: Date.now() };
+        setHotels(rows);
+      } else {
+        const cached = cacheRef.current.services;
+        if (!force && cached && Date.now() - cached.fetchedAt < CACHE_TTL_MS) {
+          setServices(cached.rows);
+          return;
+        }
+        const { data } = await supabase
+          .from('services')
+          .select('*, owner:profiles(full_name, avatar_url, role)')
+          .order('created_at', { ascending: false });
+        const rows = (data as Service[]) ?? [];
+        cacheRef.current.services = { rows, fetchedAt: Date.now() };
+        setServices(rows);
+      }
+    },
+    [section, categoryFilter]
+  );
 
   useEffect(() => {
     setLoading(true);
     load().finally(() => setLoading(false));
   }, [load]);
+
+  useEffect(
+    () =>
+      subscribeListingsChanged(() => {
+        cacheRef.current = { listings: new Map(), hotels: null, services: null };
+        load(true);
+      }),
+    [load]
+  );
 
   const loadUnreadCount = useCallback(async () => {
     if (!session) {
@@ -103,7 +147,7 @@ export default function HomeScreen() {
 
   async function handleRefresh() {
     setRefreshing(true);
-    await Promise.all([load(), loadUnreadCount()]);
+    await Promise.all([load(true), loadUnreadCount()]);
     setRefreshing(false);
   }
 

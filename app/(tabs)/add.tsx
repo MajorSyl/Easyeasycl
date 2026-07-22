@@ -16,6 +16,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../lib/auth-context';
 import { friendlyErrorMessage } from '../../lib/errors';
+import { notifyListingsChanged } from '../../lib/listings-cache-bus';
 import { colors, fontSize, radius, spacing } from '../../constants/theme';
 import { PhotoPicker } from '../../components/PhotoPicker';
 import { SelectField, type SelectOption } from '../../components/SelectField';
@@ -141,6 +142,7 @@ export default function AddListingScreen() {
     }
 
     resetForm();
+    notifyListingsChanged();
     Alert.alert('Listing published', 'Your listing is now live on Easyfen.', [
       { text: 'View on Home', onPress: () => router.push('/') },
     ]);

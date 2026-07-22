@@ -17,6 +17,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '../../../lib/supabase';
 import { useAuth } from '../../../lib/auth-context';
 import { friendlyErrorMessage } from '../../../lib/errors';
+import { notifyListingsChanged } from '../../../lib/listings-cache-bus';
 import { colors, fontSize, radius, spacing } from '../../../constants/theme';
 import { PhotoPicker } from '../../../components/PhotoPicker';
 import { SelectField, type SelectOption } from '../../../components/SelectField';
@@ -138,6 +139,7 @@ export default function EditListingScreen() {
       Alert.alert('Could not save changes', friendlyErrorMessage(error));
       return;
     }
+    notifyListingsChanged();
     router.back();
   }
 
