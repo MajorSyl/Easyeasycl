@@ -96,7 +96,7 @@ export function PhotoPicker({
       {photos.map((url) => (
         <View key={url} style={styles.thumbWrap}>
           <Image source={{ uri: url }} style={styles.thumb} contentFit="cover" />
-          <Pressable style={styles.removeButton} onPress={() => removePhoto(url)}>
+          <Pressable style={styles.removeButton} onPress={() => removePhoto(url)} hitSlop={10}>
             <Ionicons name="close" size={12} color="#fff" />
           </Pressable>
         </View>

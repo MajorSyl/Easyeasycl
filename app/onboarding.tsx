@@ -57,7 +57,7 @@ export default function OnboardingScreen() {
         ))}
       </View>
 
-      <Pressable onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}>
+      <Pressable onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))} hitSlop={8}>
         <Text style={styles.skip}>Skip for now</Text>
       </Pressable>
     </View>

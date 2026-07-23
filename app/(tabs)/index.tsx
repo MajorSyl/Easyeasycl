@@ -179,7 +179,7 @@ export default function HomeScreen() {
           <Ionicons name="search" size={18} color={colors.textMuted} />
           <Text style={styles.searchPlaceholder}>Search properties, land, services...</Text>
         </Pressable>
-        <Pressable style={styles.iconButton} onPress={() => router.push(session ? '/notifications' : '/auth')}>
+        <Pressable style={styles.iconButton} onPress={() => router.push(session ? '/notifications' : '/auth')} hitSlop={8}>
           <Ionicons name="notifications-outline" size={20} color={colors.textPrimary} />
           {unreadCount > 0 && (
             <View style={styles.unreadBadge}>
@@ -187,11 +187,11 @@ export default function HomeScreen() {
             </View>
           )}
         </Pressable>
-        <Pressable style={styles.iconButton} onPress={openMessages}>
+        <Pressable style={styles.iconButton} onPress={openMessages} hitSlop={8}>
           <Ionicons name="chatbubble-outline" size={20} color={colors.textPrimary} />
           {unreadCount > 0 && <View style={styles.unreadDot} />}
         </Pressable>
-        <Pressable style={styles.iconButton} onPress={openProfile}>
+        <Pressable style={styles.iconButton} onPress={openProfile} hitSlop={8}>
           <Ionicons name="person-circle-outline" size={22} color={colors.textPrimary} />
         </Pressable>
       </View>

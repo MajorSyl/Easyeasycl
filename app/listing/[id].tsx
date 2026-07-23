@@ -95,7 +95,7 @@ export default function ListingDetailScreen() {
     return (
       <View style={[styles.container, styles.centered, { paddingTop: insets.top }]}>
         <Text style={styles.notFound}>This listing is no longer available.</Text>
-        <Pressable onPress={() => router.back()}>
+        <Pressable onPress={() => router.back()} hitSlop={8}>
           <Text style={styles.backLink}>Go back</Text>
         </Pressable>
       </View>

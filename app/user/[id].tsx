@@ -92,7 +92,7 @@ export default function PublicProfileScreen() {
     return (
       <View style={[styles.container, styles.centered, { paddingTop: insets.top }]}>
         <Text style={styles.mutedText}>This profile is no longer available.</Text>
-        <Pressable onPress={() => router.back()}>
+        <Pressable onPress={() => router.back()} hitSlop={8}>
           <Text style={styles.backLink}>Go back</Text>
         </Pressable>
       </View>
