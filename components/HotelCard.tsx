@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
@@ -8,7 +9,7 @@ import { colors, fontSize, radius, spacing } from '../constants/theme';
 import { formatPrice } from '../lib/format';
 import type { Hotel } from '../lib/types';
 
-export function HotelCard({ hotel }: { hotel: Hotel }) {
+export const HotelCard = memo(function HotelCard({ hotel }: { hotel: Hotel }) {
   return (
     <Pressable style={styles.card} onPress={() => router.push(`/hotel/${hotel.id}`)}>
       <View style={styles.imageWrap}>
@@ -66,7 +67,7 @@ export function HotelCard({ hotel }: { hotel: Hotel }) {
       </View>
     </Pressable>
   );
-}
+});
 
 const styles = StyleSheet.create({
   card: {

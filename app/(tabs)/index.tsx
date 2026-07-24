@@ -64,7 +64,7 @@ export default function HomeScreen() {
         }
         let query = supabase
           .from('listings')
-          .select('*, owner:profiles(full_name, avatar_url, role)')
+          .select('id, title, price, currency, price_unit, location, category, photos, view_count, is_premium, owner_id, owner:profiles(full_name, avatar_url, role)')
           .order('created_at', { ascending: false });
         if (categoryFilter !== 'all') query = query.eq('category', categoryFilter);
         const { data } = await query;
@@ -79,7 +79,7 @@ export default function HomeScreen() {
         }
         const { data } = await supabase
           .from('hotels')
-          .select('*, owner:profiles(full_name, avatar_url, role)')
+          .select('id, name, rate, currency, rate_unit, location, photos, view_count, is_premium, rating, rating_count, owner_id, owner:profiles(full_name, avatar_url, role)')
           .order('created_at', { ascending: false });
         const rows = (data as Hotel[]) ?? [];
         cacheRef.current.hotels = { rows, fetchedAt: Date.now() };
@@ -92,7 +92,7 @@ export default function HomeScreen() {
         }
         const { data } = await supabase
           .from('services')
-          .select('*, owner:profiles(full_name, avatar_url, role)')
+          .select('id, business_name, rate, currency, rate_unit, location, category, rating, rating_count, is_premium, owner_id, owner:profiles(full_name, avatar_url, role)')
           .order('created_at', { ascending: false });
         const rows = (data as Service[]) ?? [];
         cacheRef.current.services = { rows, fetchedAt: Date.now() };
@@ -107,13 +107,18 @@ export default function HomeScreen() {
     load().finally(() => setLoading(false));
   }, [load]);
 
+  // Keep a ref to the latest `load` so the subscription callback never needs
+  // to re-subscribe just because section/filter changed.
+  const loadRef = useRef(load);
+  useEffect(() => { loadRef.current = load; }, [load]);
+
   useEffect(
     () =>
       subscribeListingsChanged(() => {
         cacheRef.current = { listings: new Map(), hotels: null, services: null };
-        load(true);
+        loadRef.current(true);
       }),
-    [load]
+    [] // stable — never re-subscribes
   );
 
   const loadUnreadCount = useCallback(async () => {
@@ -158,6 +163,21 @@ export default function HomeScreen() {
   function openProfile() {
     router.push(session ? '/profile' : '/auth');
   }
+
+  const renderListing = useCallback(
+    ({ item }: { item: Listing }) => <ListingCard listing={item} />,
+    []
+  );
+  const renderHotel = useCallback(
+    ({ item }: { item: Hotel }) => <HotelCard hotel={item} />,
+    []
+  );
+  const renderService = useCallback(
+    ({ item }: { item: Service }) => <ServiceCard service={item} onHire={() => handleHire(item)} />,
+    // handleHire is stable (useCallback with [session]) — added below
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [session]
+  );
 
   async function handleHire(service: Service) {
     if (!session) {
@@ -223,7 +243,7 @@ export default function HomeScreen() {
           columnWrapperStyle={styles.row}
           contentContainerStyle={styles.listContent}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
-          renderItem={({ item }) => <ListingCard listing={item} />}
+          renderItem={renderListing}
           ListEmptyComponent={!loading ? <EmptyState label="No properties yet" /> : null}
         />
       )}
@@ -235,7 +255,7 @@ export default function HomeScreen() {
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
-          renderItem={({ item }) => <HotelCard hotel={item} />}
+          renderItem={renderHotel}
           ListEmptyComponent={!loading ? <EmptyState label="No hotels yet" /> : null}
         />
       )}
@@ -247,7 +267,7 @@ export default function HomeScreen() {
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
-          renderItem={({ item }) => <ServiceCard service={item} onHire={() => handleHire(item)} />}
+          renderItem={renderService}
           ListEmptyComponent={!loading ? <EmptyState label="No services yet" /> : null}
         />
       )}
@@ -316,7 +336,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  sectionTab: { paddingBottom: spacing.sm },
+  sectionTab: { paddingVertical: spacing.md },
   sectionTabText: { fontSize: fontSize.md, color: colors.textMuted, fontWeight: '600' },
   sectionTabTextActive: { color: colors.accent },
   sectionTabIndicator: {

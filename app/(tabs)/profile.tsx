@@ -49,6 +49,7 @@ export default function ProfileScreen() {
   const { session, profile, signOut, refreshProfile } = useAuth();
   const [myListings, setMyListings] = useState<MyListing[]>([]);
   const [loadingListings, setLoadingListings] = useState(true);
+  const listingsFetchedAt = useRef(0);
 
   const [editing, setEditing] = useState(false);
   const [fullName, setFullName] = useState('');
@@ -57,12 +58,13 @@ export default function ProfileScreen() {
   const [businessName, setBusinessName] = useState('');
   const [saving, setSaving] = useState(false);
 
-  const loadMyListings = useCallback(async () => {
+  const loadMyListings = useCallback(async (force = false) => {
     if (!session) {
       setMyListings([]);
       setLoadingListings(false);
       return;
     }
+    if (!force && Date.now() - listingsFetchedAt.current < 60_000) return;
     const uid = session.user.id;
     const [{ data: listings }, { data: hotels }, { data: services }] = await Promise.all([
       supabase.from('listings').select('id, title, price, currency, price_unit, created_at').eq('owner_id', uid),
@@ -95,6 +97,7 @@ export default function ProfileScreen() {
     ];
 
     combined.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    listingsFetchedAt.current = Date.now();
     setMyListings(combined);
     setLoadingListings(false);
   }, [session]);
@@ -148,6 +151,7 @@ export default function ProfileScreen() {
       Alert.alert('Could not delete', friendlyErrorMessage(error));
       return;
     }
+    listingsFetchedAt.current = 0;
     setMyListings((prev) => prev.filter((l) => l.id !== item.id));
     notifyListingsChanged();
   }

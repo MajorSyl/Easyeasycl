@@ -38,7 +38,7 @@ const styles = StyleSheet.create({
   row: { gap: spacing.sm, paddingHorizontal: spacing.lg },
   pill: {
     paddingHorizontal: spacing.md,
-    paddingVertical: 8,
+    paddingVertical: 12,
     borderRadius: radius.pill,
     backgroundColor: colors.card,
     borderWidth: 1,

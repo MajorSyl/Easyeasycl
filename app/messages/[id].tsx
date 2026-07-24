@@ -12,7 +12,7 @@ import {
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../lib/auth-context';
@@ -74,7 +74,7 @@ export default function ChatThreadScreen() {
 
     const { data: msgs } = await supabase
       .from('messages')
-      .select('*')
+      .select('id, conversation_id, sender_id, body, created_at, read_at')
       .eq('conversation_id', id)
       .order('created_at', { ascending: true });
     setMessages((msgs as Message[]) ?? []);
@@ -88,11 +88,12 @@ export default function ChatThreadScreen() {
     setLoading(false);
   }, [session, id]);
 
-  useFocusEffect(
-    useCallback(() => {
-      loadConversation();
-    }, [loadConversation])
-  );
+  // Load once on mount; the realtime channel handles live updates after that.
+  // Mark-as-read also runs here on initial load.
+  useEffect(() => {
+    loadConversation();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session, id]);
 
   useEffect(() => {
     if (!id || !session) return;

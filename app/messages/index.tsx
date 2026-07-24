@@ -60,7 +60,8 @@ export default function MessagesScreen() {
         .from('messages')
         .select('conversation_id, body, sender_id, read_at, created_at')
         .in('conversation_id', ids)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(200);
 
       for (const msg of msgs ?? []) {
         if (!latestByConversation.has(msg.conversation_id)) {

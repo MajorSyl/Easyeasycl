@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
@@ -6,7 +7,7 @@ import { colors, fontSize, radius, spacing } from '../constants/theme';
 import { formatPrice, initialsFor } from '../lib/format';
 import type { Service } from '../lib/types';
 
-export function ServiceCard({ service, onHire }: { service: Service; onHire: () => void }) {
+export const ServiceCard = memo(function ServiceCard({ service, onHire }: { service: Service; onHire: () => void }) {
   return (
     <Pressable style={styles.card} onPress={() => router.push(`/service/${service.id}`)}>
       <View style={styles.avatar}>
@@ -44,7 +45,7 @@ export function ServiceCard({ service, onHire }: { service: Service; onHire: () 
       </View>
     </Pressable>
   );
-}
+});
 
 const styles = StyleSheet.create({
   card: {
@@ -86,7 +87,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.accent,
     borderRadius: radius.pill,
     paddingHorizontal: spacing.lg,
-    paddingVertical: 6,
+    paddingVertical: 12,
   },
   hireButtonText: { color: '#fff', fontSize: fontSize.xs, fontWeight: '700' },
 });

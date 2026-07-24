@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
@@ -8,7 +9,7 @@ import { colors, fontSize, radius, spacing } from '../constants/theme';
 import { categoryBadgeLabel, formatPrice, initialsFor } from '../lib/format';
 import type { Listing } from '../lib/types';
 
-export function ListingCard({ listing }: { listing: Listing }) {
+export const ListingCard = memo(function ListingCard({ listing }: { listing: Listing }) {
   return (
     <Pressable style={styles.card} onPress={() => router.push(`/listing/${listing.id}`)}>
       <View style={styles.imageWrap}>
@@ -71,7 +72,7 @@ export function ListingCard({ listing }: { listing: Listing }) {
       </View>
     </Pressable>
   );
-}
+});
 
 const styles = StyleSheet.create({
   card: {

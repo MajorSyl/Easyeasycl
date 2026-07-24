@@ -54,9 +54,9 @@ export default function SearchScreen() {
     const term = escapeForFilter(text.trim());
     const maxPrice = budgetText.trim() ? Number(budgetText) : null;
 
-    let listingsQuery = supabase.from('listings').select('*, owner:profiles(full_name, avatar_url, role)');
-    let hotelsQuery = supabase.from('hotels').select('*, owner:profiles(full_name, avatar_url, role)');
-    let servicesQuery = supabase.from('services').select('*, owner:profiles(full_name, avatar_url, role)');
+    let listingsQuery = supabase.from('listings').select('id, title, price, currency, price_unit, location, category, photos, view_count, is_premium, owner_id, owner:profiles(full_name, avatar_url, role)');
+    let hotelsQuery = supabase.from('hotels').select('id, name, rate, currency, rate_unit, location, photos, view_count, is_premium, rating, rating_count, owner_id, owner:profiles(full_name, avatar_url, role)');
+    let servicesQuery = supabase.from('services').select('id, business_name, rate, currency, rate_unit, location, category, rating, rating_count, is_premium, owner_id, owner:profiles(full_name, avatar_url, role)');
 
     if (term) {
       listingsQuery = listingsQuery.or(`title.ilike.%${term}%,location.ilike.%${term}%`);
