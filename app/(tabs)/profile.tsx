@@ -1,4 +1,4 @@
-import { useCallback, useState, type ReactNode } from 'react';
+import { useCallback, useRef, useState, type ReactNode } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -9,6 +9,8 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { Image } from 'expo-image';
+import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -16,6 +18,7 @@ import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../lib/auth-context';
 import { friendlyErrorMessage } from '../../lib/errors';
 import { notifyListingsChanged } from '../../lib/listings-cache-bus';
+import { uploadAvatar } from '../../lib/upload';
 import { colors, fontSize, radius, spacing } from '../../constants/theme';
 import { formatPrice, initialsFor, roleLabel } from '../../lib/format';
 import { SelectField, type SelectOption } from '../../components/SelectField';
@@ -56,6 +59,8 @@ export default function ProfileScreen() {
   const [phone, setPhone] = useState('');
   const [role, setRole] = useState<Profile['role']>('user');
   const [businessName, setBusinessName] = useState('');
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [avatarUploading, setAvatarUploading] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const loadMyListings = useCallback(async (force = false) => {
@@ -113,7 +118,33 @@ export default function ProfileScreen() {
     setPhone(profile?.phone ?? '');
     setRole(profile?.role ?? 'user');
     setBusinessName(profile?.business_name ?? '');
+    setAvatarUrl(profile?.avatar_url ?? null);
     setEditing(true);
+  }
+
+  async function pickAvatar() {
+    if (!session) return;
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert('Photo access needed', 'Please allow photo library access to set a profile picture.');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.7,
+    });
+    if (result.canceled || result.assets.length === 0) return;
+    setAvatarUploading(true);
+    try {
+      const url = await uploadAvatar(result.assets[0].uri, session.user.id);
+      setAvatarUrl(url);
+    } catch {
+      Alert.alert('Upload failed', 'Could not upload profile picture. Please try again.');
+    } finally {
+      setAvatarUploading(false);
+    }
   }
 
   async function saveProfile() {
@@ -126,6 +157,7 @@ export default function ProfileScreen() {
         phone: phone.trim() || null,
         role,
         business_name: role === 'user' ? null : businessName.trim() || null,
+        avatar_url: avatarUrl || null,
       })
       .eq('id', session.user.id);
     setSaving(false);
@@ -181,9 +213,28 @@ export default function ProfileScreen() {
       ListHeaderComponent={
         <>
           <View style={styles.headerCard}>
-            <View style={styles.avatar}>
-              <Text style={styles.avatarText}>{initialsFor(profile?.full_name ?? null)}</Text>
-            </View>
+            <Pressable
+              style={styles.avatar}
+              onPress={editing ? pickAvatar : undefined}
+              disabled={avatarUploading}
+            >
+              {(editing ? avatarUrl : profile?.avatar_url) ? (
+                <Image
+                  source={{ uri: (editing ? avatarUrl : profile?.avatar_url) as string }}
+                  style={styles.avatarImage}
+                  contentFit="cover"
+                />
+              ) : (
+                <Text style={styles.avatarText}>{initialsFor(profile?.full_name ?? null)}</Text>
+              )}
+              {editing && (
+                <View style={styles.avatarEditOverlay}>
+                  {avatarUploading
+                    ? <ActivityIndicator size="small" color="#fff" />
+                    : <Ionicons name="camera" size={16} color="#fff" />}
+                </View>
+              )}
+            </Pressable>
             {!editing ? (
               <>
                 <Text style={styles.name}>{profile?.full_name ?? 'Easyfen User'}</Text>
@@ -325,8 +376,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: spacing.md,
+    overflow: 'hidden',
   },
+  avatarImage: { width: 72, height: 72 },
   avatarText: { fontSize: fontSize.xxl, fontWeight: '700', color: colors.accent },
+  avatarEditOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 26,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   name: { fontSize: fontSize.xl, fontWeight: '700', color: colors.textPrimary },
   roleBadge: { fontSize: 10, fontWeight: '700', color: colors.accent, letterSpacing: 0.4, marginTop: 4 },
   businessName: { fontSize: fontSize.sm, color: colors.textSecondary, marginTop: 2 },

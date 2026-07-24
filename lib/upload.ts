@@ -52,3 +52,20 @@ export async function uploadListingPhoto(uri: string, userId: string): Promise<s
   const { data } = supabase.storage.from('listing-photos').getPublicUrl(path);
   return data.publicUrl;
 }
+
+export async function uploadAvatar(uri: string, userId: string): Promise<string> {
+  const compressedUri = await compressForUpload(uri);
+  const path = `${userId}/${Date.now()}-avatar.jpg`;
+
+  const response = await fetch(compressedUri);
+  const arrayBuffer = await response.arrayBuffer();
+
+  const { error } = await supabase.storage
+    .from('avatars')
+    .upload(path, arrayBuffer, { contentType: 'image/jpeg' });
+
+  if (error) throw error;
+
+  const { data } = supabase.storage.from('avatars').getPublicUrl(path);
+  return data.publicUrl;
+}

@@ -6,6 +6,7 @@ import {
   FlatList,
   Pressable,
   ScrollView,
+  Share,
   StyleSheet,
   Text,
   View,
@@ -60,6 +61,13 @@ export default function ListingDetailScreen() {
       cancelled = true;
     };
   }, [id]);
+
+  async function handleShare() {
+    if (!listing) return;
+    await Share.share({
+      message: `${listing.title}\n${formatPrice(listing.price, listing.currency, listing.price_unit)} · ${listing.location}\n\nFound on Easyfen`,
+    });
+  }
 
   async function messageAgent() {
     if (!listing) return;
@@ -139,7 +147,12 @@ export default function ListingDetailScreen() {
             <Pressable style={styles.roundButton} onPress={() => router.back()} hitSlop={8}>
               <Ionicons name="chevron-back" size={20} color={colors.textPrimary} />
             </Pressable>
-            <FavoriteButton itemType="listing" itemId={listing.id} />
+            <View style={styles.topBarRight}>
+              <Pressable style={styles.roundButton} onPress={handleShare} hitSlop={8}>
+                <Ionicons name="share-outline" size={18} color={colors.textPrimary} />
+              </Pressable>
+              <FavoriteButton itemType="listing" itemId={listing.id} />
+            </View>
           </View>
         </View>
 
@@ -244,6 +257,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
   },
+  topBarRight: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   roundButton: {
     width: 32,
     height: 32,

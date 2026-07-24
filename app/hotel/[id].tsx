@@ -6,6 +6,7 @@ import {
   FlatList,
   Pressable,
   ScrollView,
+  Share,
   StyleSheet,
   Text,
   View,
@@ -36,6 +37,8 @@ export default function HotelDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [photoIndex, setPhotoIndex] = useState(0);
   const [starting, setStarting] = useState(false);
+  const [userRating, setUserRating] = useState<number | null>(null);
+  const [submittingRating, setSubmittingRating] = useState(false);
   const viewCounted = useRef(false);
 
   useEffect(() => {
@@ -56,10 +59,47 @@ export default function HotelDetailScreen() {
       viewCounted.current = true;
       supabase.rpc('increment_hotel_views', { hotel_id: id }).then();
     }
+    if (session) {
+      supabase
+        .from('ratings')
+        .select('score')
+        .eq('user_id', session.user.id)
+        .eq('item_type', 'hotel')
+        .eq('item_id', id)
+        .maybeSingle()
+        .then(({ data }) => { if (data && !cancelled) setUserRating(data.score); });
+    }
     return () => {
       cancelled = true;
     };
-  }, [id]);
+  }, [id, session]);
+
+  async function handleShare() {
+    if (!hotel) return;
+    await Share.share({
+      message: `${hotel.name}\n${formatPrice(hotel.rate, hotel.currency, hotel.rate_unit)} · ${hotel.location}\n\nFound on Easyfen`,
+    });
+  }
+
+  async function submitRating(score: number) {
+    if (!session || !hotel || submittingRating) return;
+    setSubmittingRating(true);
+    try {
+      await supabase.rpc('upsert_rating', {
+        p_user_id: session.user.id,
+        p_item_type: 'hotel',
+        p_item_id: hotel.id,
+        p_score: score,
+      });
+      setUserRating(score);
+      const { data } = await supabase.from('hotels').select('rating, rating_count').eq('id', hotel.id).single();
+      if (data) setHotel((prev) => prev ? { ...prev, rating: data.rating, rating_count: data.rating_count } : prev);
+    } catch (err) {
+      Alert.alert('Could not submit rating', friendlyErrorMessage(err));
+    } finally {
+      setSubmittingRating(false);
+    }
+  }
 
   async function messageOwner() {
     if (!hotel) return;
@@ -139,7 +179,12 @@ export default function HotelDetailScreen() {
             <Pressable style={styles.roundButton} onPress={() => router.back()} hitSlop={8}>
               <Ionicons name="chevron-back" size={20} color={colors.textPrimary} />
             </Pressable>
-            <FavoriteButton itemType="hotel" itemId={hotel.id} />
+            <View style={styles.topBarRight}>
+              <Pressable style={styles.roundButton} onPress={handleShare} hitSlop={8}>
+                <Ionicons name="share-outline" size={18} color={colors.textPrimary} />
+              </Pressable>
+              <FavoriteButton itemType="hotel" itemId={hotel.id} />
+            </View>
           </View>
         </View>
 
@@ -188,6 +233,26 @@ export default function HotelDetailScreen() {
             <>
               <Text style={styles.sectionTitle}>Description</Text>
               <Text style={styles.description}>{hotel.description}</Text>
+            </>
+          )}
+
+          {session && session.user.id !== hotel.owner_id && (
+            <>
+              <Text style={styles.sectionTitle}>Rate this Hotel</Text>
+              <View style={styles.starPicker}>
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <Pressable key={star} onPress={() => submitRating(star)} disabled={submittingRating} hitSlop={8}>
+                    <Ionicons
+                      name={star <= (userRating ?? 0) ? 'star' : 'star-outline'}
+                      size={30}
+                      color={star <= (userRating ?? 0) ? colors.star : colors.textMuted}
+                    />
+                  </Pressable>
+                ))}
+              </View>
+              {userRating != null && (
+                <Text style={styles.ratedText}>You rated this hotel {userRating}/5 ★</Text>
+              )}
             </>
           )}
 
@@ -244,6 +309,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
   },
+  topBarRight: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  starPicker: { flexDirection: 'row', gap: spacing.md, marginTop: spacing.xs },
+  ratedText: { fontSize: fontSize.xs, color: colors.textMuted, marginTop: 4 },
   roundButton: {
     width: 32,
     height: 32,

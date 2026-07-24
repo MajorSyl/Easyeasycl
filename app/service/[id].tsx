@@ -4,6 +4,7 @@ import {
   Alert,
   Pressable,
   ScrollView,
+  Share,
   StyleSheet,
   Text,
   View,
@@ -29,6 +30,8 @@ export default function ServiceDetailScreen() {
   const [service, setService] = useState<Service | null>(null);
   const [loading, setLoading] = useState(true);
   const [starting, setStarting] = useState(false);
+  const [userRating, setUserRating] = useState<number | null>(null);
+  const [submittingRating, setSubmittingRating] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -44,10 +47,47 @@ export default function ServiceDetailScreen() {
           setLoading(false);
         }
       });
+    if (session) {
+      supabase
+        .from('ratings')
+        .select('score')
+        .eq('user_id', session.user.id)
+        .eq('item_type', 'service')
+        .eq('item_id', id)
+        .maybeSingle()
+        .then(({ data }) => { if (data && !cancelled) setUserRating(data.score); });
+    }
     return () => {
       cancelled = true;
     };
-  }, [id]);
+  }, [id, session]);
+
+  async function handleShare() {
+    if (!service) return;
+    await Share.share({
+      message: `${service.business_name} · ${service.category}\n${formatPrice(service.rate, service.currency, service.rate_unit)} · ${service.location}\n\nFound on Easyfen`,
+    });
+  }
+
+  async function submitRating(score: number) {
+    if (!session || !service || submittingRating) return;
+    setSubmittingRating(true);
+    try {
+      await supabase.rpc('upsert_rating', {
+        p_user_id: session.user.id,
+        p_item_type: 'service',
+        p_item_id: service.id,
+        p_score: score,
+      });
+      setUserRating(score);
+      const { data } = await supabase.from('services').select('rating, rating_count').eq('id', service.id).single();
+      if (data) setService((prev) => prev ? { ...prev, rating: data.rating, rating_count: data.rating_count } : prev);
+    } catch (err) {
+      Alert.alert('Could not submit rating', friendlyErrorMessage(err));
+    } finally {
+      setSubmittingRating(false);
+    }
+  }
 
   async function handleHire() {
     if (!service) return;
@@ -97,7 +137,12 @@ export default function ServiceDetailScreen() {
           <Pressable style={styles.roundButton} onPress={() => router.back()} hitSlop={8}>
             <Ionicons name="chevron-back" size={20} color={colors.textPrimary} />
           </Pressable>
-          <FavoriteButton itemType="service" itemId={service.id} />
+          <View style={styles.headerRight}>
+            <Pressable style={styles.roundButton} onPress={handleShare} hitSlop={8}>
+              <Ionicons name="share-outline" size={18} color={colors.textPrimary} />
+            </Pressable>
+            <FavoriteButton itemType="service" itemId={service.id} />
+          </View>
         </View>
 
         <View style={styles.hero}>
@@ -127,6 +172,26 @@ export default function ServiceDetailScreen() {
             <>
               <Text style={styles.sectionTitle}>About this service</Text>
               <Text style={styles.description}>{service.description}</Text>
+            </>
+          )}
+
+          {session && session.user.id !== service.owner_id && (
+            <>
+              <Text style={styles.sectionTitle}>Rate this Service</Text>
+              <View style={styles.starPicker}>
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <Pressable key={star} onPress={() => submitRating(star)} disabled={submittingRating} hitSlop={8}>
+                    <Ionicons
+                      name={star <= (userRating ?? 0) ? 'star' : 'star-outline'}
+                      size={30}
+                      color={star <= (userRating ?? 0) ? colors.star : colors.textMuted}
+                    />
+                  </Pressable>
+                ))}
+              </View>
+              {userRating != null && (
+                <Text style={styles.ratedText}>You rated this service {userRating}/5 ★</Text>
+              )}
             </>
           )}
 
@@ -168,9 +233,13 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'center',
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.sm,
   },
+  headerRight: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  starPicker: { flexDirection: 'row', gap: spacing.md, marginTop: spacing.xs },
+  ratedText: { fontSize: fontSize.xs, color: colors.textMuted, marginTop: 4 },
   roundButton: {
     width: 32,
     height: 32,
