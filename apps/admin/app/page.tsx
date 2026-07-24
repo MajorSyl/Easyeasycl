@@ -6,8 +6,9 @@ export default async function OverviewPage() {
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) redirect('/login');
 
-  const { data: me } = await supabase.from('profiles').select('is_admin').eq('id', session.user.id).single();
-  if (!me?.is_admin) redirect('/login');
+  const isAdmin = session.user.app_metadata?.is_admin === true ||
+    (await supabase.from('profiles').select('is_admin').eq('id', session.user.id).single()).data?.is_admin === true;
+  if (!isAdmin) redirect('/login');
 
   const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
 

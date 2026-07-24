@@ -9,8 +9,9 @@ export default async function ContentPage() {
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) redirect('/login');
 
-  const { data: me } = await supabase.from('profiles').select('is_admin').eq('id', session.user.id).single();
-  if (!me?.is_admin) redirect('/login');
+  const isAdmin = session.user.app_metadata?.is_admin === true ||
+    (await supabase.from('profiles').select('is_admin').eq('id', session.user.id).single()).data?.is_admin === true;
+  if (!isAdmin) redirect('/login');
 
   const [{ data: listings }, { data: hotels }, { data: services }] = await Promise.all([
     supabase.from('listings').select('id, title, category, location, is_verified, is_premium, is_active, created_at, owner:profiles(full_name)').order('created_at', { ascending: false }),
