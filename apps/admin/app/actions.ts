@@ -11,13 +11,11 @@ export async function login(formData: FormData) {
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) return { error: error.message };
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('is_admin')
-    .eq('id', data.user.id)
-    .single();
+  const isAdmin =
+    data.user.app_metadata?.is_admin === true ||
+    (await supabase.from('profiles').select('is_admin').eq('id', data.user.id).single()).data?.is_admin === true;
 
-  if (!profile?.is_admin) {
+  if (!isAdmin) {
     await supabase.auth.signOut();
     return { error: 'This account does not have admin access.' };
   }
