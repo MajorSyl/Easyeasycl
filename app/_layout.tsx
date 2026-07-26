@@ -1,6 +1,7 @@
 import { Component, type ReactNode } from 'react';
-import { ScrollView, StyleSheet, Text } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Stack } from 'expo-router';
+import { WebFooter } from '../components/WebFooter';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
@@ -41,9 +42,12 @@ export default function RootLayout() {
           <AuthProvider>
             <FavoritesProvider>
               <StatusBar style="dark" />
-              <Stack screenOptions={{ headerShown: false }}>
-                <Stack.Screen name="auth" options={{ presentation: 'modal' }} />
-              </Stack>
+              <View style={{ flex: 1 }}>
+                <Stack style={{ flex: 1 }} screenOptions={{ headerShown: false }}>
+                  <Stack.Screen name="auth" options={{ presentation: 'modal' }} />
+                </Stack>
+                <WebFooter />
+              </View>
             </FavoritesProvider>
           </AuthProvider>
         </SafeAreaProvider>
