@@ -25,13 +25,16 @@ table { border-collapse: collapse; width: 100%; }
   top: 0; left: 0; bottom: 0;
 }
 .sidebar-logo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   padding: 24px 20px 20px;
   font-size: 18px;
   font-weight: 800;
   color: #fff;
   border-bottom: 1px solid rgba(255,255,255,0.08);
 }
-.sidebar-logo span { color: #4D9FFF; }
+.sidebar-logo-suffix { color: #4D9FFF; }
 .sidebar-nav { flex: 1; padding: 12px 0; }
 .sidebar-link {
   display: flex;

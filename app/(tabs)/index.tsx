@@ -13,6 +13,7 @@ import { ListingCard } from '../../components/ListingCard';
 import { HotelCard } from '../../components/HotelCard';
 import { ServiceCard } from '../../components/ServiceCard';
 import { FilterPills, type PillOption } from '../../components/FilterPills';
+import { Logo } from '../../components/Logo';
 import type { Hotel, Listing, ListingCategory, Service } from '../../lib/types';
 
 type Section = 'properties' | 'hotels' | 'services';
@@ -194,6 +195,9 @@ export default function HomeScreen() {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
+      <View style={styles.brandRow}>
+        <Logo size={26} />
+      </View>
       <View style={styles.topBar}>
         <Pressable style={styles.searchBar} onPress={() => router.push('/search')}>
           <Ionicons name="search" size={18} color={colors.textMuted} />
@@ -285,6 +289,10 @@ function EmptyState({ label }: { label: string }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
+  brandRow: {
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.sm,
+  },
   topBar: {
     flexDirection: 'row',
     alignItems: 'center',

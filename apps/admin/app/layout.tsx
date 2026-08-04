@@ -30,7 +30,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <body>
         <div className="shell">
           <aside className="sidebar">
-            <div className="sidebar-logo">Easy<span>fen</span> Admin</div>
+            <div className="sidebar-logo">
+              <img src="/easyfen-logo-white.svg" alt="Easyfen" height={20} />
+              <span className="sidebar-logo-suffix">Admin</span>
+            </div>
             <nav className="sidebar-nav">
               {navItems.map((item) => (
                 <Link key={item.href} href={item.href} className="sidebar-link">

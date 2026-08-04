@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 220" width="640" height="220">
+    <g transform="translate(0 20) scale(0.17578125)">
+    <rect x="210" y="140" width="150" height="744" rx="50" fill="#FFFFFF"/>
+    <polygon points="210,140 820,140 630,364 210,364" fill="#FFFFFF"/>
+    <rect x="210" y="440" width="430" height="140" fill="#FFFFFF"/>
+    <rect x="210" y="680" width="650" height="204" fill="#FFFFFF"/>
+  </g>
+    <text x="204" y="140" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-weight="700"
+      font-size="92" letter-spacing="-1" fill="#FFFFFF">Easyfen</text>
+  </svg>
