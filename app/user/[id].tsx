@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../lib/auth-context';
+import { friendlyErrorMessage } from '../../lib/errors';
 import { colors, fontSize, spacing } from '../../constants/theme';
 import { ListingCard } from '../../components/ListingCard';
 import { HotelCard } from '../../components/HotelCard';
@@ -33,7 +34,11 @@ export default function PublicProfileScreen() {
     (async () => {
       const ownerJoin = '*, owner:profiles(full_name, avatar_url, role)';
       const [profileRes, listings, hotels, services] = await Promise.all([
-        supabase.from('profiles').select('*').eq('id', id).single(),
+        supabase
+          .from('profiles')
+          .select('id, full_name, avatar_url, role, business_name, created_at')
+          .eq('id', id)
+          .single(),
         supabase.from('listings').select(ownerJoin).eq('owner_id', id).order('created_at', { ascending: false }),
         supabase.from('hotels').select(ownerJoin).eq('owner_id', id).order('created_at', { ascending: false }),
         supabase.from('services').select(ownerJoin).eq('owner_id', id).order('created_at', { ascending: false }),
@@ -80,6 +85,60 @@ export default function PublicProfileScreen() {
     }
   }
 
+  async function submitReport(reason: string) {
+    if (!session || !profile) return;
+    const { error } = await supabase
+      .from('reports')
+      .insert({ reporter_id: session.user.id, item_type: 'user', item_id: profile.id, reason });
+    if (error) {
+      Alert.alert('Could not submit report', friendlyErrorMessage(error));
+    } else {
+      Alert.alert('Report submitted', "Thank you — our team will review this.");
+    }
+  }
+
+  function handleReport() {
+    Alert.alert('Report this user', 'Why are you reporting this user?', [
+      { text: 'Spam or scam', onPress: () => submitReport('Spam or scam') },
+      { text: 'Inappropriate content', onPress: () => submitReport('Inappropriate content') },
+      { text: 'Harassment', onPress: () => submitReport('Harassment') },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
+  }
+
+  function handleBlock() {
+    if (!session || !profile) return;
+    Alert.alert('Block this user?', 'You will no longer be able to message each other.', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Block',
+        style: 'destructive',
+        onPress: async () => {
+          const { error } = await supabase
+            .from('blocks')
+            .insert({ blocker_id: session.user.id, blocked_id: profile.id });
+          if (error) {
+            Alert.alert('Could not block user', friendlyErrorMessage(error));
+          } else {
+            Alert.alert('User blocked');
+          }
+        },
+      },
+    ]);
+  }
+
+  function handleMoreOptions() {
+    if (!session) {
+      router.push('/auth');
+      return;
+    }
+    Alert.alert('More options', undefined, [
+      { text: 'Report user', onPress: handleReport },
+      { text: 'Block user', style: 'destructive', onPress: handleBlock },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
+  }
+
   if (loading) {
     return (
       <View style={[styles.container, styles.centered]}>
@@ -113,6 +172,11 @@ export default function PublicProfileScreen() {
             <Pressable onPress={() => router.back()} hitSlop={8}>
               <Ionicons name="chevron-back" size={22} color={colors.textPrimary} />
             </Pressable>
+            {session?.user.id !== profile.id && (
+              <Pressable onPress={handleMoreOptions} hitSlop={8}>
+                <Ionicons name="ellipsis-horizontal" size={22} color={colors.textPrimary} />
+              </Pressable>
+            )}
           </View>
 
           <View style={styles.hero}>
@@ -156,7 +220,7 @@ const styles = StyleSheet.create({
   mutedText: { color: colors.textSecondary, fontSize: fontSize.sm, textAlign: 'center', paddingVertical: spacing.lg },
   backLink: { fontSize: fontSize.md, color: colors.accent, fontWeight: '600' },
   listContent: { padding: spacing.lg, paddingBottom: spacing.xxl },
-  header: { flexDirection: 'row', marginBottom: spacing.sm },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm },
   hero: { alignItems: 'center', marginBottom: spacing.lg },
   avatarWrap: { position: 'relative', marginBottom: spacing.md },
   avatar: {

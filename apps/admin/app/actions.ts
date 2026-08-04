@@ -1,5 +1,6 @@
 'use server';
 import { createClient } from '@/lib/supabase-server';
+import { requireAdmin } from '@/lib/require-admin';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 
@@ -29,8 +30,14 @@ export async function logout() {
   redirect('/login');
 }
 
+const ROLES = ['user', 'agent', 'service_provider', 'hotel_owner'];
+const FLAG_FIELDS = ['is_verified', 'is_premium', 'is_active'];
+const TABLES = ['listings', 'hotels', 'services'];
+
 export async function updateProfileRole(userId: string, role: string) {
   const supabase = await createClient();
+  await requireAdmin(supabase);
+  if (!ROLES.includes(role)) throw new Error('Invalid role');
   await supabase.from('profiles').update({ role }).eq('id', userId);
   revalidatePath('/users');
 }
@@ -42,12 +49,15 @@ export async function toggleListingFlag(
   value: boolean
 ) {
   const supabase = await createClient();
+  await requireAdmin(supabase);
+  if (!TABLES.includes(table) || !FLAG_FIELDS.includes(field)) throw new Error('Invalid request');
   await supabase.from(table).update({ [field]: value }).eq('id', id);
   revalidatePath('/content');
 }
 
 export async function dismissReport(reportId: string) {
   const supabase = await createClient();
+  await requireAdmin(supabase);
   await supabase.from('reports').delete().eq('id', reportId);
   revalidatePath('/reports');
 }
@@ -58,6 +68,8 @@ export async function hideReportedItem(
   reportId: string
 ) {
   const supabase = await createClient();
+  await requireAdmin(supabase);
+  if (!TABLES.includes(table)) throw new Error('Invalid table');
   await supabase.from(table).update({ is_active: false }).eq('id', itemId);
   await supabase.from('reports').delete().eq('id', reportId);
   revalidatePath('/reports');

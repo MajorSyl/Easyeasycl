@@ -17,6 +17,7 @@ import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../lib/auth-context';
 import { friendlyErrorMessage } from '../../lib/errors';
 import { notifyListingsChanged } from '../../lib/listings-cache-bus';
+import { sanitizeText } from '../../lib/sanitize';
 import { colors, fontSize, radius, spacing } from '../../constants/theme';
 import { PhotoPicker } from '../../components/PhotoPicker';
 import { SelectField, type SelectOption } from '../../components/SelectField';
@@ -99,24 +100,29 @@ export default function AddListingScreen() {
     const priceValue = Number(price);
     let error;
 
+    const cleanTitle = sanitizeText(title);
+    const cleanDescription = sanitizeText(description);
+    const cleanLocation = sanitizeText(location);
+    const cleanServiceCategory = sanitizeText(serviceCategory);
+
     if (listingType === 'property') {
       ({ error } = await supabase.from('listings').insert({
         owner_id: session.user.id,
-        title: title.trim(),
-        description: description.trim(),
+        title: cleanTitle,
+        description: cleanDescription,
         category: category!,
         price: priceValue,
         price_unit: category === 'daily_hourly' ? rateUnit : null,
-        location: location.trim(),
+        location: cleanLocation,
         bedrooms: bedrooms.trim() ? Number(bedrooms) : null,
         photos,
       }));
     } else if (listingType === 'hotel') {
       ({ error } = await supabase.from('hotels').insert({
         owner_id: session.user.id,
-        name: title.trim(),
-        description: description.trim(),
-        location: location.trim(),
+        name: cleanTitle,
+        description: cleanDescription,
+        location: cleanLocation,
         rate: priceValue,
         rate_unit: 'night',
         photos,
@@ -124,10 +130,10 @@ export default function AddListingScreen() {
     } else {
       ({ error } = await supabase.from('services').insert({
         owner_id: session.user.id,
-        business_name: title.trim(),
-        category: serviceCategory.trim(),
-        description: description.trim(),
-        location: location.trim(),
+        business_name: cleanTitle,
+        category: cleanServiceCategory,
+        description: cleanDescription,
+        location: cleanLocation,
         rate: priceValue,
         rate_unit: rateUnit,
         photos,

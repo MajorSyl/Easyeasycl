@@ -19,6 +19,7 @@ import { useAuth } from '../../lib/auth-context';
 import { friendlyErrorMessage } from '../../lib/errors';
 import { notifyListingsChanged } from '../../lib/listings-cache-bus';
 import { uploadAvatar } from '../../lib/upload';
+import { sanitizeText } from '../../lib/sanitize';
 import { colors, fontSize, radius, spacing } from '../../constants/theme';
 import { formatPrice, initialsFor, roleLabel } from '../../lib/format';
 import { SelectField, type SelectOption } from '../../components/SelectField';
@@ -150,13 +151,15 @@ export default function ProfileScreen() {
   async function saveProfile() {
     if (!session || saving) return;
     setSaving(true);
+    const cleanFullName = sanitizeText(fullName);
+    const cleanBusinessName = sanitizeText(businessName);
     const { error } = await supabase
       .from('profiles')
       .update({
-        full_name: fullName.trim() || null,
+        full_name: cleanFullName || null,
         phone: phone.trim() || null,
         role,
-        business_name: role === 'user' ? null : businessName.trim() || null,
+        business_name: role === 'user' ? null : cleanBusinessName || null,
         avatar_url: avatarUrl || null,
       })
       .eq('id', session.user.id);

@@ -18,6 +18,7 @@ import { supabase } from '../../../lib/supabase';
 import { useAuth } from '../../../lib/auth-context';
 import { friendlyErrorMessage } from '../../../lib/errors';
 import { notifyListingsChanged } from '../../../lib/listings-cache-bus';
+import { sanitizeText } from '../../../lib/sanitize';
 import { colors, fontSize, radius, spacing } from '../../../constants/theme';
 import { PhotoPicker } from '../../../components/PhotoPicker';
 import { SelectField, type SelectOption } from '../../../components/SelectField';
@@ -53,9 +54,10 @@ export default function EditListingScreen() {
   const [rateUnit, setRateUnit] = useState<'hour' | 'day'>('hour');
   const [photos, setPhotos] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
+  const [notOwner, setNotOwner] = useState(false);
 
   useEffect(() => {
-    if (!id || !kind) return;
+    if (!id || !kind || !session) return;
     const table = kind === 'listing' ? 'listings' : kind === 'hotel' ? 'hotels' : 'services';
     supabase
       .from(table)
@@ -64,6 +66,11 @@ export default function EditListingScreen() {
       .single()
       .then(({ data }) => {
         if (!data) {
+          setLoading(false);
+          return;
+        }
+        if (data.owner_id !== session.user.id) {
+          setNotOwner(true);
           setLoading(false);
           return;
         }
@@ -92,46 +99,53 @@ export default function EditListingScreen() {
     if (!canSave || saving || !session || !id) return;
     setSaving(true);
     const priceValue = Number(price);
+    const cleanTitle = sanitizeText(title);
+    const cleanDescription = sanitizeText(description);
+    const cleanLocation = sanitizeText(location);
+    const cleanServiceCategory = sanitizeText(serviceCategory);
     let error;
 
     if (kind === 'listing') {
       ({ error } = await supabase
         .from('listings')
         .update({
-          title: title.trim(),
-          description: description.trim() || null,
+          title: cleanTitle,
+          description: cleanDescription || null,
           category: category ?? undefined,
           price: priceValue,
           price_unit: category === 'daily_hourly' ? rateUnit : null,
-          location: location.trim(),
+          location: cleanLocation,
           bedrooms: bedrooms.trim() ? Number(bedrooms) : null,
           photos,
         })
-        .eq('id', id));
+        .eq('id', id)
+        .eq('owner_id', session.user.id));
     } else if (kind === 'hotel') {
       ({ error } = await supabase
         .from('hotels')
         .update({
-          name: title.trim(),
-          description: description.trim() || null,
-          location: location.trim(),
+          name: cleanTitle,
+          description: cleanDescription || null,
+          location: cleanLocation,
           rate: priceValue,
           photos,
         })
-        .eq('id', id));
+        .eq('id', id)
+        .eq('owner_id', session.user.id));
     } else {
       ({ error } = await supabase
         .from('services')
         .update({
-          business_name: title.trim(),
-          category: serviceCategory.trim() || undefined,
-          description: description.trim() || null,
-          location: location.trim(),
+          business_name: cleanTitle,
+          category: cleanServiceCategory || undefined,
+          description: cleanDescription || null,
+          location: cleanLocation,
           rate: priceValue,
           rate_unit: rateUnit,
           photos,
         })
-        .eq('id', id));
+        .eq('id', id)
+        .eq('owner_id', session.user.id));
     }
 
     setSaving(false);
@@ -147,6 +161,14 @@ export default function EditListingScreen() {
     return (
       <View style={[styles.container, styles.centered, { paddingTop: insets.top }]}>
         <Text style={styles.mutedText}>Log in to edit your listings.</Text>
+      </View>
+    );
+  }
+
+  if (notOwner) {
+    return (
+      <View style={[styles.container, styles.centered, { paddingTop: insets.top }]}>
+        <Text style={styles.mutedText}>You can only edit listings you own.</Text>
       </View>
     );
   }

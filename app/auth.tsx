@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -14,15 +14,23 @@ import { useAuth } from '../lib/auth-context';
 import { friendlyErrorMessage } from '../lib/errors';
 import { colors, fontSize, radius, spacing } from '../constants/theme';
 
+// Cheap, no-third-party-account bot deterrents for signup: a field real
+// users never see or fill (bots that auto-fill every form field do), and a
+// minimum time-on-form (scripted submits happen in milliseconds; humans
+// take at least a couple seconds to type a name/email/password).
+const HONEYPOT_MIN_MS = 2000;
+
 export default function AuthScreen() {
   const { signIn, signUp } = useAuth();
   const [mode, setMode] = useState<'sign_in' | 'sign_up'>('sign_in');
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [website, setWebsite] = useState(''); // honeypot — must stay empty
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const mountedAt = useRef(Date.now());
 
   const canSubmit =
     email.trim().length > 3 && password.length >= 6 && (mode === 'sign_in' || fullName.trim().length > 0);
@@ -41,6 +49,14 @@ export default function AuthScreen() {
         return;
       }
       if (router.canGoBack()) router.back();
+      return;
+    }
+
+    if (website.trim().length > 0 || Date.now() - mountedAt.current < HONEYPOT_MIN_MS) {
+      // Behave identically to a normal validation failure — don't tell an
+      // automated client which check it tripped.
+      setSubmitting(false);
+      setError('Something went wrong. Please try again.');
       return;
     }
 
@@ -78,6 +94,17 @@ export default function AuthScreen() {
           value={fullName}
           onChangeText={setFullName}
           autoCapitalize="words"
+        />
+      )}
+      {mode === 'sign_up' && (
+        <TextInput
+          style={styles.honeypot}
+          value={website}
+          onChangeText={setWebsite}
+          placeholder="Website"
+          tabIndex={-1}
+          importantForAutofill="no"
+          autoComplete="off"
         />
       )}
       <TextInput
@@ -137,6 +164,13 @@ const styles = StyleSheet.create({
     fontSize: fontSize.md,
     color: colors.textPrimary,
     marginBottom: spacing.md,
+  },
+  honeypot: {
+    position: 'absolute',
+    width: 1,
+    height: 1,
+    opacity: 0,
+    left: -9999,
   },
   error: { color: colors.danger, fontSize: fontSize.sm, marginBottom: spacing.md },
   notice: { color: colors.online, fontSize: fontSize.sm, marginBottom: spacing.md },

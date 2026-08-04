@@ -43,7 +43,7 @@ export default function RootLayout() {
             <FavoritesProvider>
               <StatusBar style="dark" />
               <View style={{ flex: 1 }}>
-                <Stack style={{ flex: 1 }} screenOptions={{ headerShown: false }}>
+                <Stack screenOptions={{ headerShown: false }}>
                   <Stack.Screen name="auth" options={{ presentation: 'modal' }} />
                 </Stack>
                 <WebFooter />

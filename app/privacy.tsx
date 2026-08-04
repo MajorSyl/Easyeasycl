@@ -45,8 +45,7 @@ export default function PrivacyPolicyScreen() {
         </Section>
 
         <Section title="4. Sharing of Information">
-          We do not sell your personal information. We may share your information with:
-          {`\n\n` +
+          {`We do not sell your personal information. We may share your information with:\n\n` +
             `• Other users, to the extent necessary to facilitate a transaction (e.g. contact details shared after a booking is confirmed).\n` +
             `• Service providers who assist us in operating the Platform (e.g. hosting, analytics, payment processing), under strict confidentiality agreements.\n` +
             `• Law enforcement or regulatory bodies when required by law.`}

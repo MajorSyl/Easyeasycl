@@ -18,6 +18,7 @@ import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../lib/auth-context';
 import { useKeyboardHeight } from '../../lib/use-keyboard-height';
 import { friendlyErrorMessage } from '../../lib/errors';
+import { sanitizeText } from '../../lib/sanitize';
 import { colors, fontSize, radius, spacing } from '../../constants/theme';
 import { initialsFor, roleLabel } from '../../lib/format';
 import type { OwnerSummary } from '../../lib/types';
@@ -118,7 +119,7 @@ export default function ChatThreadScreen() {
   }, [id, session]);
 
   async function handleSend() {
-    const body = draft.trim();
+    const body = sanitizeText(draft);
     if (!body || !session || !id || sending) return;
     setSending(true);
     setDraft('');

@@ -86,7 +86,6 @@ export default function HotelDetailScreen() {
     setSubmittingRating(true);
     try {
       await supabase.rpc('upsert_rating', {
-        p_user_id: session.user.id,
         p_item_type: 'hotel',
         p_item_id: hotel.id,
         p_score: score,

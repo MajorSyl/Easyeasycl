@@ -6,6 +6,12 @@ export function friendlyErrorMessage(error: unknown): string {
   const text = raw.toLowerCase();
 
   if (!raw) return "Something went wrong. Please try again.";
+  if (text.includes('rate_limited')) {
+    return "You're doing that too fast. Please wait a few minutes and try again.";
+  }
+  if (text.includes('duplicate_listing')) {
+    return "You've already posted an identical listing recently.";
+  }
   if (text.includes('network') || text.includes('fetch failed') || text.includes('failed to fetch')) {
     return "Couldn't connect. Check your internet connection and try again.";
   }

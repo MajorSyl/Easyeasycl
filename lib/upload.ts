@@ -8,6 +8,7 @@ import { supabase } from './supabase';
 // Supabase Storage usage down.
 const MAX_DIMENSION = 1600;
 const JPEG_QUALITY = 0.7;
+const MAX_UPLOAD_BYTES = 5 * 1024 * 1024; // 5MB — matches the storage bucket's own limit
 
 function getImageSize(uri: string): Promise<{ width: number; height: number }> {
   return new Promise((resolve, reject) => {
@@ -15,25 +16,23 @@ function getImageSize(uri: string): Promise<{ width: number; height: number }> {
   });
 }
 
+// A file that isn't a decodable image will fail here — that's a *reject*,
+// not a fallback. Silently uploading the untouched original (which the
+// caller only ever labels as image/jpeg regardless of its real content)
+// would let a non-image slip past the client-side check entirely.
 async function compressForUpload(uri: string): Promise<string> {
-  try {
-    const { width, height } = await getImageSize(uri);
-    const longerEdge = Math.max(width, height);
-    const actions =
-      longerEdge > MAX_DIMENSION
-        ? [{ resize: width >= height ? { width: MAX_DIMENSION } : { height: MAX_DIMENSION } }]
-        : [];
+  const { width, height } = await getImageSize(uri);
+  const longerEdge = Math.max(width, height);
+  const actions =
+    longerEdge > MAX_DIMENSION
+      ? [{ resize: width >= height ? { width: MAX_DIMENSION } : { height: MAX_DIMENSION } }]
+      : [];
 
-    const result = await manipulateAsync(uri, actions, {
-      compress: JPEG_QUALITY,
-      format: SaveFormat.JPEG,
-    });
-    return result.uri;
-  } catch {
-    // If manipulation fails for any reason, fall back to the original file
-    // rather than blocking the upload entirely.
-    return uri;
-  }
+  const result = await manipulateAsync(uri, actions, {
+    compress: JPEG_QUALITY,
+    format: SaveFormat.JPEG,
+  });
+  return result.uri;
 }
 
 export async function uploadListingPhoto(uri: string, userId: string): Promise<string> {
@@ -42,6 +41,9 @@ export async function uploadListingPhoto(uri: string, userId: string): Promise<s
 
   const response = await fetch(compressedUri);
   const arrayBuffer = await response.arrayBuffer();
+  if (arrayBuffer.byteLength > MAX_UPLOAD_BYTES) {
+    throw new Error('Photo is too large. Please choose a smaller image.');
+  }
 
   const { error } = await supabase.storage
     .from('listing-photos')
@@ -59,6 +61,9 @@ export async function uploadAvatar(uri: string, userId: string): Promise<string>
 
   const response = await fetch(compressedUri);
   const arrayBuffer = await response.arrayBuffer();
+  if (arrayBuffer.byteLength > MAX_UPLOAD_BYTES) {
+    throw new Error('Photo is too large. Please choose a smaller image.');
+  }
 
   const { error } = await supabase.storage
     .from('avatars')

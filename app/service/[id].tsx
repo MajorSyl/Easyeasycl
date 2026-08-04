@@ -74,7 +74,6 @@ export default function ServiceDetailScreen() {
     setSubmittingRating(true);
     try {
       await supabase.rpc('upsert_rating', {
-        p_user_id: session.user.id,
         p_item_type: 'service',
         p_item_id: service.id,
         p_score: score,
