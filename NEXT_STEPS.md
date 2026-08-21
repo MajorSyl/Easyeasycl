@@ -1,5 +1,10 @@
 # Easyfen — Next Steps for Phase D and Beyond
 
+> **Superseded** — Phase D (admin dashboard) shipped shortly after this was
+> written, along with a full security hardening pass, backups, and new
+> branding. See `README.md` for current state; this file is kept for
+> historical context on the Phase D plan only.
+
 Last updated: 2026-07-23  
 Last commit: f2d0b04 ("Phase B: add hitSlop touch targets")  
 Branch: `claude/repo-overview-g2rgj1`
@@ -84,7 +89,7 @@ CREATE POLICY "admins can read all" ON reports FOR SELECT USING (
 
 - [ ] **Turn "Confirm email" back ON** in Supabase Dashboard → Authentication → Settings → Enable email confirmations. Currently OFF for testing.
 - [ ] **Remove or mark seed/test data** — there is a seed agent account with ID `11111111-1111-1111-1111-111111111111`. Delete it or mark listings inactive before going public.
-- [ ] **Rotate the Expo token** — the token `v0ARq2m-q_ug8fd-63SL9wIkMPu9UF4i6QLvROeo` is stored as `EXPO_TOKEN` in GitHub Secrets. Before revoking it on expo.dev, generate a new one first and update the secret, otherwise builds will break.
+- [ ] **Rotate the Expo token** — this file previously had the raw token value committed here in plaintext (now redacted, but it's in git history — treat it as compromised). It's stored as `EXPO_TOKEN` in GitHub Secrets. Before revoking it on expo.dev, generate a new one first and update the secret, otherwise builds will break.
 - [ ] **Set up Supabase Storage bucket policy** — confirm `listing-photos` bucket is public (or set signed URL TTL if private).
 - [ ] **Enable Supabase email provider** (for production, switch from dev SMTP to a real provider like Resend or Postmark in Supabase → Auth → SMTP settings).
 - [ ] **App Store / Play Store submission** — EAS Build can produce an AAB for Play Store. Run `eas build --platform android --profile production` with a new `production` profile in `eas.json`.
