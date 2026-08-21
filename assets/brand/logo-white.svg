@@ -2,7 +2,9 @@
     <text x="0" y="215" font-size="200" fill="#FFFFFF">e</text>
     
     <circle cx="205" cy="145" r="68" fill="none" stroke="#FFFFFF" stroke-width="30"/>
-    <line x1="253" y1="193" x2="308" y2="248" stroke="#FFFFFF" stroke-width="30" stroke-linecap="round"/>
+    <path d="M 165.3825591076661 130.58043075738982 A 42.16 42.16 0 0 1 205 102.84"
+      fill="none" stroke="#FFFFFF" stroke-width="12.6" stroke-linecap="round" opacity="0.55"/>
+    <line x1="253.08326112068522" y1="193.08326112068522" x2="282.89488301551006" y2="222.89488301551006" stroke="#FFFFFF" stroke-width="30" stroke-linecap="round"/>
   
     <text x="335" y="215" font-size="200" fill="#FFFFFF">sy</text>
     <text x="585" y="215" font-size="200" fill="#FFFFFF">fen</text>
