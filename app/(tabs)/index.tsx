@@ -196,7 +196,7 @@ export default function HomeScreen() {
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.brandRow}>
-        <Logo size={26} />
+        <Logo size={150} />
       </View>
       <View style={styles.topBar}>
         <Pressable style={styles.searchBar} onPress={() => router.push('/search')}>
