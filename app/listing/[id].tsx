@@ -20,7 +20,7 @@ import { friendlyErrorMessage } from '../../lib/errors';
 import { useAuth } from '../../lib/auth-context';
 import { useBottomGap } from '../../lib/use-bottom-gap';
 import { getOrCreateConversation } from '../../lib/conversations';
-import { colors, fontSize, radius, spacing } from '../../constants/theme';
+import { colors, fontSize, fontWeight, radius, spacing } from '../../constants/theme';
 import { Badge } from '../../components/Badge';
 import { FavoriteButton } from '../../components/FavoriteButton';
 import { categoryBadgeLabel, formatListingAge, formatPrice, initialsFor } from '../../lib/format';
@@ -131,7 +131,8 @@ export default function ListingDetailScreen() {
 
   if (!listing) {
     return (
-      <View style={[styles.container, styles.centered, { paddingTop: insets.top }]}>
+      <View style={[styles.container, styles.centered, { paddingTop: insets.top, gap: spacing.sm }]}>
+        <Ionicons name="home-outline" size={36} color={colors.textMuted} />
         <Text style={styles.notFound}>This listing is no longer available.</Text>
         <Pressable onPress={() => router.back()} hitSlop={8}>
           <Text style={styles.backLink}>Go back</Text>
@@ -276,7 +277,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   centered: { alignItems: 'center', justifyContent: 'center' },
   notFound: { fontSize: fontSize.md, color: colors.textSecondary, marginBottom: spacing.sm },
-  backLink: { fontSize: fontSize.md, color: colors.accent, fontWeight: '600' },
+  backLink: { fontSize: fontSize.md, color: colors.accent, fontWeight: fontWeight.semibold },
   photo: { width: windowWidth, height: windowWidth * 0.75, backgroundColor: colors.border },
   photoPlaceholder: { alignItems: 'center', justifyContent: 'center' },
   photoDots: {
@@ -307,18 +308,27 @@ const styles = StyleSheet.create({
   body: { padding: spacing.lg },
   badgeRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   verifiedRow: { flexDirection: 'row', alignItems: 'center', gap: 3 },
-  verifiedText: { fontSize: fontSize.xs, color: colors.success, fontWeight: '600' },
-  title: { fontSize: fontSize.xl, fontWeight: '700', color: colors.textPrimary, marginTop: spacing.sm },
+  verifiedText: { fontSize: fontSize.xs, color: colors.success, fontWeight: fontWeight.semibold },
+  title: { fontSize: fontSize.lg, fontWeight: fontWeight.semibold, color: colors.textPrimary, marginTop: spacing.sm },
   locationRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 },
   location: { fontSize: fontSize.sm, color: colors.textMuted },
   listingAge: { fontSize: fontSize.xs, color: colors.textMuted, marginTop: 4 },
-  price: { fontSize: fontSize.xl, fontWeight: '700', color: colors.accent, marginTop: spacing.md },
+  price: { fontSize: fontSize.xxl, fontWeight: fontWeight.bold, color: colors.accent, marginTop: spacing.md },
   statsRow: { flexDirection: 'row', gap: spacing.lg, marginTop: spacing.md },
   statItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   statText: { fontSize: fontSize.sm, color: colors.textSecondary },
-  sectionTitle: { fontSize: fontSize.md, fontWeight: '700', color: colors.textPrimary, marginTop: spacing.xl, marginBottom: spacing.sm },
-  description: { fontSize: fontSize.sm, color: colors.textSecondary, lineHeight: 21 },
-  agentRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  sectionTitle: { fontSize: fontSize.md, fontWeight: fontWeight.bold, color: colors.textPrimary, marginTop: spacing.xl, marginBottom: spacing.sm },
+  description: { fontSize: fontSize.sm, color: colors.textSecondary, lineHeight: 22 },
+  agentRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    backgroundColor: colors.card,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.md,
+  },
   agentAvatar: {
     width: 44,
     height: 44,
@@ -327,10 +337,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  agentAvatarText: { fontSize: fontSize.md, fontWeight: '700', color: colors.accent },
+  agentAvatarText: { fontSize: fontSize.md, fontWeight: fontWeight.bold, color: colors.accent },
   agentBody: { flex: 1 },
-  agentName: { fontSize: fontSize.md, fontWeight: '600', color: colors.textPrimary },
-  agentRole: { fontSize: 10, fontWeight: '700', color: colors.accent, letterSpacing: 0.4 },
+  agentName: { fontSize: fontSize.md, fontWeight: fontWeight.semibold, color: colors.textPrimary },
+  agentRole: { fontSize: fontSize.xs, fontWeight: fontWeight.bold, color: colors.accent, letterSpacing: 0.4 },
   footer: {
     position: 'absolute',
     left: 0,
@@ -350,5 +360,5 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     paddingVertical: spacing.md,
   },
-  messageButtonText: { color: '#fff', fontSize: fontSize.md, fontWeight: '700' },
+  messageButtonText: { color: '#fff', fontSize: fontSize.md, fontWeight: fontWeight.bold },
 });

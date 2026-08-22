@@ -18,7 +18,7 @@ import { useAuth } from '../../lib/auth-context';
 import { friendlyErrorMessage } from '../../lib/errors';
 import { notifyListingsChanged } from '../../lib/listings-cache-bus';
 import { sanitizeText } from '../../lib/sanitize';
-import { colors, fontSize, radius, spacing } from '../../constants/theme';
+import { colors, fontSize, fontWeight, radius, spacing } from '../../constants/theme';
 import { PhotoPicker } from '../../components/PhotoPicker';
 import { SelectField, type SelectOption } from '../../components/SelectField';
 import type { ListingCategory } from '../../lib/types';
@@ -226,7 +226,13 @@ export default function AddListingScreen() {
           disabled={!requiredFieldsFilled || submitting}
           onPress={handlePublish}
         >
-          {submitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.publishButtonText}>Publish Listing</Text>}
+          {submitting ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={[styles.publishButtonText, !requiredFieldsFilled && styles.publishButtonTextDisabled]}>
+              Publish Listing
+            </Text>
+          )}
         </Pressable>
         <Text style={styles.terms}>By posting, you agree to our Community Guidelines</Text>
       </ScrollView>
@@ -246,12 +252,12 @@ function Field({ label, children, style }: { label: string; children: ReactNode;
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   centered: { alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.xl },
-  loggedOutTitle: { fontSize: fontSize.xl, fontWeight: '700', color: colors.textPrimary, marginBottom: spacing.xs },
+  loggedOutTitle: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: colors.textPrimary, marginBottom: spacing.xs },
   loggedOutSubtitle: { fontSize: fontSize.sm, color: colors.textSecondary, textAlign: 'center', marginBottom: spacing.lg },
   loginButton: { backgroundColor: colors.accent, borderRadius: radius.md, paddingHorizontal: spacing.xl, paddingVertical: spacing.md },
-  loginButtonText: { color: '#fff', fontSize: fontSize.md, fontWeight: '600' },
+  loginButtonText: { color: '#fff', fontSize: fontSize.md, fontWeight: fontWeight.semibold },
   scrollContent: { padding: spacing.lg, paddingBottom: spacing.xxl },
-  heading: { fontSize: fontSize.xxl, fontWeight: '700', color: colors.textPrimary },
+  heading: { fontSize: fontSize.xxl, fontWeight: fontWeight.bold, color: colors.textPrimary },
   subheading: { fontSize: fontSize.sm, color: colors.textSecondary, marginTop: 2, marginBottom: spacing.lg },
   card: {
     backgroundColor: colors.card,
@@ -271,14 +277,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  stepBadgeText: { fontSize: fontSize.xs, fontWeight: '700', color: colors.accent },
-  sectionTitle: { fontSize: fontSize.md, fontWeight: '700', color: colors.textPrimary },
+  stepBadgeText: { fontSize: fontSize.xs, fontWeight: fontWeight.bold, color: colors.accent },
+  sectionTitle: { fontSize: fontSize.md, fontWeight: fontWeight.bold, color: colors.textPrimary },
   row: { flexDirection: 'row', gap: spacing.md },
   flex1: { flex: 1 },
   field: {},
   fieldLabel: {
     fontSize: fontSize.xs,
-    fontWeight: '600',
+    fontWeight: fontWeight.semibold,
     color: colors.textMuted,
     letterSpacing: 0.4,
     marginBottom: 6,
@@ -302,6 +308,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   publishButtonDisabled: { backgroundColor: colors.border },
-  publishButtonText: { color: '#fff', fontSize: fontSize.md, fontWeight: '700' },
+  publishButtonText: { color: '#fff', fontSize: fontSize.md, fontWeight: fontWeight.bold },
+  publishButtonTextDisabled: { color: colors.textMuted },
   terms: { textAlign: 'center', fontSize: fontSize.xs, color: colors.textMuted, marginTop: spacing.sm },
 });

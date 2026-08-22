@@ -7,6 +7,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { AuthProvider } from '../lib/auth-context';
 import { FavoritesProvider } from '../lib/favorites-context';
+import { colors, fontSize, fontWeight, spacing } from '../constants/theme';
 
 // Shows the actual error on screen instead of silently crash-looping the app,
 // so problems in release builds can be diagnosed from a screenshot.
@@ -57,7 +58,7 @@ export default function RootLayout() {
 }
 
 const styles = StyleSheet.create({
-  errorContainer: { flexGrow: 1, justifyContent: 'center', padding: 24, backgroundColor: '#fff' },
-  errorTitle: { fontSize: 20, fontWeight: '700', color: '#B42318', marginBottom: 12 },
-  errorMessage: { fontSize: 13, color: '#344054', fontFamily: 'monospace' },
+  errorContainer: { flexGrow: 1, justifyContent: 'center', padding: spacing.xl, backgroundColor: colors.background },
+  errorTitle: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: colors.danger, marginBottom: spacing.md },
+  errorMessage: { fontSize: fontSize.sm, color: colors.textSecondary, fontFamily: 'monospace' },
 });

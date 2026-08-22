@@ -12,7 +12,8 @@ import {
 import { router } from 'expo-router';
 import { useAuth } from '../lib/auth-context';
 import { friendlyErrorMessage } from '../lib/errors';
-import { colors, fontSize, radius, spacing } from '../constants/theme';
+import { colors, fontSize, fontWeight, radius, spacing } from '../constants/theme';
+import { Logo } from '../components/Logo';
 
 // Cheap, no-third-party-account bot deterrents for signup: a field real
 // users never see or fill (bots that auto-fill every form field do), and a
@@ -79,6 +80,10 @@ export default function AuthScreen() {
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
+      <View style={styles.brandRow}>
+        <Logo size={56} showWordmark={false} />
+      </View>
+
       <Text style={styles.title}>{mode === 'sign_in' ? 'Log in to Easyfen' : 'Create your account'}</Text>
       <Text style={styles.subtitle}>
         {mode === 'sign_in'
@@ -87,14 +92,17 @@ export default function AuthScreen() {
       </Text>
 
       {mode === 'sign_up' && (
-        <TextInput
-          style={styles.input}
-          placeholder="Full name"
-          placeholderTextColor={colors.textMuted}
-          value={fullName}
-          onChangeText={setFullName}
-          autoCapitalize="words"
-        />
+        <View style={styles.field}>
+          <Text style={styles.fieldLabel}>Full Name</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="e.g. Aminata Kamara"
+            placeholderTextColor={colors.textMuted}
+            value={fullName}
+            onChangeText={setFullName}
+            autoCapitalize="words"
+          />
+        </View>
       )}
       {mode === 'sign_up' && (
         <TextInput
@@ -107,23 +115,29 @@ export default function AuthScreen() {
           autoComplete="off"
         />
       )}
-      <TextInput
-        style={styles.input}
-        placeholder="Email"
-        placeholderTextColor={colors.textMuted}
-        value={email}
-        onChangeText={setEmail}
-        autoCapitalize="none"
-        keyboardType="email-address"
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Password (min. 6 characters)"
-        placeholderTextColor={colors.textMuted}
-        value={password}
-        onChangeText={setPassword}
-        secureTextEntry
-      />
+      <View style={styles.field}>
+        <Text style={styles.fieldLabel}>Email</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="you@example.com"
+          placeholderTextColor={colors.textMuted}
+          value={email}
+          onChangeText={setEmail}
+          autoCapitalize="none"
+          keyboardType="email-address"
+        />
+      </View>
+      <View style={styles.field}>
+        <Text style={styles.fieldLabel}>Password</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="Min. 6 characters"
+          placeholderTextColor={colors.textMuted}
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry
+        />
+      </View>
 
       {error && <Text style={styles.error}>{error}</Text>}
       {notice && <Text style={styles.notice}>{notice}</Text>}
@@ -136,7 +150,9 @@ export default function AuthScreen() {
         {submitting ? (
           <ActivityIndicator color="#fff" />
         ) : (
-          <Text style={styles.submitText}>{mode === 'sign_in' ? 'Log In' : 'Sign Up'}</Text>
+          <Text style={[styles.submitText, !canSubmit && styles.submitTextDisabled]}>
+            {mode === 'sign_in' ? 'Log In' : 'Sign Up'}
+          </Text>
         )}
       </Pressable>
 
@@ -152,8 +168,24 @@ export default function AuthScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background, padding: spacing.xl, justifyContent: 'center' },
-  title: { fontSize: fontSize.xxl, fontWeight: '700', color: colors.textPrimary, marginBottom: spacing.xs },
-  subtitle: { fontSize: fontSize.sm, color: colors.textSecondary, marginBottom: spacing.xl },
+  brandRow: { alignItems: 'center', marginBottom: spacing.lg },
+  title: {
+    fontSize: fontSize.xxl,
+    fontWeight: fontWeight.bold,
+    color: colors.textPrimary,
+    marginBottom: spacing.xs,
+    textAlign: 'center',
+  },
+  subtitle: { fontSize: fontSize.sm, color: colors.textSecondary, marginBottom: spacing.xl, textAlign: 'center' },
+  field: { marginBottom: spacing.md },
+  fieldLabel: {
+    fontSize: fontSize.xs,
+    fontWeight: fontWeight.semibold,
+    color: colors.textMuted,
+    letterSpacing: 0.4,
+    marginBottom: 6,
+    textTransform: 'uppercase',
+  },
   input: {
     backgroundColor: colors.card,
     borderWidth: 1,
@@ -163,7 +195,6 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
     fontSize: fontSize.md,
     color: colors.textPrimary,
-    marginBottom: spacing.md,
   },
   honeypot: {
     position: 'absolute',
@@ -181,8 +212,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: spacing.sm,
   },
-  submitButtonDisabled: { opacity: 0.4 },
-  submitText: { color: '#fff', fontSize: fontSize.md, fontWeight: '600' },
+  submitButtonDisabled: { backgroundColor: colors.border },
+  submitText: { color: '#fff', fontSize: fontSize.md, fontWeight: fontWeight.semibold },
+  submitTextDisabled: { color: colors.textMuted },
   switchText: { textAlign: 'center', color: colors.textSecondary, fontSize: fontSize.sm, marginTop: spacing.lg },
-  switchTextBold: { color: colors.accent, fontWeight: '600' },
+  switchTextBold: { color: colors.accent, fontWeight: fontWeight.semibold },
 });

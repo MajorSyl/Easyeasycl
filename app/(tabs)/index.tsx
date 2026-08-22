@@ -6,7 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../lib/auth-context';
 import { subscribeListingsChanged } from '../../lib/listings-cache-bus';
-import { colors, fontSize, radius, spacing } from '../../constants/theme';
+import { colors, fontSize, fontWeight, radius, spacing } from '../../constants/theme';
 import { ListingCard } from '../../components/ListingCard';
 import { FilterPills, type PillOption } from '../../components/FilterPills';
 import { Logo } from '../../components/Logo';
@@ -168,9 +168,11 @@ export default function HomeScreen() {
       </View>
 
       <Pressable style={styles.neighborhoodRow} onPress={() => router.push('/neighborhoods')}>
-        <Ionicons name="location-outline" size={16} color={colors.accent} />
+        <View style={styles.neighborhoodIcon}>
+          <Ionicons name="location-outline" size={16} color={colors.accent} />
+        </View>
         <Text style={styles.neighborhoodRowText}>Browse by Neighborhood</Text>
-        <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
+        <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
       </Pressable>
 
       <View style={styles.pillsWrap}>
@@ -198,6 +200,7 @@ export default function HomeScreen() {
 function EmptyState({ label }: { label: string }) {
   return (
     <View style={styles.emptyState}>
+      <Ionicons name="home-outline" size={36} color={colors.textMuted} />
       <Text style={styles.emptyStateText}>{label}</Text>
     </View>
   );
@@ -230,7 +233,16 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   searchPlaceholder: { color: colors.textMuted, fontSize: fontSize.sm },
-  iconButton: { padding: 4 },
+  iconButton: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.md,
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   unreadDot: {
     position: 'absolute',
     top: 2,
@@ -252,18 +264,32 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 3,
   },
-  unreadBadgeText: { color: '#fff', fontSize: 9, fontWeight: '700' },
+  unreadBadgeText: { color: '#fff', fontSize: 9, fontWeight: fontWeight.bold },
   neighborhoodRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.sm,
+    marginHorizontal: spacing.lg,
+    marginBottom: spacing.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    backgroundColor: colors.card,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
-  neighborhoodRowText: { flex: 1, fontSize: fontSize.sm, fontWeight: '600', color: colors.textPrimary },
-  pillsWrap: { paddingTop: spacing.sm, paddingBottom: spacing.md, borderTopWidth: 1, borderTopColor: colors.border },
+  neighborhoodIcon: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: colors.accentSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  neighborhoodRowText: { flex: 1, fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: colors.textPrimary },
+  pillsWrap: { paddingBottom: spacing.md },
   listContent: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl, gap: spacing.md },
   row: { gap: spacing.md },
-  emptyState: { paddingTop: spacing.xxl, alignItems: 'center' },
+  emptyState: { paddingTop: spacing.xxl, alignItems: 'center', gap: spacing.sm },
   emptyStateText: { color: colors.textMuted, fontSize: fontSize.sm },
 });

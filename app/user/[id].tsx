@@ -6,7 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../lib/auth-context';
 import { friendlyErrorMessage } from '../../lib/errors';
-import { colors, fontSize, spacing } from '../../constants/theme';
+import { colors, fontSize, fontWeight, spacing } from '../../constants/theme';
 import { ListingCard } from '../../components/ListingCard';
 import { getOrCreateConversation } from '../../lib/conversations';
 import { initialsFor, roleLabel, verificationBadgeLabel } from '../../lib/format';
@@ -130,7 +130,8 @@ export default function PublicProfileScreen() {
 
   if (!profile) {
     return (
-      <View style={[styles.container, styles.centered, { paddingTop: insets.top }]}>
+      <View style={[styles.container, styles.centered, { paddingTop: insets.top, gap: spacing.sm }]}>
+        <Ionicons name="person-outline" size={36} color={colors.textMuted} />
         <Text style={styles.mutedText}>This profile is no longer available.</Text>
         <Pressable onPress={() => router.back()} hitSlop={8}>
           <Text style={styles.backLink}>Go back</Text>
@@ -192,7 +193,12 @@ export default function PublicProfileScreen() {
       }
       renderItem={({ item }) => <ListingCard listing={item.data} />}
       ItemSeparatorComponent={() => <View style={{ height: spacing.md }} />}
-      ListEmptyComponent={<Text style={styles.mutedText}>No active listings yet.</Text>}
+      ListEmptyComponent={
+        <View style={styles.emptyState}>
+          <Ionicons name="home-outline" size={32} color={colors.textMuted} />
+          <Text style={styles.mutedText}>No active listings yet.</Text>
+        </View>
+      }
     />
   );
 }
@@ -201,7 +207,8 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   centered: { alignItems: 'center', justifyContent: 'center' },
   mutedText: { color: colors.textSecondary, fontSize: fontSize.sm, textAlign: 'center', paddingVertical: spacing.lg },
-  backLink: { fontSize: fontSize.md, color: colors.accent, fontWeight: '600' },
+  emptyState: { alignItems: 'center', gap: spacing.sm },
+  backLink: { fontSize: fontSize.md, color: colors.accent, fontWeight: fontWeight.semibold },
   listContent: { padding: spacing.lg, paddingBottom: spacing.xxl },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm },
   hero: { alignItems: 'center', marginBottom: spacing.lg },
@@ -214,7 +221,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  avatarText: { fontSize: fontSize.xxl, fontWeight: '700', color: colors.accent },
+  avatarText: { fontSize: fontSize.xxl, fontWeight: fontWeight.bold, color: colors.accent },
   onlineDot: {
     position: 'absolute',
     bottom: 2,
@@ -226,11 +233,11 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: colors.background,
   },
-  name: { fontSize: fontSize.xl, fontWeight: '700', color: colors.textPrimary },
-  role: { fontSize: 11, fontWeight: '700', color: colors.accent, letterSpacing: 0.4, marginTop: 2 },
+  name: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: colors.textPrimary },
+  role: { fontSize: fontSize.xs, fontWeight: fontWeight.bold, color: colors.accent, letterSpacing: 0.4, marginTop: 2 },
   business: { fontSize: fontSize.sm, color: colors.textSecondary, marginTop: 2 },
   verifiedRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 },
-  verifiedText: { fontSize: fontSize.xs, fontWeight: '700', color: colors.success },
+  verifiedText: { fontSize: fontSize.xs, fontWeight: fontWeight.bold, color: colors.success },
   messageButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -241,6 +248,6 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
     marginTop: spacing.md,
   },
-  messageButtonText: { color: '#fff', fontSize: fontSize.sm, fontWeight: '700' },
-  sectionTitle: { fontSize: fontSize.md, fontWeight: '700', color: colors.textPrimary, marginBottom: spacing.md },
+  messageButtonText: { color: '#fff', fontSize: fontSize.sm, fontWeight: fontWeight.bold },
+  sectionTitle: { fontSize: fontSize.md, fontWeight: fontWeight.bold, color: colors.textPrimary, marginBottom: spacing.md },
 });

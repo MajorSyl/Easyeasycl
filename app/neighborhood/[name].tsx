@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '../../lib/supabase';
-import { colors, fontSize, spacing } from '../../constants/theme';
+import { colors, fontSize, fontWeight, spacing } from '../../constants/theme';
 import { ListingCard } from '../../components/ListingCard';
 import type { Listing } from '../../lib/types';
 
@@ -68,6 +68,11 @@ export default function NeighborhoodListingsScreen() {
           renderItem={({ item }) => <ListingCard listing={item} />}
           ListEmptyComponent={
             <View style={styles.emptyState}>
+              <Ionicons
+                name={loadError ? 'cloud-offline-outline' : 'home-outline'}
+                size={36}
+                color={colors.textMuted}
+              />
               <Text style={styles.emptyStateText}>
                 {loadError
                   ? "Couldn't load listings. Check your connection and try again."
@@ -91,10 +96,10 @@ const styles = StyleSheet.create({
     paddingTop: spacing.sm,
     paddingBottom: spacing.md,
   },
-  headerTitle: { flex: 1, fontSize: fontSize.xl, fontWeight: '700', color: colors.textPrimary },
+  headerTitle: { flex: 1, fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: colors.textPrimary },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   listContent: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl, gap: spacing.md },
   row: { gap: spacing.md },
-  emptyState: { paddingTop: spacing.xxl, alignItems: 'center', paddingHorizontal: spacing.xl },
+  emptyState: { paddingTop: spacing.xxl, alignItems: 'center', paddingHorizontal: spacing.xl, gap: spacing.sm },
   emptyStateText: { color: colors.textMuted, fontSize: fontSize.sm, textAlign: 'center' },
 });

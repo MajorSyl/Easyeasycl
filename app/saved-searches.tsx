@@ -6,7 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../lib/auth-context';
 import { friendlyErrorMessage } from '../lib/errors';
-import { colors, fontSize, radius, spacing } from '../constants/theme';
+import { colors, fontSize, fontWeight, radius, spacing } from '../constants/theme';
 
 type SavedSearch = {
   id: string;
@@ -134,7 +134,7 @@ const styles = StyleSheet.create({
     paddingTop: spacing.sm,
     paddingBottom: spacing.md,
   },
-  headerTitle: { fontSize: fontSize.xl, fontWeight: '700', color: colors.textPrimary },
+  headerTitle: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: colors.textPrimary },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   listContent: { padding: spacing.lg, paddingTop: spacing.sm, gap: spacing.sm, flexGrow: 1 },
   row: {
@@ -155,8 +155,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  rowText: { flex: 1, fontSize: fontSize.sm, fontWeight: '600', color: colors.textPrimary },
+  rowText: { flex: 1, fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: colors.textPrimary },
   emptyState: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.sm, paddingHorizontal: spacing.xl },
-  emptyStateTitle: { fontSize: fontSize.md, fontWeight: '700', color: colors.textPrimary },
+  emptyStateTitle: { fontSize: fontSize.md, fontWeight: fontWeight.bold, color: colors.textPrimary },
   emptyStateText: { fontSize: fontSize.sm, color: colors.textMuted, textAlign: 'center' },
 });

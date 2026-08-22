@@ -5,7 +5,7 @@ import { router, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../lib/auth-context';
-import { colors, fontSize, spacing } from '../constants/theme';
+import { colors, fontSize, fontWeight, spacing } from '../constants/theme';
 import { ListingCard } from '../components/ListingCard';
 import type { Listing } from '../lib/types';
 
@@ -115,10 +115,10 @@ const styles = StyleSheet.create({
     paddingTop: spacing.sm,
     paddingBottom: spacing.md,
   },
-  headerTitle: { fontSize: fontSize.xl, fontWeight: '700', color: colors.textPrimary },
+  headerTitle: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: colors.textPrimary },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   listContent: { padding: spacing.lg, paddingTop: spacing.sm, gap: spacing.md, flexGrow: 1 },
   emptyState: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.sm, paddingHorizontal: spacing.xl },
-  emptyStateTitle: { fontSize: fontSize.md, fontWeight: '700', color: colors.textPrimary },
+  emptyStateTitle: { fontSize: fontSize.md, fontWeight: fontWeight.bold, color: colors.textPrimary },
   emptyStateText: { fontSize: fontSize.sm, color: colors.textMuted, textAlign: 'center' },
 });

@@ -3,7 +3,7 @@ import { ActivityIndicator, Alert, FlatList, Modal, Pressable, StyleSheet, Text,
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { colors, fontSize, radius, spacing } from '../../constants/theme';
+import { colors, fontSize, fontWeight, radius, spacing } from '../../constants/theme';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../lib/auth-context';
 import { friendlyErrorMessage } from '../../lib/errors';
@@ -174,6 +174,11 @@ export default function SearchScreen() {
           renderItem={({ item }) => <ListingCard listing={item.data} />}
           ListEmptyComponent={
             <View style={styles.emptyState}>
+              <Ionicons
+                name={searchError ? 'cloud-offline-outline' : 'search-outline'}
+                size={36}
+                color={colors.textMuted}
+              />
               <Text style={styles.emptyStateText}>
                 {searchError
                   ? "Couldn't load results. Check your connection and try again."
@@ -236,7 +241,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
-  budgetPrefix: { fontSize: fontSize.sm, color: colors.textMuted, fontWeight: '600' },
+  budgetPrefix: { fontSize: fontSize.sm, color: colors.textMuted, fontWeight: fontWeight.semibold },
   budgetInput: { flex: 1, fontSize: fontSize.sm, color: colors.textPrimary, paddingVertical: 10 },
   sortButton: {
     width: 42,
@@ -249,11 +254,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   sortButtonDisabled: { opacity: 0.5 },
-  resultCount: { fontSize: fontSize.sm, color: colors.textSecondary, fontWeight: '600', marginTop: 2 },
+  resultCount: { fontSize: fontSize.sm, color: colors.textSecondary, fontWeight: fontWeight.semibold, marginTop: 2 },
   loadingWrap: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   listContent: { padding: spacing.lg, paddingTop: spacing.md, gap: spacing.md },
-  emptyState: { paddingTop: spacing.xxl, alignItems: 'center' },
-  emptyStateText: { color: colors.textMuted, fontSize: fontSize.sm },
+  emptyState: { paddingTop: spacing.xxl, alignItems: 'center', gap: spacing.sm, paddingHorizontal: spacing.xl },
+  emptyStateText: { color: colors.textMuted, fontSize: fontSize.sm, textAlign: 'center' },
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
   sheet: {
     backgroundColor: colors.card,
@@ -270,5 +275,5 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
   },
   optionText: { fontSize: fontSize.md, color: colors.textPrimary },
-  optionTextActive: { color: colors.accent, fontWeight: '600' },
+  optionTextActive: { color: colors.accent, fontWeight: fontWeight.semibold },
 });

@@ -19,7 +19,7 @@ import { useAuth } from '../../lib/auth-context';
 import { useKeyboardHeight } from '../../lib/use-keyboard-height';
 import { friendlyErrorMessage } from '../../lib/errors';
 import { sanitizeText } from '../../lib/sanitize';
-import { colors, fontSize, radius, spacing } from '../../constants/theme';
+import { colors, fontSize, fontWeight, radius, spacing } from '../../constants/theme';
 import { initialsFor, roleLabel } from '../../lib/format';
 import type { OwnerSummary } from '../../lib/types';
 
@@ -198,6 +198,7 @@ export default function ChatThreadScreen() {
         }}
         ListEmptyComponent={
           <View style={styles.emptyState}>
+            {loadError && <Ionicons name="cloud-offline-outline" size={32} color={colors.textMuted} />}
             <Text style={styles.emptyStateText}>
               {loadError ? "Couldn't load this conversation. Check your connection and try again." : 'Say hello 👋'}
             </Text>
@@ -223,7 +224,11 @@ export default function ChatThreadScreen() {
             multiline
           />
         </Pressable>
-        <Pressable style={styles.sendButton} onPress={handleSend} disabled={!draft.trim() || sending}>
+        <Pressable
+          style={[styles.sendButton, (!draft.trim() || sending) && styles.sendButtonDisabled]}
+          onPress={handleSend}
+          disabled={!draft.trim() || sending}
+        >
           <Ionicons name="send" size={18} color="#fff" />
         </Pressable>
       </View>
@@ -253,7 +258,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  avatarText: { fontSize: fontSize.sm, fontWeight: '700', color: colors.accent },
+  avatarText: { fontSize: fontSize.sm, fontWeight: fontWeight.bold, color: colors.accent },
   onlineDot: {
     position: 'absolute',
     bottom: 0,
@@ -266,8 +271,8 @@ const styles = StyleSheet.create({
     borderColor: colors.card,
   },
   headerBody: { flex: 1 },
-  headerName: { fontSize: fontSize.md, fontWeight: '700', color: colors.textPrimary },
-  headerRole: { fontSize: 10, fontWeight: '700', color: colors.accent, letterSpacing: 0.4 },
+  headerName: { fontSize: fontSize.md, fontWeight: fontWeight.bold, color: colors.textPrimary },
+  headerRole: { fontSize: fontSize.xs, fontWeight: fontWeight.bold, color: colors.accent, letterSpacing: 0.4 },
   listContent: { padding: spacing.lg, gap: spacing.sm, flexGrow: 1 },
   bubbleRow: { flexDirection: 'row' },
   bubbleRowMine: { justifyContent: 'flex-end' },
@@ -278,7 +283,7 @@ const styles = StyleSheet.create({
   bubbleTextMine: { color: '#fff', fontSize: fontSize.sm },
   bubbleTextTheirs: { color: colors.textPrimary, fontSize: fontSize.sm },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  emptyState: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  emptyState: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.sm, paddingHorizontal: spacing.xl },
   emptyStateText: { color: colors.textMuted, fontSize: fontSize.sm },
   composer: {
     flexDirection: 'row',
@@ -309,4 +314,5 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  sendButtonDisabled: { backgroundColor: colors.textMuted },
 });

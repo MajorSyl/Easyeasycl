@@ -5,7 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { Badge } from './Badge';
 import { FavoriteButton } from './FavoriteButton';
-import { colors, fontSize, radius, spacing } from '../constants/theme';
+import { colors, fontSize, fontWeight, radius, shadow, spacing } from '../constants/theme';
 import { categoryBadgeLabel, formatListingAge, formatPrice, initialsFor } from '../lib/format';
 import type { Listing } from '../lib/types';
 
@@ -42,6 +42,7 @@ export const ListingCard = memo(function ListingCard({ listing }: { listing: Lis
       </View>
 
       <View style={styles.body}>
+        <Text style={styles.price}>{formatPrice(listing.price, listing.currency, listing.price_unit)}</Text>
         <Text style={styles.title} numberOfLines={1}>
           {listing.title}
         </Text>
@@ -51,27 +52,22 @@ export const ListingCard = memo(function ListingCard({ listing }: { listing: Lis
             {listing.location}
           </Text>
         </View>
-        {listing.last_confirmed_at && (
-          <Text style={styles.age} numberOfLines={1}>
-            {formatListingAge(listing.last_confirmed_at)}
-          </Text>
-        )}
 
         <View style={styles.footerRow}>
-          <View>
-            <Text style={styles.priceLabel}>PRICE</Text>
-            <Text style={styles.price}>{formatPrice(listing.price, listing.currency, listing.price_unit)}</Text>
-          </View>
-          <View style={styles.agent}>
-            <Text style={styles.agentLabel}>AGENT</Text>
-            <View style={styles.agentRow}>
-              <Text style={styles.agentName} numberOfLines={1}>
-                {listing.owner?.full_name ?? 'Unknown'}
-              </Text>
-              <View style={styles.avatar}>
-                <Text style={styles.avatarText}>{initialsFor(listing.owner?.full_name ?? null)}</Text>
-              </View>
+          {listing.last_confirmed_at ? (
+            <Text style={styles.age} numberOfLines={1}>
+              {formatListingAge(listing.last_confirmed_at)}
+            </Text>
+          ) : (
+            <View />
+          )}
+          <View style={styles.agentRow}>
+            <View style={styles.avatar}>
+              <Text style={styles.avatarText}>{initialsFor(listing.owner?.full_name ?? null)}</Text>
             </View>
+            <Text style={styles.agentName} numberOfLines={1}>
+              {listing.owner?.full_name ?? 'Unknown'}
+            </Text>
           </View>
         </View>
       </View>
@@ -85,11 +81,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.card,
     borderRadius: radius.lg,
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
+    ...shadow.card,
   },
   imageWrap: { aspectRatio: 1.3, backgroundColor: colors.border },
   image: { width: '100%', height: '100%' },
@@ -121,24 +113,27 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
     paddingVertical: 2,
   },
-  statText: { color: '#fff', fontSize: 10, fontWeight: '600' },
+  statText: { color: '#fff', fontSize: 10, fontWeight: fontWeight.semibold },
   body: { padding: spacing.md },
-  title: { fontSize: fontSize.sm, fontWeight: '700', color: colors.textPrimary },
-  locationRow: { flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 3 },
+  price: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: colors.accent },
+  title: {
+    fontSize: fontSize.sm,
+    fontWeight: fontWeight.semibold,
+    color: colors.textPrimary,
+    marginTop: 2,
+  },
+  locationRow: { flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 4 },
   location: { fontSize: fontSize.xs, color: colors.textMuted, flexShrink: 1 },
-  age: { fontSize: 10, color: colors.textMuted, marginTop: 2 },
+  age: { fontSize: fontSize.xs, color: colors.textMuted, flexShrink: 1 },
   footerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-end',
+    alignItems: 'center',
     marginTop: spacing.sm,
+    gap: spacing.xs,
   },
-  priceLabel: { fontSize: 9, color: colors.textMuted, fontWeight: '600', letterSpacing: 0.4 },
-  price: { fontSize: fontSize.sm, fontWeight: '700', color: colors.accent },
-  agent: { alignItems: 'flex-end', maxWidth: 90 },
-  agentLabel: { fontSize: 9, color: colors.textMuted, fontWeight: '600', letterSpacing: 0.4 },
-  agentRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },
-  agentName: { fontSize: 10, color: colors.textSecondary, maxWidth: 60 },
+  agentRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  agentName: { fontSize: fontSize.xs, fontWeight: fontWeight.medium, color: colors.textSecondary, maxWidth: 70 },
   avatar: {
     width: 20,
     height: 20,
@@ -147,5 +142,5 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  avatarText: { fontSize: 10, fontWeight: '700', color: colors.accent },
+  avatarText: { fontSize: 10, fontWeight: fontWeight.bold, color: colors.accent },
 });

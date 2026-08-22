@@ -5,7 +5,7 @@ import { router, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../lib/auth-context';
-import { colors, fontSize, radius, spacing } from '../../constants/theme';
+import { colors, fontSize, fontWeight, radius, spacing } from '../../constants/theme';
 import { formatMessageTimestamp, initialsFor, roleLabel } from '../../lib/format';
 import type { OwnerSummary } from '../../lib/types';
 
@@ -191,7 +191,7 @@ const styles = StyleSheet.create({
     paddingTop: spacing.sm,
     paddingBottom: spacing.md,
   },
-  headerTitle: { flex: 1, fontSize: fontSize.xl, fontWeight: '700', color: colors.textPrimary },
+  headerTitle: { flex: 1, fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: colors.textPrimary },
   headerAvatar: {
     width: 32,
     height: 32,
@@ -232,7 +232,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  avatarText: { fontSize: fontSize.md, fontWeight: '700', color: colors.accent },
+  avatarText: { fontSize: fontSize.md, fontWeight: fontWeight.bold, color: colors.accent },
   onlineDot: {
     position: 'absolute',
     bottom: 0,
@@ -246,9 +246,9 @@ const styles = StyleSheet.create({
   },
   rowBody: { flex: 1 },
   rowTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  name: { flex: 1, fontSize: fontSize.md, fontWeight: '700', color: colors.textPrimary },
+  name: { flex: 1, fontSize: fontSize.md, fontWeight: fontWeight.bold, color: colors.textPrimary },
   timestamp: { fontSize: fontSize.xs, color: colors.textMuted },
-  roleLabel: { fontSize: 10, fontWeight: '700', color: colors.accent, letterSpacing: 0.4, marginTop: 1 },
+  roleLabel: { fontSize: fontSize.xs, fontWeight: fontWeight.bold, color: colors.accent, letterSpacing: 0.4, marginTop: 1 },
   preview: { fontSize: fontSize.sm, color: colors.textSecondary, marginTop: 2 },
   unreadBadge: {
     minWidth: 20,
@@ -259,9 +259,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 5,
   },
-  unreadBadgeText: { color: '#fff', fontSize: 11, fontWeight: '700' },
+  unreadBadgeText: { color: '#fff', fontSize: 11, fontWeight: fontWeight.bold },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   emptyState: { paddingTop: spacing.xxl, alignItems: 'center', gap: spacing.sm, paddingHorizontal: spacing.xl },
-  emptyStateTitle: { fontSize: fontSize.md, fontWeight: '700', color: colors.textPrimary },
+  emptyStateTitle: { fontSize: fontSize.md, fontWeight: fontWeight.bold, color: colors.textPrimary },
   emptyStateText: { color: colors.textMuted, fontSize: fontSize.sm, textAlign: 'center' },
 });

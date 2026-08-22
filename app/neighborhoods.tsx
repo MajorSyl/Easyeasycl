@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '../lib/supabase';
-import { colors, fontSize, radius, spacing } from '../constants/theme';
+import { colors, fontSize, fontWeight, radius, spacing } from '../constants/theme';
 import { FREETOWN_NEIGHBORHOODS } from '../constants/neighborhoods';
 
 type NeighborhoodCount = { name: string; count: number };
@@ -76,6 +76,11 @@ export default function NeighborhoodsScreen() {
           )}
           ListEmptyComponent={
             <View style={styles.emptyState}>
+              <Ionicons
+                name={loadError ? 'cloud-offline-outline' : 'location-outline'}
+                size={36}
+                color={colors.textMuted}
+              />
               <Text style={styles.emptyStateText}>
                 {loadError
                   ? "Couldn't load neighborhoods. Check your connection and try again."
@@ -99,7 +104,7 @@ const styles = StyleSheet.create({
     paddingTop: spacing.sm,
     paddingBottom: spacing.md,
   },
-  headerTitle: { fontSize: fontSize.xl, fontWeight: '700', color: colors.textPrimary },
+  headerTitle: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: colors.textPrimary },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   listContent: { padding: spacing.lg, paddingTop: spacing.sm, gap: spacing.sm, flexGrow: 1 },
   row: {
@@ -120,8 +125,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  rowName: { flex: 1, fontSize: fontSize.md, fontWeight: '600', color: colors.textPrimary },
+  rowName: { flex: 1, fontSize: fontSize.md, fontWeight: fontWeight.semibold, color: colors.textPrimary },
   rowCount: { fontSize: fontSize.sm, color: colors.textMuted },
-  emptyState: { paddingTop: spacing.xxl, alignItems: 'center' },
+  emptyState: { paddingTop: spacing.xxl, alignItems: 'center', gap: spacing.sm },
   emptyStateText: { color: colors.textMuted, fontSize: fontSize.sm, textAlign: 'center', paddingHorizontal: spacing.xl },
 });
