@@ -1,15 +1,17 @@
 # Easyfen
 
-A marketplace app for finding and listing properties, hotels, and local services in Freetown, Sierra Leone. Mobile + web app built with React Native (Expo), backed by Supabase; a separate Next.js dashboard for moderation and admin tasks.
+A marketplace app for finding and listing properties in Freetown, Sierra Leone. Mobile + web app built with React Native (Expo), backed by Supabase; a separate Next.js dashboard for moderation and admin tasks.
+
+> The app previously also covered hotels and local services. It's now focused entirely on properties (rent/sale/land). The underlying `hotels`/`services` tables and code still exist but are no longer reachable from the app's UI — see "Where the data lives" below.
 
 ## What's in the app
 
-- **Home** — browse properties, hotels, and services; filter by For Rent / For Sale / Land / Daily-Hourly; save favorites with the heart icon
-- **Search** — search everything at once by name, place, or trade, with an NLE budget filter and price sorting; hire service providers directly
-- **Add Listing** — post a property, hotel, or service with up to 10 compressed photos
-- **Messages** — real-time chat between buyers, agents, and service providers, with online status, unread counts, and per-user blocking
-- **Profile** — edit your details, choose your role (agent, service provider, hotel owner), manage/edit/delete your listings, upload an avatar
-- **Public profiles** — view any agent/provider's active listings, message them, report or block them
+- **Home** — browse property listings; filter by For Rent / For Sale / Land / Daily-Hourly; save favorites with the heart icon
+- **Search** — search by name or neighborhood, with an NLE budget filter and price sorting
+- **Add Listing** — post a property with up to 10 compressed photos
+- **Messages** — real-time chat between buyers and agents, with online status, unread counts, and per-user blocking
+- **Profile** — edit your details, choose your role (regular user or agent), manage/edit/delete your listings, upload an avatar
+- **Public profiles** — view any agent's active listings, message them, report or block them
 - **Legal pages** — `/privacy`, `/terms`, `/guidelines`, `/agent-agreement`, linked from a footer on every web page
 
 Sign-in is email + password. Browsing works without an account; posting, favoriting, messaging, and rating require one.
@@ -37,7 +39,7 @@ The mark is a magnifying glass standing in for the "a" in a lowercase "easyfen" 
 
 Everything is stored in a Supabase project called **Easyfen** (project ref `axeprqcffgwgocglijst`). This same Supabase project also hosts an unrelated inventory/staff-tracking app (`stores`, `staff`, `products`, `batches`, `alerts` tables) — leave those alone when working in this DB.
 
-- Tables: `profiles`, `listings`, `hotels`, `services`, `favorites`, `conversations`, `messages`, `ratings`, `reports`, `blocks`
+- Tables: `profiles`, `listings`, `favorites`, `conversations`, `messages`, `ratings`, `reports`, `blocks` (plus `hotels`/`services` — legacy, unused by the app's current UI, kept intact rather than dropped)
 - Storage buckets: `listing-photos`, `avatars` — both capped at 5MB, images-only (`allowed_mime_types`), enforced at the storage layer, not just client-side
 - Chat updates arrive live via Supabase Realtime; presence channel (`online-users`) tracks who's online
 - Row Level Security is enabled on every table — see **Security** below for what that actually guarantees
@@ -46,12 +48,12 @@ Everything is stored in a Supabase project called **Easyfen** (project ref `axep
 
 This has had a real hardening pass, not just a review — every claim below was verified against the live project (RLS simulated as `anon` and as a second real user, not just read from policy definitions).
 
-- **RLS**: users can only read/write their own data; public listing/hotel/service rows are readable by anyone (required for browsing), but `profiles.phone` is blocked from the `anon` role at the column-privilege level — unauthenticated requests can't scrape phone numbers even though the row itself is public
-- **Rate limiting** (DB-enforced via triggers, not client-side): max 5 new listings/hotels/services per user per 10 minutes; max 20 messages per user per minute; duplicate-listing detection blocks an identical repost within 24h
+- **RLS**: users can only read/write their own data; public listing rows are readable by anyone (required for browsing), but `profiles.phone` is blocked from the `anon` role at the column-privilege level — unauthenticated requests can't scrape phone numbers even though the row itself is public
+- **Rate limiting** (DB-enforced via triggers, not client-side): max 5 new listings per user per 10 minutes; max 20 messages per user per minute; duplicate-listing detection blocks an identical repost within 24h
 - **File uploads**: 5MB limit + image-only MIME allowlist enforced by Supabase Storage itself; the client also rejects (rather than silently uploads) any file that fails image processing
 - **IDOR**: editing a listing checks `owner_id` both before rendering the form and again on save; every RLS-protected mutation was tested cross-user (a second account cannot read, edit, or delete another user's data — 0 rows affected, not just an error)
 - **Input sanitization**: `lib/sanitize.ts` strips HTML tags and control characters from every text field before it's stored (listing text, messages, profile fields) — defense in depth; no `dangerouslySetInnerHTML` exists anywhere in the codebase, so there's no live XSS render path today, but this keeps stored data clean regardless of how it's rendered elsewhere later
-- **Block/report**: `blocks` table + RLS deny message sends between blocked pairs at the database level, not just hidden in the UI; `reports` supports flagging listings, hotels, services, or users
+- **Block/report**: `blocks` table + RLS deny message sends between blocked pairs at the database level, not just hidden in the UI; `reports` supports flagging listings or users
 - **Admin dashboard**: every server action re-checks `is_admin` independently of RLS (defense in depth); `middleware.ts` verifies the session server-side on every request before a page renders — not a client-side-only gate
 - **No `service_role` key anywhere in this codebase.** Admin auth runs entirely on the anon key + RLS/JWT claims via SSR cookies — there's nothing to leak. The one place a `service_role` key is legitimately used is the backup script (see below), and it lives only in that separate repo's GitHub Actions secrets, never in any client bundle.
 - **Bot deterrence**: signup has a honeypot field + minimum time-on-form check (no third-party CAPTCHA account required)

@@ -1,22 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, FlatList, Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { supabase } from '../../lib/supabase';
-import { friendlyErrorMessage } from '../../lib/errors';
-import { useAuth } from '../../lib/auth-context';
-import { getOrCreateConversation } from '../../lib/conversations';
 import { colors, fontSize, radius, spacing } from '../../constants/theme';
+import { supabase } from '../../lib/supabase';
 import { ListingCard } from '../../components/ListingCard';
-import { HotelCard } from '../../components/HotelCard';
-import { ServiceCard } from '../../components/ServiceCard';
-import type { Hotel, Listing, Service } from '../../lib/types';
+import type { Listing } from '../../lib/types';
 
-type SearchResult =
-  | { kind: 'listing'; id: string; sortPrice: number; createdAt: string; data: Listing }
-  | { kind: 'hotel'; id: string; sortPrice: number; createdAt: string; data: Hotel }
-  | { kind: 'service'; id: string; sortPrice: number; createdAt: string; data: Service };
+type SearchResult = { kind: 'listing'; id: string; sortPrice: number; createdAt: string; data: Listing };
 
 type SortMode = 'newest' | 'price_asc' | 'price_desc';
 
@@ -32,14 +23,12 @@ function escapeForFilter(text: string) {
 
 export default function SearchScreen() {
   const insets = useSafeAreaInsets();
-  const { session } = useAuth();
   const [query, setQuery] = useState('');
   const [budget, setBudget] = useState('');
   const [sortMode, setSortMode] = useState<SortMode>('newest');
   const [sortMenuOpen, setSortMenuOpen] = useState(false);
   const [results, setResults] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(true);
-  const [hiring, setHiring] = useState(false);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -55,49 +44,23 @@ export default function SearchScreen() {
     const maxPrice = budgetText.trim() ? Number(budgetText) : null;
 
     let listingsQuery = supabase.from('listings').select('id, title, price, currency, price_unit, location, category, photos, view_count, is_premium, owner_id, owner:profiles(full_name, avatar_url, role)');
-    let hotelsQuery = supabase.from('hotels').select('id, name, rate, currency, rate_unit, location, photos, view_count, is_premium, rating, rating_count, owner_id, owner:profiles(full_name, avatar_url, role)');
-    let servicesQuery = supabase.from('services').select('id, business_name, rate, currency, rate_unit, location, category, rating, rating_count, is_premium, owner_id, owner:profiles(full_name, avatar_url, role)');
 
     if (term) {
       listingsQuery = listingsQuery.or(`title.ilike.%${term}%,location.ilike.%${term}%`);
-      hotelsQuery = hotelsQuery.or(`name.ilike.%${term}%,location.ilike.%${term}%`);
-      servicesQuery = servicesQuery.or(`business_name.ilike.%${term}%,category.ilike.%${term}%,location.ilike.%${term}%`);
     }
     if (maxPrice && !Number.isNaN(maxPrice)) {
       listingsQuery = listingsQuery.lte('price', maxPrice);
-      hotelsQuery = hotelsQuery.lte('rate', maxPrice);
-      servicesQuery = servicesQuery.lte('rate', maxPrice);
     }
 
-    const [{ data: listings }, { data: hotels }, { data: services }] = await Promise.all([
-      listingsQuery.order('created_at', { ascending: false }).limit(30),
-      hotelsQuery.order('created_at', { ascending: false }).limit(30),
-      servicesQuery.order('created_at', { ascending: false }).limit(30),
-    ]);
+    const { data: listings } = await listingsQuery.order('created_at', { ascending: false }).limit(30);
 
-    const combined: SearchResult[] = [
-      ...((listings as Listing[]) ?? []).map((item) => ({
-        kind: 'listing' as const,
-        id: item.id,
-        sortPrice: item.price,
-        createdAt: item.created_at,
-        data: item,
-      })),
-      ...((hotels as Hotel[]) ?? []).map((item) => ({
-        kind: 'hotel' as const,
-        id: item.id,
-        sortPrice: item.rate,
-        createdAt: item.created_at,
-        data: item,
-      })),
-      ...((services as Service[]) ?? []).map((item) => ({
-        kind: 'service' as const,
-        id: item.id,
-        sortPrice: item.rate,
-        createdAt: item.created_at,
-        data: item,
-      })),
-    ];
+    const combined: SearchResult[] = ((listings as Listing[]) ?? []).map((item) => ({
+      kind: 'listing' as const,
+      id: item.id,
+      sortPrice: item.price,
+      createdAt: item.created_at,
+      data: item,
+    }));
 
     combined.sort((a, b) => {
       if (sort === 'price_asc') return a.sortPrice - b.sortPrice;
@@ -107,23 +70,6 @@ export default function SearchScreen() {
 
     setResults(combined);
     setLoading(false);
-  }
-
-  async function handleHire(service: Service) {
-    if (!session) {
-      router.push('/auth');
-      return;
-    }
-    if (hiring) return;
-    setHiring(true);
-    try {
-      const conversationId = await getOrCreateConversation(session.user.id, service.owner_id, null);
-      router.push(`/messages/${conversationId}`);
-    } catch (err) {
-      Alert.alert('Could not start conversation', friendlyErrorMessage(err));
-    } finally {
-      setHiring(false);
-    }
   }
 
   const resultCountLabel = useMemo(
@@ -138,7 +84,7 @@ export default function SearchScreen() {
           <Ionicons name="search" size={18} color={colors.textMuted} />
           <TextInput
             style={styles.searchInput}
-            placeholder="Search Goderich, Plumbers, Hotels..."
+            placeholder="Search Goderich, Aberdeen, Lumley..."
             placeholderTextColor={colors.textMuted}
             value={query}
             onChangeText={setQuery}
@@ -174,11 +120,7 @@ export default function SearchScreen() {
           data={results}
           keyExtractor={(item) => `${item.kind}-${item.id}`}
           contentContainerStyle={styles.listContent}
-          renderItem={({ item }) => {
-            if (item.kind === 'listing') return <ListingCard listing={item.data} />;
-            if (item.kind === 'hotel') return <HotelCard hotel={item.data} />;
-            return <ServiceCard service={item.data} onHire={() => handleHire(item.data)} />;
-          }}
+          renderItem={({ item }) => <ListingCard listing={item.data} />}
           ListEmptyComponent={
             <View style={styles.emptyState}>
               <Text style={styles.emptyStateText}>No results. Try a different search or budget.</Text>

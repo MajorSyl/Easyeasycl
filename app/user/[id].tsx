@@ -8,17 +8,12 @@ import { useAuth } from '../../lib/auth-context';
 import { friendlyErrorMessage } from '../../lib/errors';
 import { colors, fontSize, spacing } from '../../constants/theme';
 import { ListingCard } from '../../components/ListingCard';
-import { HotelCard } from '../../components/HotelCard';
-import { ServiceCard } from '../../components/ServiceCard';
 import { getOrCreateConversation } from '../../lib/conversations';
 import { initialsFor, roleLabel } from '../../lib/format';
 import type { Profile } from '../../lib/auth-context';
-import type { Hotel, Listing, Service } from '../../lib/types';
+import type { Listing } from '../../lib/types';
 
-type ProfileItem =
-  | { kind: 'listing'; id: string; data: Listing }
-  | { kind: 'hotel'; id: string; data: Hotel }
-  | { kind: 'service'; id: string; data: Service };
+type ProfileItem = { kind: 'listing'; id: string; data: Listing };
 
 export default function PublicProfileScreen() {
   const insets = useSafeAreaInsets();
@@ -33,23 +28,17 @@ export default function PublicProfileScreen() {
     let cancelled = false;
     (async () => {
       const ownerJoin = '*, owner:profiles(full_name, avatar_url, role)';
-      const [profileRes, listings, hotels, services] = await Promise.all([
+      const [profileRes, listings] = await Promise.all([
         supabase
           .from('profiles')
           .select('id, full_name, avatar_url, role, business_name, created_at')
           .eq('id', id)
           .single(),
         supabase.from('listings').select(ownerJoin).eq('owner_id', id).order('created_at', { ascending: false }),
-        supabase.from('hotels').select(ownerJoin).eq('owner_id', id).order('created_at', { ascending: false }),
-        supabase.from('services').select(ownerJoin).eq('owner_id', id).order('created_at', { ascending: false }),
       ]);
       if (cancelled) return;
       setProfile(profileRes.data as Profile | null);
-      setItems([
-        ...((listings.data as Listing[]) ?? []).map((d) => ({ kind: 'listing' as const, id: d.id, data: d })),
-        ...((hotels.data as Hotel[]) ?? []).map((d) => ({ kind: 'hotel' as const, id: d.id, data: d })),
-        ...((services.data as Service[]) ?? []).map((d) => ({ kind: 'service' as const, id: d.id, data: d })),
-      ]);
+      setItems(((listings.data as Listing[]) ?? []).map((d) => ({ kind: 'listing' as const, id: d.id, data: d })));
       setLoading(false);
     })();
     return () => {
@@ -69,19 +58,6 @@ export default function PublicProfileScreen() {
       router.push(`/messages/${conversationId}`);
     } catch {
       // chat can also be started from a listing
-    }
-  }
-
-  async function handleHire(service: Service) {
-    if (!session) {
-      router.push('/auth');
-      return;
-    }
-    try {
-      const conversationId = await getOrCreateConversation(session.user.id, service.owner_id, null);
-      router.push(`/messages/${conversationId}`);
-    } catch {
-      // service detail page offers Hire again
     }
   }
 
@@ -203,11 +179,7 @@ export default function PublicProfileScreen() {
           </Text>
         </>
       }
-      renderItem={({ item }) => {
-        if (item.kind === 'listing') return <ListingCard listing={item.data} />;
-        if (item.kind === 'hotel') return <HotelCard hotel={item.data} />;
-        return <ServiceCard service={item.data} onHire={() => handleHire(item.data)} />;
-      }}
+      renderItem={({ item }) => <ListingCard listing={item.data} />}
       ItemSeparatorComponent={() => <View style={{ height: spacing.md }} />}
       ListEmptyComponent={<Text style={styles.mutedText}>No active listings yet.</Text>}
     />

@@ -21,7 +21,7 @@ export default function GuidelinesScreen() {
         <Text style={styles.updated}>Last updated: July 2025</Text>
 
         <Text style={styles.intro}>
-          Easyfen is built on trust between property seekers, owners, agents, and service providers.
+          Easyfen is built on trust between property seekers, owners, and agents.
           These guidelines help everyone have a safe, respectful, and productive experience on our
           platform. Violations may result in content removal, account suspension, or a permanent ban.
         </Text>

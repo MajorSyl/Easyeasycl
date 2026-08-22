@@ -25,7 +25,7 @@ import { formatPrice, initialsFor, roleLabel } from '../../lib/format';
 import { SelectField, type SelectOption } from '../../components/SelectField';
 import type { Profile } from '../../lib/auth-context';
 
-type ListingKind = 'listing' | 'hotel' | 'service';
+type ListingKind = 'listing';
 
 type MyListing = {
   kind: ListingKind;
@@ -38,14 +38,10 @@ type MyListing = {
 const roleOptions: SelectOption<Profile['role']>[] = [
   { value: 'user', label: 'Regular User' },
   { value: 'agent', label: 'Agent' },
-  { value: 'service_provider', label: 'Service Provider' },
-  { value: 'hotel_owner', label: 'Hotel Owner' },
 ];
 
 const kindLabels: Record<ListingKind, string> = {
   listing: 'Property',
-  hotel: 'Hotel',
-  service: 'Service',
 };
 
 export default function ProfileScreen() {
@@ -72,35 +68,18 @@ export default function ProfileScreen() {
     }
     if (!force && Date.now() - listingsFetchedAt.current < 60_000) return;
     const uid = session.user.id;
-    const [{ data: listings }, { data: hotels }, { data: services }] = await Promise.all([
-      supabase.from('listings').select('id, title, price, currency, price_unit, created_at').eq('owner_id', uid),
-      supabase.from('hotels').select('id, name, rate, currency, rate_unit, created_at').eq('owner_id', uid),
-      supabase.from('services').select('id, business_name, rate, currency, rate_unit, created_at').eq('owner_id', uid),
-    ]);
+    const { data: listings } = await supabase
+      .from('listings')
+      .select('id, title, price, currency, price_unit, created_at')
+      .eq('owner_id', uid);
 
-    const combined: MyListing[] = [
-      ...((listings ?? []) as any[]).map((item) => ({
-        kind: 'listing' as const,
-        id: item.id,
-        title: item.title,
-        priceLabel: formatPrice(item.price, item.currency, item.price_unit),
-        createdAt: item.created_at,
-      })),
-      ...((hotels ?? []) as any[]).map((item) => ({
-        kind: 'hotel' as const,
-        id: item.id,
-        title: item.name,
-        priceLabel: formatPrice(item.rate, item.currency, item.rate_unit),
-        createdAt: item.created_at,
-      })),
-      ...((services ?? []) as any[]).map((item) => ({
-        kind: 'service' as const,
-        id: item.id,
-        title: item.business_name,
-        priceLabel: formatPrice(item.rate, item.currency, item.rate_unit),
-        createdAt: item.created_at,
-      })),
-    ];
+    const combined: MyListing[] = ((listings ?? []) as any[]).map((item) => ({
+      kind: 'listing' as const,
+      id: item.id,
+      title: item.title,
+      priceLabel: formatPrice(item.price, item.currency, item.price_unit),
+      createdAt: item.created_at,
+    }));
 
     combined.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     listingsFetchedAt.current = Date.now();
@@ -180,8 +159,7 @@ export default function ProfileScreen() {
   }
 
   async function deleteListing(item: MyListing) {
-    const table = item.kind === 'listing' ? 'listings' : item.kind === 'hotel' ? 'hotels' : 'services';
-    const { error } = await supabase.from(table).delete().eq('id', item.id);
+    const { error } = await supabase.from('listings').delete().eq('id', item.id);
     if (error) {
       Alert.alert('Could not delete', friendlyErrorMessage(error));
       return;

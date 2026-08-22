@@ -42,7 +42,7 @@ export default function TermsScreen() {
 
         <Section title="4. Listings and Content">
           {`When you post a listing, you represent and warrant that:\n\n` +
-            `• You have the legal right to list and offer the property or service.\n` +
+            `• You have the legal right to list and offer the property.\n` +
             `• All information in the listing is accurate, complete, and not misleading.\n` +
             `• The listing does not violate any applicable law or third-party rights.\n\n` +
             `Easyfen reserves the right to remove any listing that violates these Terms or our Community Guidelines without notice.`}
@@ -59,10 +59,10 @@ export default function TermsScreen() {
         </Section>
 
         <Section title="6. Transactions">
-          Easyfen is a marketplace that connects property owners, agents, hotels, and service providers
-          with potential customers. We are not a party to any transaction and do not guarantee the
-          quality, safety, legality, or availability of any listed property or service. All transactions
-          are conducted directly between the relevant parties.
+          Easyfen is a marketplace that connects property owners and agents with potential customers.
+          We are not a party to any transaction and do not guarantee the quality, safety, legality, or
+          availability of any listed property. All transactions are conducted directly between the
+          relevant parties.
         </Section>
 
         <Section title="7. Fees">

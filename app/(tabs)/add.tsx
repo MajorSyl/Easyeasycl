@@ -23,14 +23,6 @@ import { PhotoPicker } from '../../components/PhotoPicker';
 import { SelectField, type SelectOption } from '../../components/SelectField';
 import type { ListingCategory } from '../../lib/types';
 
-type ListingType = 'property' | 'hotel' | 'service';
-
-const typeOptions: { value: ListingType; label: string }[] = [
-  { value: 'property', label: 'Property' },
-  { value: 'hotel', label: 'Hotel' },
-  { value: 'service', label: 'Service' },
-];
-
 const categoryOptions: SelectOption<ListingCategory>[] = [
   { value: 'for_rent', label: 'For Rent' },
   { value: 'for_sale', label: 'For Sale' },
@@ -47,7 +39,6 @@ export default function AddListingScreen() {
   const insets = useSafeAreaInsets();
   const { session, profile } = useAuth();
 
-  const [listingType, setListingType] = useState<ListingType>('property');
   const [photos, setPhotos] = useState<string[]>([]);
   const [title, setTitle] = useState('');
   const [price, setPrice] = useState('');
@@ -55,7 +46,6 @@ export default function AddListingScreen() {
   const [description, setDescription] = useState('');
   const [bedrooms, setBedrooms] = useState('');
   const [category, setCategory] = useState<ListingCategory | null>(null);
-  const [serviceCategory, setServiceCategory] = useState('');
   const [rateUnit, setRateUnit] = useState<'hour' | 'day'>('hour');
   const [submitting, setSubmitting] = useState(false);
 
@@ -63,7 +53,7 @@ export default function AddListingScreen() {
     return (
       <View style={[styles.container, styles.centered, { paddingTop: insets.top }]}>
         <Text style={styles.loggedOutTitle}>Log in to post a listing</Text>
-        <Text style={styles.loggedOutSubtitle}>You'll need an Easyfen account to publish properties, hotels, or services.</Text>
+        <Text style={styles.loggedOutSubtitle}>You'll need an Easyfen account to publish a property listing.</Text>
         <Pressable style={styles.loginButton} onPress={() => router.push('/auth')}>
           <Text style={styles.loginButtonText}>Log In / Sign Up</Text>
         </Pressable>
@@ -78,8 +68,7 @@ export default function AddListingScreen() {
     Number(price) > 0 &&
     location.trim().length > 0 &&
     description.trim().length > 0 &&
-    (listingType !== 'property' || category !== null) &&
-    (listingType !== 'service' || serviceCategory.trim().length > 0);
+    category !== null;
 
   function resetForm() {
     setPhotos([]);
@@ -89,7 +78,6 @@ export default function AddListingScreen() {
     setDescription('');
     setBedrooms('');
     setCategory(null);
-    setServiceCategory('');
     setRateUnit('hour');
   }
 
@@ -98,47 +86,21 @@ export default function AddListingScreen() {
     setSubmitting(true);
 
     const priceValue = Number(price);
-    let error;
-
     const cleanTitle = sanitizeText(title);
     const cleanDescription = sanitizeText(description);
     const cleanLocation = sanitizeText(location);
-    const cleanServiceCategory = sanitizeText(serviceCategory);
 
-    if (listingType === 'property') {
-      ({ error } = await supabase.from('listings').insert({
-        owner_id: session.user.id,
-        title: cleanTitle,
-        description: cleanDescription,
-        category: category!,
-        price: priceValue,
-        price_unit: category === 'daily_hourly' ? rateUnit : null,
-        location: cleanLocation,
-        bedrooms: bedrooms.trim() ? Number(bedrooms) : null,
-        photos,
-      }));
-    } else if (listingType === 'hotel') {
-      ({ error } = await supabase.from('hotels').insert({
-        owner_id: session.user.id,
-        name: cleanTitle,
-        description: cleanDescription,
-        location: cleanLocation,
-        rate: priceValue,
-        rate_unit: 'night',
-        photos,
-      }));
-    } else {
-      ({ error } = await supabase.from('services').insert({
-        owner_id: session.user.id,
-        business_name: cleanTitle,
-        category: cleanServiceCategory,
-        description: cleanDescription,
-        location: cleanLocation,
-        rate: priceValue,
-        rate_unit: rateUnit,
-        photos,
-      }));
-    }
+    const { error } = await supabase.from('listings').insert({
+      owner_id: session.user.id,
+      title: cleanTitle,
+      description: cleanDescription,
+      category: category!,
+      price: priceValue,
+      price_unit: category === 'daily_hourly' ? rateUnit : null,
+      location: cleanLocation,
+      bedrooms: bedrooms.trim() ? Number(bedrooms) : null,
+      photos,
+    });
 
     setSubmitting(false);
 
@@ -161,22 +123,7 @@ export default function AddListingScreen() {
     >
       <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
         <Text style={styles.heading}>Create Listing</Text>
-        <Text style={styles.subheading}>Get your property or service in front of thousands.</Text>
-
-        <View style={styles.typeTabs}>
-          {typeOptions.map((option) => {
-            const active = option.value === listingType;
-            return (
-              <Pressable
-                key={option.value}
-                style={[styles.typeTab, active && styles.typeTabActive]}
-                onPress={() => setListingType(option.value)}
-              >
-                <Text style={[styles.typeTabText, active && styles.typeTabTextActive]}>{option.label}</Text>
-              </Pressable>
-            );
-          })}
-        </View>
+        <Text style={styles.subheading}>Get your property in front of thousands.</Text>
 
         <View style={styles.card}>
           <View style={styles.sectionHeader}>
@@ -199,7 +146,7 @@ export default function AddListingScreen() {
           <Field label="Title">
             <TextInput
               style={styles.input}
-              placeholder={listingType === 'property' ? 'e.g. Modern Apartment in Lumley' : listingType === 'hotel' ? 'e.g. Aberdeen Beach Hotel' : 'e.g. John Doe Plumbing'}
+              placeholder="e.g. Modern Apartment in Lumley"
               placeholderTextColor={colors.textMuted}
               value={title}
               onChangeText={setTitle}
@@ -217,7 +164,7 @@ export default function AddListingScreen() {
                 keyboardType="decimal-pad"
               />
             </Field>
-            <Field label="Location" style={styles.flex1}>
+            <Field label="Neighborhood" style={styles.flex1}>
               <TextInput
                 style={styles.input}
                 placeholder="e.g. Goderich"
@@ -228,31 +175,29 @@ export default function AddListingScreen() {
             </Field>
           </View>
 
-          {listingType === 'property' && (
-            <View style={styles.row}>
-              <View style={styles.flex1}>
-                <SelectField
-                  label="Category"
-                  placeholder="Select category"
-                  value={category}
-                  options={categoryOptions}
-                  onChange={setCategory}
-                />
-              </View>
-              <Field label="Bedrooms" style={styles.flex1}>
-                <TextInput
-                  style={styles.input}
-                  placeholder="e.g. 3"
-                  placeholderTextColor={colors.textMuted}
-                  value={bedrooms}
-                  onChangeText={setBedrooms}
-                  keyboardType="number-pad"
-                />
-              </Field>
+          <View style={styles.row}>
+            <View style={styles.flex1}>
+              <SelectField
+                label="Property Type"
+                placeholder="Select type"
+                value={category}
+                options={categoryOptions}
+                onChange={setCategory}
+              />
             </View>
-          )}
+            <Field label="Bedrooms" style={styles.flex1}>
+              <TextInput
+                style={styles.input}
+                placeholder="e.g. 3"
+                placeholderTextColor={colors.textMuted}
+                value={bedrooms}
+                onChangeText={setBedrooms}
+                keyboardType="number-pad"
+              />
+            </Field>
+          </View>
 
-          {listingType === 'property' && category === 'daily_hourly' && (
+          {category === 'daily_hourly' && (
             <SelectField
               label="Rate"
               placeholder="Select rate"
@@ -262,37 +207,10 @@ export default function AddListingScreen() {
             />
           )}
 
-          {listingType === 'service' && (
-            <>
-              <Field label="Service Category">
-                <TextInput
-                  style={styles.input}
-                  placeholder="e.g. Plumbing, Cleaning, Electrical"
-                  placeholderTextColor={colors.textMuted}
-                  value={serviceCategory}
-                  onChangeText={setServiceCategory}
-                />
-              </Field>
-              <SelectField
-                label="Rate"
-                placeholder="Select rate"
-                value={rateUnit}
-                options={rateUnitOptions}
-                onChange={setRateUnit}
-              />
-            </>
-          )}
-
           <Field label="Description">
             <TextInput
               style={[styles.input, styles.textArea]}
-              placeholder={
-                listingType === 'property'
-                  ? 'Describe your property in detail...'
-                  : listingType === 'hotel'
-                    ? 'Describe your hotel in detail...'
-                    : 'Describe your service in detail...'
-              }
+              placeholder="Describe your property in detail..."
               placeholderTextColor={colors.textMuted}
               value={description}
               onChangeText={setDescription}
@@ -335,19 +253,6 @@ const styles = StyleSheet.create({
   scrollContent: { padding: spacing.lg, paddingBottom: spacing.xxl },
   heading: { fontSize: fontSize.xxl, fontWeight: '700', color: colors.textPrimary },
   subheading: { fontSize: fontSize.sm, color: colors.textSecondary, marginTop: 2, marginBottom: spacing.lg },
-  typeTabs: {
-    flexDirection: 'row',
-    backgroundColor: colors.card,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: 4,
-    marginBottom: spacing.lg,
-  },
-  typeTab: { flex: 1, paddingVertical: spacing.sm, borderRadius: radius.sm, alignItems: 'center' },
-  typeTabActive: { backgroundColor: colors.accentSoft },
-  typeTabText: { fontSize: fontSize.sm, color: colors.textSecondary, fontWeight: '600' },
-  typeTabTextActive: { color: colors.accent },
   card: {
     backgroundColor: colors.card,
     borderRadius: radius.lg,

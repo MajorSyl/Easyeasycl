@@ -1,29 +1,18 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '../../lib/supabase';
-import { friendlyErrorMessage } from '../../lib/errors';
 import { useAuth } from '../../lib/auth-context';
-import { getOrCreateConversation } from '../../lib/conversations';
 import { subscribeListingsChanged } from '../../lib/listings-cache-bus';
 import { colors, fontSize, radius, spacing } from '../../constants/theme';
 import { ListingCard } from '../../components/ListingCard';
-import { HotelCard } from '../../components/HotelCard';
-import { ServiceCard } from '../../components/ServiceCard';
 import { FilterPills, type PillOption } from '../../components/FilterPills';
 import { Logo } from '../../components/Logo';
-import type { Hotel, Listing, ListingCategory, Service } from '../../lib/types';
+import type { Listing, ListingCategory } from '../../lib/types';
 
-type Section = 'properties' | 'hotels' | 'services';
 type CategoryFilter = 'all' | ListingCategory;
-
-const sectionOptions: PillOption<Section>[] = [
-  { value: 'properties', label: 'Properties' },
-  { value: 'hotels', label: 'Hotels' },
-  { value: 'services', label: 'Services' },
-];
 
 const categoryOptions: PillOption<CategoryFilter>[] = [
   { value: 'all', label: 'All Properties' },
@@ -36,71 +25,36 @@ const categoryOptions: PillOption<CategoryFilter>[] = [
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const { session } = useAuth();
-  const [section, setSection] = useState<Section>('properties');
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>('all');
   const [listings, setListings] = useState<Listing[]>([]);
-  const [hotels, setHotels] = useState<Hotel[]>([]);
-  const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
 
-  // Switching between Properties/Hotels/Services shouldn't re-hit the network
-  // every time if we already have recent data for that tab — only refetch
-  // once the cached copy is more than a minute old, or on pull-to-refresh.
+  // Switching category filters shouldn't re-hit the network every time if we
+  // already have recent data for that filter — only refetch once the cached
+  // copy is more than a minute old, or on pull-to-refresh.
   const CACHE_TTL_MS = 60_000;
-  const cacheRef = useRef<{
-    listings: Map<CategoryFilter, { rows: Listing[]; fetchedAt: number }>;
-    hotels: { rows: Hotel[]; fetchedAt: number } | null;
-    services: { rows: Service[]; fetchedAt: number } | null;
-  }>({ listings: new Map(), hotels: null, services: null });
+  const cacheRef = useRef<Map<CategoryFilter, { rows: Listing[]; fetchedAt: number }>>(new Map());
 
   const load = useCallback(
     async (force = false) => {
-      if (section === 'properties') {
-        const cached = cacheRef.current.listings.get(categoryFilter);
-        if (!force && cached && Date.now() - cached.fetchedAt < CACHE_TTL_MS) {
-          setListings(cached.rows);
-          return;
-        }
-        let query = supabase
-          .from('listings')
-          .select('id, title, price, currency, price_unit, location, category, photos, view_count, is_premium, owner_id, owner:profiles(full_name, avatar_url, role)')
-          .order('created_at', { ascending: false });
-        if (categoryFilter !== 'all') query = query.eq('category', categoryFilter);
-        const { data } = await query;
-        const rows = (data as Listing[]) ?? [];
-        cacheRef.current.listings.set(categoryFilter, { rows, fetchedAt: Date.now() });
-        setListings(rows);
-      } else if (section === 'hotels') {
-        const cached = cacheRef.current.hotels;
-        if (!force && cached && Date.now() - cached.fetchedAt < CACHE_TTL_MS) {
-          setHotels(cached.rows);
-          return;
-        }
-        const { data } = await supabase
-          .from('hotels')
-          .select('id, name, rate, currency, rate_unit, location, photos, view_count, is_premium, rating, rating_count, owner_id, owner:profiles(full_name, avatar_url, role)')
-          .order('created_at', { ascending: false });
-        const rows = (data as Hotel[]) ?? [];
-        cacheRef.current.hotels = { rows, fetchedAt: Date.now() };
-        setHotels(rows);
-      } else {
-        const cached = cacheRef.current.services;
-        if (!force && cached && Date.now() - cached.fetchedAt < CACHE_TTL_MS) {
-          setServices(cached.rows);
-          return;
-        }
-        const { data } = await supabase
-          .from('services')
-          .select('id, business_name, rate, currency, rate_unit, location, category, rating, rating_count, is_premium, owner_id, owner:profiles(full_name, avatar_url, role)')
-          .order('created_at', { ascending: false });
-        const rows = (data as Service[]) ?? [];
-        cacheRef.current.services = { rows, fetchedAt: Date.now() };
-        setServices(rows);
+      const cached = cacheRef.current.get(categoryFilter);
+      if (!force && cached && Date.now() - cached.fetchedAt < CACHE_TTL_MS) {
+        setListings(cached.rows);
+        return;
       }
+      let query = supabase
+        .from('listings')
+        .select('id, title, price, currency, price_unit, location, category, photos, view_count, is_premium, owner_id, owner:profiles(full_name, avatar_url, role)')
+        .order('created_at', { ascending: false });
+      if (categoryFilter !== 'all') query = query.eq('category', categoryFilter);
+      const { data } = await query;
+      const rows = (data as Listing[]) ?? [];
+      cacheRef.current.set(categoryFilter, { rows, fetchedAt: Date.now() });
+      setListings(rows);
     },
-    [section, categoryFilter]
+    [categoryFilter]
   );
 
   useEffect(() => {
@@ -116,7 +70,7 @@ export default function HomeScreen() {
   useEffect(
     () =>
       subscribeListingsChanged(() => {
-        cacheRef.current = { listings: new Map(), hotels: null, services: null };
+        cacheRef.current = new Map();
         loadRef.current(true);
       }),
     [] // stable — never re-subscribes
@@ -169,29 +123,6 @@ export default function HomeScreen() {
     ({ item }: { item: Listing }) => <ListingCard listing={item} />,
     []
   );
-  const renderHotel = useCallback(
-    ({ item }: { item: Hotel }) => <HotelCard hotel={item} />,
-    []
-  );
-  const renderService = useCallback(
-    ({ item }: { item: Service }) => <ServiceCard service={item} onHire={() => handleHire(item)} />,
-    // handleHire is stable (useCallback with [session]) — added below
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [session]
-  );
-
-  async function handleHire(service: Service) {
-    if (!session) {
-      router.push('/auth');
-      return;
-    }
-    try {
-      const conversationId = await getOrCreateConversation(session.user.id, service.owner_id, null);
-      router.push(`/messages/${conversationId}`);
-    } catch (err) {
-      Alert.alert('Could not start conversation', friendlyErrorMessage(err));
-    }
-  }
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -201,7 +132,7 @@ export default function HomeScreen() {
       <View style={styles.topBar}>
         <Pressable style={styles.searchBar} onPress={() => router.push('/search')}>
           <Ionicons name="search" size={18} color={colors.textMuted} />
-          <Text style={styles.searchPlaceholder}>Search properties, land, services...</Text>
+          <Text style={styles.searchPlaceholder}>Search properties, land, neighborhoods...</Text>
         </Pressable>
         <Pressable style={styles.iconButton} onPress={() => router.push(session ? '/notifications' : '/auth')} hitSlop={8}>
           <Ionicons name="notifications-outline" size={20} color={colors.textPrimary} />
@@ -220,61 +151,20 @@ export default function HomeScreen() {
         </Pressable>
       </View>
 
-      <View style={styles.sectionTabs}>
-        {sectionOptions.map((option) => {
-          const active = option.value === section;
-          return (
-            <Pressable key={option.value} style={styles.sectionTab} onPress={() => setSection(option.value)}>
-              <Text style={[styles.sectionTabText, active && styles.sectionTabTextActive]}>{option.label}</Text>
-              {active && <View style={styles.sectionTabIndicator} />}
-            </Pressable>
-          );
-        })}
+      <View style={styles.pillsWrap}>
+        <FilterPills options={categoryOptions} value={categoryFilter} onChange={setCategoryFilter} />
       </View>
 
-      {section === 'properties' && (
-        <View style={styles.pillsWrap}>
-          <FilterPills options={categoryOptions} value={categoryFilter} onChange={setCategoryFilter} />
-        </View>
-      )}
-
-      {section === 'properties' && (
-        <FlatList
-          data={listings}
-          key="properties-grid"
-          keyExtractor={(item) => item.id}
-          numColumns={2}
-          columnWrapperStyle={styles.row}
-          contentContainerStyle={styles.listContent}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
-          renderItem={renderListing}
-          ListEmptyComponent={!loading ? <EmptyState label="No properties yet" /> : null}
-        />
-      )}
-
-      {section === 'hotels' && (
-        <FlatList
-          data={hotels}
-          key="hotels-list"
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.listContent}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
-          renderItem={renderHotel}
-          ListEmptyComponent={!loading ? <EmptyState label="No hotels yet" /> : null}
-        />
-      )}
-
-      {section === 'services' && (
-        <FlatList
-          data={services}
-          key="services-list"
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.listContent}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
-          renderItem={renderService}
-          ListEmptyComponent={!loading ? <EmptyState label="No services yet" /> : null}
-        />
-      )}
+      <FlatList
+        data={listings}
+        keyExtractor={(item) => item.id}
+        numColumns={2}
+        columnWrapperStyle={styles.row}
+        contentContainerStyle={styles.listContent}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
+        renderItem={renderListing}
+        ListEmptyComponent={!loading ? <EmptyState label="No properties yet" /> : null}
+      />
     </View>
   );
 }
@@ -337,23 +227,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 3,
   },
   unreadBadgeText: { color: '#fff', fontSize: 9, fontWeight: '700' },
-  sectionTabs: {
-    flexDirection: 'row',
-    paddingHorizontal: spacing.lg,
-    gap: spacing.xl,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  sectionTab: { paddingVertical: spacing.md },
-  sectionTabText: { fontSize: fontSize.md, color: colors.textMuted, fontWeight: '600' },
-  sectionTabTextActive: { color: colors.accent },
-  sectionTabIndicator: {
-    marginTop: spacing.sm,
-    height: 2,
-    backgroundColor: colors.accent,
-    borderRadius: 1,
-  },
-  pillsWrap: { paddingVertical: spacing.md },
+  pillsWrap: { paddingTop: spacing.sm, paddingBottom: spacing.md, borderTopWidth: 1, borderTopColor: colors.border },
   listContent: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl, gap: spacing.md },
   row: { gap: spacing.md },
   emptyState: { paddingTop: spacing.xxl, alignItems: 'center' },

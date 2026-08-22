@@ -9,10 +9,8 @@ import { colors, fontSize, radius, spacing } from '../constants/theme';
 import type { Profile } from '../lib/auth-context';
 
 const roleChoices: { role: Profile['role']; icon: keyof typeof Ionicons.glyphMap; title: string; subtitle: string }[] = [
-  { role: 'user', icon: 'home-outline', title: 'Renter / Buyer', subtitle: 'Looking for a place, land, or services' },
+  { role: 'user', icon: 'home-outline', title: 'Renter / Buyer', subtitle: 'Looking for a place or land' },
   { role: 'agent', icon: 'business-outline', title: 'Agent / Landlord', subtitle: 'Listing properties for rent or sale' },
-  { role: 'service_provider', icon: 'construct-outline', title: 'Service Provider', subtitle: 'Offering plumbing, cleaning, or other trades' },
-  { role: 'hotel_owner', icon: 'bed-outline', title: 'Hotel Owner', subtitle: 'Listing hotel rooms and stays' },
 ];
 
 export default function OnboardingScreen() {

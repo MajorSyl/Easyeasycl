@@ -38,7 +38,7 @@ export default function PrivacyPolicyScreen() {
         <Section title="3. How We Use Your Information">
           {`We use your information to:\n\n` +
             `• Create and maintain your account.\n` +
-            `• Display and facilitate transactions for listings, hotels, and services.\n` +
+            `• Display and facilitate transactions for property listings.\n` +
             `• Send service notifications and updates relevant to your account.\n` +
             `• Improve the Platform through analytics and user feedback.\n` +
             `• Comply with legal obligations and enforce our Terms of Service.`}
