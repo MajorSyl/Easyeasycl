@@ -1,8 +1,15 @@
 import { createClient } from '@/lib/supabase-server';
 import { redirect } from 'next/navigation';
-import { updateProfileRole } from '../actions';
+import { clearProfileFlag, setVerificationTier, updateProfileRole } from '../actions';
 
 const ROLES = ['user', 'agent', 'service_provider', 'hotel_owner'];
+
+const VERIFICATION_LABELS: Record<string, string> = {
+  none: 'None',
+  phone_verified: 'Phone Verified',
+  agent_verified: 'Agent Verified',
+  id_verified: 'ID Verified',
+};
 
 export default async function UsersPage() {
   const supabase = await createClient();
@@ -15,13 +22,19 @@ export default async function UsersPage() {
 
   const { data: users } = await supabase
     .from('profiles')
-    .select('id, full_name, role, business_name, is_admin, created_at')
+    .select('id, full_name, role, business_name, is_admin, created_at, verification_tier, phone_verification_requested_at')
     .order('created_at', { ascending: false });
 
-  const { data: phones } = await supabase.rpc('get_profile_phones', {
-    profile_ids: (users ?? []).map((u) => u.id),
-  });
+  const userIds = (users ?? []).map((u) => u.id);
+  const { data: phones } = await supabase.rpc('get_profile_phones', { profile_ids: userIds });
   const phoneById = new Map((phones ?? []).map((p: { id: string; phone: string | null }) => [p.id, p.phone]));
+
+  const { data: flags } = await supabase.rpc('admin_get_flagged_status', { profile_ids: userIds });
+  const flaggedAtById = new Map(
+    (flags ?? [])
+      .filter((f: { id: string; flagged_for_review_at: string | null }) => f.flagged_for_review_at)
+      .map((f: { id: string; flagged_for_review_at: string | null }) => [f.id, f.flagged_for_review_at])
+  );
 
   return (
     <>
@@ -40,6 +53,8 @@ export default async function UsersPage() {
                   <th>Phone</th>
                   <th>Joined</th>
                   <th>Flags</th>
+                  <th>Reported</th>
+                  <th>Verification</th>
                   <th>Change role</th>
                 </tr>
               </thead>
@@ -57,6 +72,45 @@ export default async function UsersPage() {
                     <td className="muted">{phoneById.get(u.id) ?? '—'}</td>
                     <td className="muted">{new Date(u.created_at).toLocaleDateString('en-GB')}</td>
                     <td>{u.is_admin ? <span className="badge badge-blue">Admin</span> : '—'}</td>
+                    <td>
+                      {flaggedAtById.has(u.id) ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-start' }}>
+                          <span className="badge badge-amber">Flagged</span>
+                          <span className="muted" style={{ fontSize: 11 }}>
+                            {new Date(flaggedAtById.get(u.id) as string).toLocaleDateString('en-GB')}
+                          </span>
+                          <form action={async () => { 'use server'; await clearProfileFlag(u.id); }}>
+                            <button type="submit" className="btn btn-ghost btn-sm">Clear</button>
+                          </form>
+                        </div>
+                      ) : (
+                        '—'
+                      )}
+                    </td>
+                    <td>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-start' }}>
+                        <span className={`badge ${u.verification_tier === 'none' ? 'badge-gray' : 'badge-green'}`}>
+                          {VERIFICATION_LABELS[u.verification_tier] ?? u.verification_tier}
+                        </span>
+                        {u.verification_tier === 'none' && u.phone_verification_requested_at && (
+                          <>
+                            <span className="muted" style={{ fontSize: 11 }}>
+                              Requested {new Date(u.phone_verification_requested_at).toLocaleDateString('en-GB')}
+                            </span>
+                            <form action={async () => { 'use server'; await setVerificationTier(u.id, 'phone_verified'); }}>
+                              <button type="submit" className="btn btn-sm" style={{ background: '#16a34a', color: '#fff', border: 'none' }}>
+                                Verify Phone
+                              </button>
+                            </form>
+                          </>
+                        )}
+                        {u.verification_tier === 'phone_verified' && (
+                          <form action={async () => { 'use server'; await setVerificationTier(u.id, 'none'); }}>
+                            <button type="submit" className="btn btn-ghost btn-sm">Revoke</button>
+                          </form>
+                        )}
+                      </div>
+                    </td>
                     <td>
                       <form
                         action={async (fd: FormData) => {

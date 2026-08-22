@@ -2,6 +2,8 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from '
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from './supabase';
 
+export type VerificationTier = 'none' | 'phone_verified' | 'agent_verified' | 'id_verified';
+
 export type Profile = {
   id: string;
   full_name: string | null;
@@ -9,6 +11,8 @@ export type Profile = {
   phone: string | null;
   role: 'user' | 'agent' | 'service_provider' | 'hotel_owner';
   business_name: string | null;
+  verification_tier: VerificationTier;
+  phone_verification_requested_at: string | null;
 };
 
 type AuthContextValue = {
@@ -38,7 +42,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const [{ data }, { data: phone }] = await Promise.all([
       supabase
         .from('profiles')
-        .select('id, full_name, avatar_url, role, business_name')
+        .select('id, full_name, avatar_url, role, business_name, verification_tier, phone_verification_requested_at')
         .eq('id', userId)
         .single(),
       supabase.rpc('get_profile_phone', { profile_id: userId }),

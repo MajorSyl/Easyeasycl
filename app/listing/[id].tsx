@@ -46,6 +46,7 @@ export default function ListingDetailScreen() {
       .from('listings')
       .select('*, owner:profiles(full_name, avatar_url, role)')
       .eq('id', id)
+      .eq('is_active', true)
       .single()
       .then(({ data }) => {
         if (!cancelled) {
@@ -67,6 +68,35 @@ export default function ListingDetailScreen() {
     await Share.share({
       message: `${listing.title}\n${formatPrice(listing.price, listing.currency, listing.price_unit)} · ${listing.location}\n\nFound on Easyfen`,
     });
+  }
+
+  async function submitReport(reason: string) {
+    if (!listing || !session) return;
+    const { error } = await supabase
+      .from('reports')
+      .insert({ reporter_id: session.user.id, item_type: 'listing', item_id: listing.id, reason });
+    if (error) {
+      Alert.alert('Could not submit report', friendlyErrorMessage(error));
+      return;
+    }
+    Alert.alert('Listing reported', 'This listing has been suspended pending review. Thank you for the report.', [
+      { text: 'OK', onPress: () => router.back() },
+    ]);
+  }
+
+  function handleReport() {
+    if (!listing) return;
+    if (!session) {
+      router.push('/auth');
+      return;
+    }
+    if (session.user.id === listing.owner_id) return;
+    Alert.alert('Report this listing', 'Why are you reporting this listing?', [
+      { text: 'Spam or scam', onPress: () => submitReport('Spam or scam') },
+      { text: 'Misleading information', onPress: () => submitReport('Misleading information') },
+      { text: 'Inappropriate content', onPress: () => submitReport('Inappropriate content') },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
   }
 
   async function messageAgent() {
@@ -148,6 +178,11 @@ export default function ListingDetailScreen() {
               <Ionicons name="chevron-back" size={20} color={colors.textPrimary} />
             </Pressable>
             <View style={styles.topBarRight}>
+              {session?.user.id !== listing.owner_id && (
+                <Pressable style={styles.roundButton} onPress={handleReport} hitSlop={8}>
+                  <Ionicons name="flag-outline" size={18} color={colors.textPrimary} />
+                </Pressable>
+              )}
               <Pressable style={styles.roundButton} onPress={handleShare} hitSlop={8}>
                 <Ionicons name="share-outline" size={18} color={colors.textPrimary} />
               </Pressable>

@@ -9,7 +9,7 @@ import { friendlyErrorMessage } from '../../lib/errors';
 import { colors, fontSize, spacing } from '../../constants/theme';
 import { ListingCard } from '../../components/ListingCard';
 import { getOrCreateConversation } from '../../lib/conversations';
-import { initialsFor, roleLabel } from '../../lib/format';
+import { initialsFor, roleLabel, verificationBadgeLabel } from '../../lib/format';
 import type { Profile } from '../../lib/auth-context';
 import type { Listing } from '../../lib/types';
 
@@ -31,10 +31,15 @@ export default function PublicProfileScreen() {
       const [profileRes, listings] = await Promise.all([
         supabase
           .from('profiles')
-          .select('id, full_name, avatar_url, role, business_name, created_at')
+          .select('id, full_name, avatar_url, role, business_name, created_at, verification_tier')
           .eq('id', id)
           .single(),
-        supabase.from('listings').select(ownerJoin).eq('owner_id', id).order('created_at', { ascending: false }),
+        supabase
+          .from('listings')
+          .select(ownerJoin)
+          .eq('owner_id', id)
+          .eq('is_active', true)
+          .order('created_at', { ascending: false }),
       ]);
       if (cancelled) return;
       setProfile(profileRes.data as Profile | null);
@@ -165,6 +170,12 @@ export default function PublicProfileScreen() {
             <Text style={styles.name}>{profile.full_name ?? 'Easyfen User'}</Text>
             {roleLabel(profile.role) && <Text style={styles.role}>{roleLabel(profile.role)}</Text>}
             {profile.business_name && <Text style={styles.business}>{profile.business_name}</Text>}
+            {verificationBadgeLabel(profile.verification_tier) && (
+              <View style={styles.verifiedRow}>
+                <Ionicons name="checkmark-circle" size={14} color={colors.online} />
+                <Text style={styles.verifiedText}>{verificationBadgeLabel(profile.verification_tier)}</Text>
+              </View>
+            )}
 
             {session?.user.id !== profile.id && (
               <Pressable style={styles.messageButton} onPress={handleMessage}>
@@ -218,6 +229,8 @@ const styles = StyleSheet.create({
   name: { fontSize: fontSize.xl, fontWeight: '700', color: colors.textPrimary },
   role: { fontSize: 11, fontWeight: '700', color: colors.accent, letterSpacing: 0.4, marginTop: 2 },
   business: { fontSize: fontSize.sm, color: colors.textSecondary, marginTop: 2 },
+  verifiedRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 },
+  verifiedText: { fontSize: fontSize.xs, fontWeight: '700', color: colors.online },
   messageButton: {
     flexDirection: 'row',
     alignItems: 'center',

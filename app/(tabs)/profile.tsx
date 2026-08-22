@@ -21,7 +21,7 @@ import { notifyListingsChanged } from '../../lib/listings-cache-bus';
 import { uploadAvatar } from '../../lib/upload';
 import { sanitizeText } from '../../lib/sanitize';
 import { colors, fontSize, radius, spacing } from '../../constants/theme';
-import { daysSince, formatPrice, initialsFor, roleLabel } from '../../lib/format';
+import { daysSince, formatPrice, initialsFor, roleLabel, verificationBadgeLabel } from '../../lib/format';
 import { SelectField, type SelectOption } from '../../components/SelectField';
 import type { Profile } from '../../lib/auth-context';
 
@@ -34,6 +34,7 @@ type MyListing = {
   priceLabel: string;
   createdAt: string;
   lastConfirmedAt: string;
+  isActive: boolean;
 };
 
 const STALE_AFTER_DAYS = 30;
@@ -64,6 +65,7 @@ export default function ProfileScreen() {
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
+  const [requestingVerification, setRequestingVerification] = useState(false);
 
   const loadMyListings = useCallback(async (force = false) => {
     if (!session) {
@@ -75,7 +77,7 @@ export default function ProfileScreen() {
     const uid = session.user.id;
     const { data: listings, error } = await supabase
       .from('listings')
-      .select('id, title, price, currency, price_unit, created_at, last_confirmed_at')
+      .select('id, title, price, currency, price_unit, created_at, last_confirmed_at, is_active')
       .eq('owner_id', uid);
 
     if (error) {
@@ -92,6 +94,7 @@ export default function ProfileScreen() {
       priceLabel: formatPrice(item.price, item.currency, item.price_unit),
       createdAt: item.created_at,
       lastConfirmedAt: item.last_confirmed_at,
+      isActive: item.is_active,
     }));
 
     combined.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
@@ -198,6 +201,22 @@ export default function ProfileScreen() {
     setMyListings((prev) => prev.map((l) => (l.id === item.id ? { ...l, lastConfirmedAt: nowIso } : l)));
   }
 
+  async function requestPhoneVerification() {
+    if (!session || requestingVerification) return;
+    setRequestingVerification(true);
+    const { error } = await supabase
+      .from('profiles')
+      .update({ phone_verification_requested_at: new Date().toISOString() })
+      .eq('id', session.user.id);
+    setRequestingVerification(false);
+    if (error) {
+      Alert.alert('Could not request verification', friendlyErrorMessage(error));
+      return;
+    }
+    await refreshProfile();
+    Alert.alert('Request sent', "We'll review your phone number and verify your account soon.");
+  }
+
   async function handleLogOut() {
     await signOut();
     router.replace('/');
@@ -252,6 +271,27 @@ export default function ProfileScreen() {
                 {profile?.business_name && <Text style={styles.businessName}>{profile.business_name}</Text>}
                 <Text style={styles.contactText}>{session.user.email}</Text>
                 {profile?.phone && <Text style={styles.contactText}>{profile.phone}</Text>}
+
+                {verificationBadgeLabel(profile?.verification_tier) ? (
+                  <View style={styles.verifiedBadge}>
+                    <Ionicons name="checkmark-circle" size={14} color={colors.online} />
+                    <Text style={styles.verifiedBadgeText}>{verificationBadgeLabel(profile?.verification_tier)}</Text>
+                  </View>
+                ) : profile?.phone_verification_requested_at ? (
+                  <Text style={styles.verificationPending}>Phone verification pending review</Text>
+                ) : profile?.phone ? (
+                  <Pressable
+                    style={styles.verifyButton}
+                    onPress={requestPhoneVerification}
+                    disabled={requestingVerification}
+                  >
+                    {requestingVerification ? (
+                      <ActivityIndicator size="small" color={colors.accent} />
+                    ) : (
+                      <Text style={styles.verifyButtonText}>Verify Phone Number</Text>
+                    )}
+                  </Pressable>
+                ) : null}
 
                 <Pressable style={styles.editButton} onPress={startEditing}>
                   <Ionicons name="pencil-outline" size={14} color={colors.accent} />
@@ -327,11 +367,23 @@ export default function ProfileScreen() {
           <View>
             <View style={styles.listingRow}>
               <View style={styles.listingBody}>
-                <Text style={styles.listingKind}>{kindLabels[item.kind]}</Text>
+                <View style={styles.listingKindRow}>
+                  <Text style={styles.listingKind}>{kindLabels[item.kind]}</Text>
+                  {!item.isActive && (
+                    <View style={styles.suspendedBadge}>
+                      <Text style={styles.suspendedBadgeText}>SUSPENDED</Text>
+                    </View>
+                  )}
+                </View>
                 <Text style={styles.listingTitle} numberOfLines={1}>
                   {item.title}
                 </Text>
                 <Text style={styles.listingPrice}>{item.priceLabel}</Text>
+                {!item.isActive && (
+                  <Text style={styles.suspendedNote}>
+                    This listing was reported and suspended pending admin review.
+                  </Text>
+                )}
               </View>
               <Pressable
                 style={styles.editButtonRow}
@@ -436,6 +488,11 @@ const styles = StyleSheet.create({
   roleBadge: { fontSize: 10, fontWeight: '700', color: colors.accent, letterSpacing: 0.4, marginTop: 4 },
   businessName: { fontSize: fontSize.sm, color: colors.textSecondary, marginTop: 2 },
   contactText: { fontSize: fontSize.sm, color: colors.textMuted, marginTop: 2 },
+  verifiedBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: spacing.sm },
+  verifiedBadgeText: { fontSize: fontSize.xs, fontWeight: '700', color: colors.online },
+  verificationPending: { fontSize: fontSize.xs, color: colors.textMuted, marginTop: spacing.sm, fontStyle: 'italic' },
+  verifyButton: { marginTop: spacing.sm },
+  verifyButtonText: { fontSize: fontSize.xs, fontWeight: '700', color: colors.accent },
   editButton: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: spacing.md },
   editButtonText: { fontSize: fontSize.sm, color: colors.accent, fontWeight: '600' },
   editForm: { width: '100%', gap: spacing.md },
@@ -494,7 +551,11 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   listingBody: { flex: 1 },
+  listingKindRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   listingKind: { fontSize: 10, fontWeight: '700', color: colors.textMuted, letterSpacing: 0.4 },
+  suspendedBadge: { backgroundColor: colors.danger, borderRadius: radius.sm, paddingHorizontal: 6, paddingVertical: 1 },
+  suspendedBadgeText: { fontSize: 9, fontWeight: '700', color: '#fff', letterSpacing: 0.4 },
+  suspendedNote: { fontSize: fontSize.xs, color: colors.danger, marginTop: 4 },
   listingTitle: { fontSize: fontSize.sm, fontWeight: '700', color: colors.textPrimary, marginTop: 2 },
   listingPrice: { fontSize: fontSize.sm, color: colors.accent, fontWeight: '600', marginTop: 2 },
   editButtonRow: { padding: spacing.sm },

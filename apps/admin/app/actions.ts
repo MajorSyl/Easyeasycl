@@ -42,6 +42,25 @@ export async function updateProfileRole(userId: string, role: string) {
   revalidatePath('/users');
 }
 
+const VERIFICATION_TIERS = ['none', 'phone_verified', 'agent_verified', 'id_verified'];
+
+export async function setVerificationTier(userId: string, tier: string) {
+  const supabase = await createClient();
+  await requireAdmin(supabase);
+  if (!VERIFICATION_TIERS.includes(tier)) throw new Error('Invalid verification tier');
+  const { error } = await supabase.rpc('admin_set_verification_tier', { target_user_id: userId, tier });
+  if (error) throw error;
+  revalidatePath('/users');
+}
+
+export async function clearProfileFlag(userId: string) {
+  const supabase = await createClient();
+  await requireAdmin(supabase);
+  const { error } = await supabase.rpc('admin_clear_profile_flag', { target_user_id: userId });
+  if (error) throw error;
+  revalidatePath('/users');
+}
+
 export async function toggleListingFlag(
   table: 'listings' | 'hotels' | 'services',
   id: string,
@@ -51,7 +70,15 @@ export async function toggleListingFlag(
   const supabase = await createClient();
   await requireAdmin(supabase);
   if (!TABLES.includes(table) || !FLAG_FIELDS.includes(field)) throw new Error('Invalid request');
-  await supabase.from(table).update({ [field]: value }).eq('id', id);
+  if (table === 'listings') {
+    // listings.is_verified/is_premium/is_active are no longer directly
+    // client-writable (an owner could otherwise self-verify or undo a
+    // report-triggered suspension) — route through the admin-gated RPC.
+    const { error } = await supabase.rpc('admin_set_listing_flags', { item_id: id, [field]: value });
+    if (error) throw error;
+  } else {
+    await supabase.from(table).update({ [field]: value }).eq('id', id);
+  }
   revalidatePath('/content');
 }
 
@@ -70,7 +97,12 @@ export async function hideReportedItem(
   const supabase = await createClient();
   await requireAdmin(supabase);
   if (!TABLES.includes(table)) throw new Error('Invalid table');
-  await supabase.from(table).update({ is_active: false }).eq('id', itemId);
+  if (table === 'listings') {
+    const { error } = await supabase.rpc('admin_set_listing_flags', { item_id: itemId, is_active: false });
+    if (error) throw error;
+  } else {
+    await supabase.from(table).update({ is_active: false }).eq('id', itemId);
+  }
   await supabase.from('reports').delete().eq('id', reportId);
   revalidatePath('/reports');
   revalidatePath('/content');

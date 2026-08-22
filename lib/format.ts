@@ -55,6 +55,17 @@ export function formatListingAge(isoDate: string) {
   return `Listed ${years} year${years === 1 ? '' : 's'} ago`;
 }
 
+const verificationLabels: Record<string, string> = {
+  phone_verified: 'Phone Verified',
+  agent_verified: 'Agent Verified',
+  id_verified: 'ID Verified',
+};
+
+export function verificationBadgeLabel(tier: string | null | undefined) {
+  if (!tier) return null;
+  return verificationLabels[tier] ?? null;
+}
+
 export function formatMessageTimestamp(isoDate: string) {
   const date = new Date(isoDate);
   const now = new Date();
