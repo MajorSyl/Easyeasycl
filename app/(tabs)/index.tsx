@@ -158,6 +158,12 @@ export default function HomeScreen() {
         </Pressable>
       </View>
 
+      <Pressable style={styles.neighborhoodRow} onPress={() => router.push('/neighborhoods')}>
+        <Ionicons name="location-outline" size={16} color={colors.accent} />
+        <Text style={styles.neighborhoodRowText}>Browse by Neighborhood</Text>
+        <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
+      </Pressable>
+
       <View style={styles.pillsWrap}>
         <FilterPills options={categoryOptions} value={categoryFilter} onChange={setCategoryFilter} />
       </View>
@@ -238,6 +244,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 3,
   },
   unreadBadgeText: { color: '#fff', fontSize: 9, fontWeight: '700' },
+  neighborhoodRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.sm,
+  },
+  neighborhoodRowText: { flex: 1, fontSize: fontSize.sm, fontWeight: '600', color: colors.textPrimary },
   pillsWrap: { paddingTop: spacing.sm, paddingBottom: spacing.md, borderTopWidth: 1, borderTopColor: colors.border },
   listContent: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl, gap: spacing.md },
   row: { gap: spacing.md },
