@@ -93,17 +93,25 @@ export default function HomeScreen() {
       .select('id')
       .or(`participant_one.eq.${session.user.id},participant_two.eq.${session.user.id}`);
     const ids = (conversations ?? []).map((c) => c.id);
-    if (ids.length === 0) {
-      setUnreadCount(0);
-      return;
+
+    let unreadMessages = 0;
+    if (ids.length > 0) {
+      const { count } = await supabase
+        .from('messages')
+        .select('id', { count: 'exact', head: true })
+        .in('conversation_id', ids)
+        .is('read_at', null)
+        .neq('sender_id', session.user.id);
+      unreadMessages = count ?? 0;
     }
-    const { count } = await supabase
-      .from('messages')
+
+    const { count: unreadMatches } = await supabase
+      .from('saved_search_matches')
       .select('id', { count: 'exact', head: true })
-      .in('conversation_id', ids)
-      .is('read_at', null)
-      .neq('sender_id', session.user.id);
-    setUnreadCount(count ?? 0);
+      .eq('user_id', session.user.id)
+      .is('read_at', null);
+
+    setUnreadCount(unreadMessages + (unreadMatches ?? 0));
   }, [session]);
 
   useFocusEffect(

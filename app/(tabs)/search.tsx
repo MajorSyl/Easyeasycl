@@ -1,9 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, FlatList, Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, FlatList, Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, fontSize, radius, spacing } from '../../constants/theme';
 import { supabase } from '../../lib/supabase';
+import { useAuth } from '../../lib/auth-context';
+import { friendlyErrorMessage } from '../../lib/errors';
 import { ListingCard } from '../../components/ListingCard';
 import type { Listing } from '../../lib/types';
 
@@ -23,6 +26,7 @@ function escapeForFilter(text: string) {
 
 export default function SearchScreen() {
   const insets = useSafeAreaInsets();
+  const { session } = useAuth();
   const [query, setQuery] = useState('');
   const [budget, setBudget] = useState('');
   const [sortMode, setSortMode] = useState<SortMode>('newest');
@@ -30,6 +34,7 @@ export default function SearchScreen() {
   const [results, setResults] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchError, setSearchError] = useState(false);
+  const [savingSearch, setSavingSearch] = useState(false);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -86,6 +91,29 @@ export default function SearchScreen() {
     [results.length]
   );
 
+  const canSaveSearch = query.trim().length > 0 || budget.trim().length > 0;
+
+  async function saveSearch() {
+    if (!canSaveSearch || savingSearch) return;
+    if (!session) {
+      router.push('/auth');
+      return;
+    }
+    setSavingSearch(true);
+    const maxPrice = budget.trim() ? Number(budget) : null;
+    const { error } = await supabase.from('saved_searches').insert({
+      user_id: session.user.id,
+      query: query.trim() || null,
+      max_price: maxPrice && !Number.isNaN(maxPrice) ? maxPrice : null,
+    });
+    setSavingSearch(false);
+    if (error) {
+      Alert.alert('Could not save search', friendlyErrorMessage(error));
+      return;
+    }
+    Alert.alert('Search saved', "We'll notify you when a new listing matches this search.");
+  }
+
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.header}>
@@ -114,6 +142,17 @@ export default function SearchScreen() {
           </View>
           <Pressable style={styles.sortButton} onPress={() => setSortMenuOpen(true)}>
             <Ionicons name="options-outline" size={20} color={colors.textPrimary} />
+          </Pressable>
+          <Pressable
+            style={[styles.sortButton, !canSaveSearch && styles.sortButtonDisabled]}
+            onPress={saveSearch}
+            disabled={!canSaveSearch || savingSearch}
+          >
+            {savingSearch ? (
+              <ActivityIndicator size="small" color={colors.accent} />
+            ) : (
+              <Ionicons name="bookmark-outline" size={20} color={canSaveSearch ? colors.textPrimary : colors.textMuted} />
+            )}
           </Pressable>
         </View>
 
@@ -206,6 +245,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  sortButtonDisabled: { opacity: 0.5 },
   resultCount: { fontSize: fontSize.sm, color: colors.textSecondary, fontWeight: '600', marginTop: 2 },
   loadingWrap: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   listContent: { padding: spacing.lg, paddingTop: spacing.md, gap: spacing.md },

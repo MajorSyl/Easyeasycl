@@ -306,6 +306,14 @@ export default function ProfileScreen() {
           )}
 
           {!editing && (
+            <Pressable style={styles.savedRow} onPress={() => router.push('/saved-searches')}>
+              <Ionicons name="bookmark" size={18} color={colors.accent} />
+              <Text style={styles.savedRowText}>Saved Searches</Text>
+              <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+            </Pressable>
+          )}
+
+          {!editing && (
             <View style={styles.sectionHeaderRow}>
               <Text style={styles.sectionTitle}>My Listings</Text>
               {loadingListings && <ActivityIndicator size="small" color={colors.accent} />}
