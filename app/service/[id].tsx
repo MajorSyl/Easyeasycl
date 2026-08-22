@@ -150,7 +150,7 @@ export default function ServiceDetailScreen() {
           </View>
           <View style={styles.heroTitleRow}>
             <Text style={styles.title}>{service.business_name}</Text>
-            {service.is_verified && <Ionicons name="checkmark-circle" size={18} color={colors.online} />}
+            {service.is_verified && <Ionicons name="checkmark-circle" size={18} color={colors.success} />}
           </View>
           <Text style={styles.category}>{service.category}</Text>
 

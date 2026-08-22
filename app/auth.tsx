@@ -173,7 +173,7 @@ const styles = StyleSheet.create({
     left: -9999,
   },
   error: { color: colors.danger, fontSize: fontSize.sm, marginBottom: spacing.md },
-  notice: { color: colors.online, fontSize: fontSize.sm, marginBottom: spacing.md },
+  notice: { color: colors.success, fontSize: fontSize.sm, marginBottom: spacing.md },
   submitButton: {
     backgroundColor: colors.accent,
     borderRadius: radius.md,

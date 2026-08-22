@@ -274,7 +274,7 @@ export default function ProfileScreen() {
 
                 {verificationBadgeLabel(profile?.verification_tier) ? (
                   <View style={styles.verifiedBadge}>
-                    <Ionicons name="checkmark-circle" size={14} color={colors.online} />
+                    <Ionicons name="checkmark-circle" size={14} color={colors.success} />
                     <Text style={styles.verifiedBadgeText}>{verificationBadgeLabel(profile?.verification_tier)}</Text>
                   </View>
                 ) : profile?.phone_verification_requested_at ? (
@@ -489,7 +489,7 @@ const styles = StyleSheet.create({
   businessName: { fontSize: fontSize.sm, color: colors.textSecondary, marginTop: 2 },
   contactText: { fontSize: fontSize.sm, color: colors.textMuted, marginTop: 2 },
   verifiedBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: spacing.sm },
-  verifiedBadgeText: { fontSize: fontSize.xs, fontWeight: '700', color: colors.online },
+  verifiedBadgeText: { fontSize: fontSize.xs, fontWeight: '700', color: colors.success },
   verificationPending: { fontSize: fontSize.xs, color: colors.textMuted, marginTop: spacing.sm, fontStyle: 'italic' },
   verifyButton: { marginTop: spacing.sm },
   verifyButtonText: { fontSize: fontSize.xs, fontWeight: '700', color: colors.accent },

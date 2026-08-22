@@ -172,7 +172,7 @@ export default function PublicProfileScreen() {
             {profile.business_name && <Text style={styles.business}>{profile.business_name}</Text>}
             {verificationBadgeLabel(profile.verification_tier) && (
               <View style={styles.verifiedRow}>
-                <Ionicons name="checkmark-circle" size={14} color={colors.online} />
+                <Ionicons name="checkmark-circle" size={14} color={colors.success} />
                 <Text style={styles.verifiedText}>{verificationBadgeLabel(profile.verification_tier)}</Text>
               </View>
             )}
@@ -230,7 +230,7 @@ const styles = StyleSheet.create({
   role: { fontSize: 11, fontWeight: '700', color: colors.accent, letterSpacing: 0.4, marginTop: 2 },
   business: { fontSize: fontSize.sm, color: colors.textSecondary, marginTop: 2 },
   verifiedRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 },
-  verifiedText: { fontSize: fontSize.xs, fontWeight: '700', color: colors.online },
+  verifiedText: { fontSize: fontSize.xs, fontWeight: '700', color: colors.success },
   messageButton: {
     flexDirection: 'row',
     alignItems: 'center',

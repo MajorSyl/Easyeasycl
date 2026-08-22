@@ -197,7 +197,7 @@ export default function ListingDetailScreen() {
             {listing.is_premium && <Badge label="PREMIUM" variant="premium" />}
             {listing.is_verified && (
               <View style={styles.verifiedRow}>
-                <Ionicons name="checkmark-circle" size={14} color={colors.online} />
+                <Ionicons name="checkmark-circle" size={14} color={colors.success} />
                 <Text style={styles.verifiedText}>Verified</Text>
               </View>
             )}
@@ -307,7 +307,7 @@ const styles = StyleSheet.create({
   body: { padding: spacing.lg },
   badgeRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   verifiedRow: { flexDirection: 'row', alignItems: 'center', gap: 3 },
-  verifiedText: { fontSize: fontSize.xs, color: colors.online, fontWeight: '600' },
+  verifiedText: { fontSize: fontSize.xs, color: colors.success, fontWeight: '600' },
   title: { fontSize: fontSize.xl, fontWeight: '700', color: colors.textPrimary, marginTop: spacing.sm },
   locationRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 },
   location: { fontSize: fontSize.sm, color: colors.textMuted },
