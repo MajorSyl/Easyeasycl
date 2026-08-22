@@ -29,6 +29,7 @@ export default function SearchScreen() {
   const [sortMenuOpen, setSortMenuOpen] = useState(false);
   const [results, setResults] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchError, setSearchError] = useState(false);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -43,7 +44,7 @@ export default function SearchScreen() {
     const term = escapeForFilter(text.trim());
     const maxPrice = budgetText.trim() ? Number(budgetText) : null;
 
-    let listingsQuery = supabase.from('listings').select('id, title, price, currency, price_unit, location, category, photos, view_count, is_premium, owner_id, owner:profiles(full_name, avatar_url, role)');
+    let listingsQuery = supabase.from('listings').select('id, title, price, currency, price_unit, location, category, photos, view_count, is_premium, owner_id, created_at, owner:profiles(full_name, avatar_url, role)');
 
     if (term) {
       listingsQuery = listingsQuery.or(`title.ilike.%${term}%,location.ilike.%${term}%`);
@@ -52,9 +53,17 @@ export default function SearchScreen() {
       listingsQuery = listingsQuery.lte('price', maxPrice);
     }
 
-    const { data: listings } = await listingsQuery.order('created_at', { ascending: false }).limit(30);
+    const { data: listings, error } = await listingsQuery.order('created_at', { ascending: false }).limit(30);
 
-    const combined: SearchResult[] = ((listings as Listing[]) ?? []).map((item) => ({
+    if (error) {
+      setSearchError(true);
+      setResults([]);
+      setLoading(false);
+      return;
+    }
+    setSearchError(false);
+
+    const combined: SearchResult[] = ((listings as unknown as Listing[]) ?? []).map((item) => ({
       kind: 'listing' as const,
       id: item.id,
       sortPrice: item.price,
@@ -123,7 +132,11 @@ export default function SearchScreen() {
           renderItem={({ item }) => <ListingCard listing={item.data} />}
           ListEmptyComponent={
             <View style={styles.emptyState}>
-              <Text style={styles.emptyStateText}>No results. Try a different search or budget.</Text>
+              <Text style={styles.emptyStateText}>
+                {searchError
+                  ? "Couldn't load results. Check your connection and try again."
+                  : 'No results. Try a different search or budget.'}
+              </Text>
             </View>
           }
         />

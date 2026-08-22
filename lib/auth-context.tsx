@@ -35,8 +35,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [onlineUserIds, setOnlineUserIds] = useState<Set<string>>(new Set());
 
   async function loadProfile(userId: string) {
-    const { data } = await supabase.from('profiles').select('*').eq('id', userId).single();
-    setProfile(data as Profile | null);
+    const [{ data }, { data: phone }] = await Promise.all([
+      supabase
+        .from('profiles')
+        .select('id, full_name, avatar_url, role, business_name')
+        .eq('id', userId)
+        .single(),
+      supabase.rpc('get_profile_phone', { profile_id: userId }),
+    ]);
+    setProfile(data ? ({ ...data, phone: phone ?? null } as Profile) : null);
   }
 
   useEffect(() => {

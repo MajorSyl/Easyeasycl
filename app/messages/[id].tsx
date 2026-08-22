@@ -39,6 +39,7 @@ export default function ChatThreadScreen() {
   const [otherUser, setOtherUser] = useState<(OwnerSummary & { id: string }) | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
   const listRef = useRef<FlatList<Message>>(null);
@@ -73,11 +74,18 @@ export default function ChatThreadScreen() {
       setOtherUser(other as unknown as OwnerSummary & { id: string });
     }
 
-    const { data: msgs } = await supabase
+    const { data: msgs, error: msgsError } = await supabase
       .from('messages')
       .select('id, conversation_id, sender_id, body, created_at, read_at')
       .eq('conversation_id', id)
       .order('created_at', { ascending: true });
+
+    if (msgsError) {
+      setLoadError(true);
+      setLoading(false);
+      return;
+    }
+    setLoadError(false);
     setMessages((msgs as Message[]) ?? []);
 
     await supabase
@@ -190,7 +198,9 @@ export default function ChatThreadScreen() {
         }}
         ListEmptyComponent={
           <View style={styles.emptyState}>
-            <Text style={styles.emptyStateText}>Say hello 👋</Text>
+            <Text style={styles.emptyStateText}>
+              {loadError ? "Couldn't load this conversation. Check your connection and try again." : 'Say hello 👋'}
+            </Text>
           </View>
         }
       />

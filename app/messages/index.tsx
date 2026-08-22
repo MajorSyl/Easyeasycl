@@ -32,6 +32,7 @@ export default function MessagesScreen() {
   const [conversations, setConversations] = useState<ConversationItem[]>([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
 
   const load = useCallback(async () => {
     if (!session) {
@@ -41,13 +42,20 @@ export default function MessagesScreen() {
     }
     const uid = session.user.id;
 
-    const { data: convRows } = await supabase
+    const { data: convRows, error: convError } = await supabase
       .from('conversations')
       .select(
         'id, participant_one, participant_two, last_message_at, one:profiles!conversations_participant_one_fkey(id, full_name, avatar_url, role), two:profiles!conversations_participant_two_fkey(id, full_name, avatar_url, role)'
       )
       .or(`participant_one.eq.${uid},participant_two.eq.${uid}`)
       .order('last_message_at', { ascending: false });
+
+    if (convError) {
+      setLoadError(true);
+      setLoading(false);
+      return;
+    }
+    setLoadError(false);
 
     const rows = (convRows as unknown as ConversationRow[]) ?? [];
     const ids = rows.map((r) => r.id);
@@ -159,9 +167,11 @@ export default function MessagesScreen() {
         ListEmptyComponent={
           <View style={styles.emptyState}>
             <Ionicons name="chatbubbles-outline" size={36} color={colors.textMuted} />
-            <Text style={styles.emptyStateTitle}>No conversations yet</Text>
+            <Text style={styles.emptyStateTitle}>{loadError ? "Couldn't load messages" : 'No conversations yet'}</Text>
             <Text style={styles.emptyStateText}>
-              Message an agent or service provider from a listing to start chatting.
+              {loadError
+                ? 'Check your connection and try again.'
+                : 'Message an agent from a listing to start chatting.'}
             </Text>
           </View>
         }

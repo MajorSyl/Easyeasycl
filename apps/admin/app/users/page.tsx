@@ -15,8 +15,13 @@ export default async function UsersPage() {
 
   const { data: users } = await supabase
     .from('profiles')
-    .select('id, full_name, phone, role, business_name, is_admin, created_at')
+    .select('id, full_name, role, business_name, is_admin, created_at')
     .order('created_at', { ascending: false });
+
+  const { data: phones } = await supabase.rpc('get_profile_phones', {
+    profile_ids: (users ?? []).map((u) => u.id),
+  });
+  const phoneById = new Map((phones ?? []).map((p: { id: string; phone: string | null }) => [p.id, p.phone]));
 
   return (
     <>
@@ -49,7 +54,7 @@ export default async function UsersPage() {
                       <span className={`badge ${roleBadge(u.role)}`}>{u.role}</span>
                     </td>
                     <td className="truncate muted">{u.business_name ?? '—'}</td>
-                    <td className="muted">{u.phone ?? '—'}</td>
+                    <td className="muted">{phoneById.get(u.id) ?? '—'}</td>
                     <td className="muted">{new Date(u.created_at).toLocaleDateString('en-GB')}</td>
                     <td>{u.is_admin ? <span className="badge badge-blue">Admin</span> : '—'}</td>
                     <td>

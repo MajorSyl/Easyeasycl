@@ -54,19 +54,26 @@ export function FavoritesProvider({ children }: { children: React.ReactNode }) {
         return copy;
       });
 
-      if (next) {
-        await supabase.from('favorites').insert({
-          user_id: session.user.id,
-          item_type: type,
-          item_id: id,
+      const { error } = next
+        ? await supabase.from('favorites').insert({
+            user_id: session.user.id,
+            item_type: type,
+            item_id: id,
+          })
+        : await supabase
+            .from('favorites')
+            .delete()
+            .eq('user_id', session.user.id)
+            .eq('item_type', type)
+            .eq('item_id', id);
+
+      if (error) {
+        // Roll back the optimistic update — the server never applied it.
+        setFavSet((prev) => {
+          const copy = new Set(prev);
+          next ? copy.delete(key) : copy.add(key);
+          return copy;
         });
-      } else {
-        await supabase
-          .from('favorites')
-          .delete()
-          .eq('user_id', session.user.id)
-          .eq('item_type', type)
-          .eq('item_id', id);
       }
 
       busyRef.current.delete(key);

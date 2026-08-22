@@ -16,6 +16,7 @@ export default function FavoritesScreen() {
   const { session } = useAuth();
   const [items, setItems] = useState<FavoriteItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
 
   const load = useCallback(async () => {
     if (!session) {
@@ -23,12 +24,19 @@ export default function FavoritesScreen() {
       setLoading(false);
       return;
     }
-    const { data: favorites } = await supabase
+    const { data: favorites, error: favoritesError } = await supabase
       .from('favorites')
       .select('item_type, item_id, created_at')
       .eq('user_id', session.user.id)
       .eq('item_type', 'listing')
       .order('created_at', { ascending: false });
+
+    if (favoritesError) {
+      setLoadError(true);
+      setLoading(false);
+      return;
+    }
+    setLoadError(false);
 
     const rows = favorites ?? [];
     const listingIds = rows.map((r) => r.item_id);
@@ -83,9 +91,11 @@ export default function FavoritesScreen() {
           ListEmptyComponent={
             <View style={styles.emptyState}>
               <Ionicons name="heart-outline" size={36} color={colors.textMuted} />
-              <Text style={styles.emptyStateTitle}>No favorites yet</Text>
+              <Text style={styles.emptyStateTitle}>{loadError ? "Couldn't load favorites" : 'No favorites yet'}</Text>
               <Text style={styles.emptyStateText}>
-                Tap the heart on any listing to save it here.
+                {loadError
+                  ? 'Check your connection and try again.'
+                  : 'Tap the heart on any listing to save it here.'}
               </Text>
             </View>
           }

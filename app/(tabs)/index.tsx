@@ -28,6 +28,7 @@ export default function HomeScreen() {
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>('all');
   const [listings, setListings] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
 
@@ -42,15 +43,21 @@ export default function HomeScreen() {
       const cached = cacheRef.current.get(categoryFilter);
       if (!force && cached && Date.now() - cached.fetchedAt < CACHE_TTL_MS) {
         setListings(cached.rows);
+        setLoadError(false);
         return;
       }
       let query = supabase
         .from('listings')
-        .select('id, title, price, currency, price_unit, location, category, photos, view_count, is_premium, owner_id, owner:profiles(full_name, avatar_url, role)')
+        .select('id, title, price, currency, price_unit, location, category, photos, view_count, is_premium, owner_id, created_at, owner:profiles(full_name, avatar_url, role)')
         .order('created_at', { ascending: false });
       if (categoryFilter !== 'all') query = query.eq('category', categoryFilter);
-      const { data } = await query;
-      const rows = (data as Listing[]) ?? [];
+      const { data, error } = await query;
+      if (error) {
+        setLoadError(true);
+        return;
+      }
+      setLoadError(false);
+      const rows = (data as unknown as Listing[]) ?? [];
       cacheRef.current.set(categoryFilter, { rows, fetchedAt: Date.now() });
       setListings(rows);
     },
@@ -163,7 +170,11 @@ export default function HomeScreen() {
         contentContainerStyle={styles.listContent}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
         renderItem={renderListing}
-        ListEmptyComponent={!loading ? <EmptyState label="No properties yet" /> : null}
+        ListEmptyComponent={
+          !loading ? (
+            <EmptyState label={loadError ? "Couldn't load properties. Pull down to try again." : 'No properties yet'} />
+          ) : null
+        }
       />
     </View>
   );

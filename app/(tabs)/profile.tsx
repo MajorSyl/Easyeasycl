@@ -49,6 +49,7 @@ export default function ProfileScreen() {
   const { session, profile, signOut, refreshProfile } = useAuth();
   const [myListings, setMyListings] = useState<MyListing[]>([]);
   const [loadingListings, setLoadingListings] = useState(true);
+  const [listingsLoadError, setListingsLoadError] = useState(false);
   const listingsFetchedAt = useRef(0);
 
   const [editing, setEditing] = useState(false);
@@ -68,10 +69,17 @@ export default function ProfileScreen() {
     }
     if (!force && Date.now() - listingsFetchedAt.current < 60_000) return;
     const uid = session.user.id;
-    const { data: listings } = await supabase
+    const { data: listings, error } = await supabase
       .from('listings')
       .select('id, title, price, currency, price_unit, created_at')
       .eq('owner_id', uid);
+
+    if (error) {
+      setListingsLoadError(true);
+      setLoadingListings(false);
+      return;
+    }
+    setListingsLoadError(false);
 
     const combined: MyListing[] = ((listings ?? []) as any[]).map((item) => ({
       kind: 'listing' as const,
@@ -308,7 +316,9 @@ export default function ProfileScreen() {
       ListEmptyComponent={
         !editing && !loadingListings ? (
           <View style={styles.emptyState}>
-            <Text style={styles.emptyStateText}>You haven't posted anything yet</Text>
+            <Text style={styles.emptyStateText}>
+              {listingsLoadError ? "Couldn't load your listings. Try again shortly." : "You haven't posted anything yet"}
+            </Text>
           </View>
         ) : null
       }
