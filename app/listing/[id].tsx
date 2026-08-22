@@ -23,7 +23,7 @@ import { getOrCreateConversation } from '../../lib/conversations';
 import { colors, fontSize, radius, spacing } from '../../constants/theme';
 import { Badge } from '../../components/Badge';
 import { FavoriteButton } from '../../components/FavoriteButton';
-import { categoryBadgeLabel, formatPrice, initialsFor } from '../../lib/format';
+import { categoryBadgeLabel, formatListingAge, formatPrice, initialsFor } from '../../lib/format';
 import type { Listing } from '../../lib/types';
 
 const windowWidth = Dimensions.get('window').width;
@@ -173,6 +173,9 @@ export default function ListingDetailScreen() {
             <Ionicons name="location-outline" size={14} color={colors.textMuted} />
             <Text style={styles.location}>{listing.location}</Text>
           </View>
+          {listing.last_confirmed_at && (
+            <Text style={styles.listingAge}>{formatListingAge(listing.last_confirmed_at)}</Text>
+          )}
 
           <Text style={styles.price}>{formatPrice(listing.price, listing.currency, listing.price_unit)}</Text>
 
@@ -273,6 +276,7 @@ const styles = StyleSheet.create({
   title: { fontSize: fontSize.xl, fontWeight: '700', color: colors.textPrimary, marginTop: spacing.sm },
   locationRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 },
   location: { fontSize: fontSize.sm, color: colors.textMuted },
+  listingAge: { fontSize: fontSize.xs, color: colors.textMuted, marginTop: 4 },
   price: { fontSize: fontSize.xl, fontWeight: '700', color: colors.accent, marginTop: spacing.md },
   statsRow: { flexDirection: 'row', gap: spacing.lg, marginTop: spacing.md },
   statItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },

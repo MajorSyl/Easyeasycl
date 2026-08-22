@@ -23,6 +23,7 @@ export type Listing = {
   is_verified?: boolean;
   view_count: number;
   created_at: string;
+  last_confirmed_at?: string;
   owner: OwnerSummary | null;
 };
 

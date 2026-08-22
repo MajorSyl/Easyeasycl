@@ -21,7 +21,7 @@ import { notifyListingsChanged } from '../../lib/listings-cache-bus';
 import { uploadAvatar } from '../../lib/upload';
 import { sanitizeText } from '../../lib/sanitize';
 import { colors, fontSize, radius, spacing } from '../../constants/theme';
-import { formatPrice, initialsFor, roleLabel } from '../../lib/format';
+import { daysSince, formatPrice, initialsFor, roleLabel } from '../../lib/format';
 import { SelectField, type SelectOption } from '../../components/SelectField';
 import type { Profile } from '../../lib/auth-context';
 
@@ -33,7 +33,10 @@ type MyListing = {
   title: string;
   priceLabel: string;
   createdAt: string;
+  lastConfirmedAt: string;
 };
+
+const STALE_AFTER_DAYS = 30;
 
 const roleOptions: SelectOption<Profile['role']>[] = [
   { value: 'user', label: 'Regular User' },
@@ -60,6 +63,7 @@ export default function ProfileScreen() {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [confirmingId, setConfirmingId] = useState<string | null>(null);
 
   const loadMyListings = useCallback(async (force = false) => {
     if (!session) {
@@ -71,7 +75,7 @@ export default function ProfileScreen() {
     const uid = session.user.id;
     const { data: listings, error } = await supabase
       .from('listings')
-      .select('id, title, price, currency, price_unit, created_at')
+      .select('id, title, price, currency, price_unit, created_at, last_confirmed_at')
       .eq('owner_id', uid);
 
     if (error) {
@@ -87,6 +91,7 @@ export default function ProfileScreen() {
       title: item.title,
       priceLabel: formatPrice(item.price, item.currency, item.price_unit),
       createdAt: item.created_at,
+      lastConfirmedAt: item.last_confirmed_at,
     }));
 
     combined.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
@@ -175,6 +180,22 @@ export default function ProfileScreen() {
     listingsFetchedAt.current = 0;
     setMyListings((prev) => prev.filter((l) => l.id !== item.id));
     notifyListingsChanged();
+  }
+
+  async function confirmStillAvailable(item: MyListing) {
+    if (confirmingId) return;
+    setConfirmingId(item.id);
+    const nowIso = new Date().toISOString();
+    const { error } = await supabase
+      .from('listings')
+      .update({ last_confirmed_at: nowIso })
+      .eq('id', item.id);
+    setConfirmingId(null);
+    if (error) {
+      Alert.alert('Could not confirm', friendlyErrorMessage(error));
+      return;
+    }
+    setMyListings((prev) => prev.map((l) => (l.id === item.id ? { ...l, lastConfirmedAt: nowIso } : l)));
   }
 
   async function handleLogOut() {
@@ -292,27 +313,49 @@ export default function ProfileScreen() {
           )}
         </>
       }
-      renderItem={({ item }) => (
-        <View style={styles.listingRow}>
-          <View style={styles.listingBody}>
-            <Text style={styles.listingKind}>{kindLabels[item.kind]}</Text>
-            <Text style={styles.listingTitle} numberOfLines={1}>
-              {item.title}
-            </Text>
-            <Text style={styles.listingPrice}>{item.priceLabel}</Text>
+      renderItem={({ item }) => {
+        const stale = daysSince(item.lastConfirmedAt) >= STALE_AFTER_DAYS;
+        return (
+          <View>
+            <View style={styles.listingRow}>
+              <View style={styles.listingBody}>
+                <Text style={styles.listingKind}>{kindLabels[item.kind]}</Text>
+                <Text style={styles.listingTitle} numberOfLines={1}>
+                  {item.title}
+                </Text>
+                <Text style={styles.listingPrice}>{item.priceLabel}</Text>
+              </View>
+              <Pressable
+                style={styles.editButtonRow}
+                onPress={() => router.push(`/edit/${item.kind}/${item.id}`)}
+                hitSlop={8}
+              >
+                <Ionicons name="pencil-outline" size={18} color={colors.accent} />
+              </Pressable>
+              <Pressable style={styles.deleteButton} onPress={() => confirmDelete(item)} hitSlop={8}>
+                <Ionicons name="trash-outline" size={18} color={colors.danger} />
+              </Pressable>
+            </View>
+            {stale && (
+              <View style={styles.staleBanner}>
+                <Ionicons name="time-outline" size={14} color={colors.textSecondary} />
+                <Text style={styles.staleBannerText}>Still available? Confirm to keep it fresh.</Text>
+                <Pressable
+                  style={styles.staleBannerButton}
+                  onPress={() => confirmStillAvailable(item)}
+                  disabled={confirmingId === item.id}
+                >
+                  {confirmingId === item.id ? (
+                    <ActivityIndicator size="small" color={colors.accent} />
+                  ) : (
+                    <Text style={styles.staleBannerButtonText}>Confirm</Text>
+                  )}
+                </Pressable>
+              </View>
+            )}
           </View>
-          <Pressable
-            style={styles.editButtonRow}
-            onPress={() => router.push(`/edit/${item.kind}/${item.id}`)}
-            hitSlop={8}
-          >
-            <Ionicons name="pencil-outline" size={18} color={colors.accent} />
-          </Pressable>
-          <Pressable style={styles.deleteButton} onPress={() => confirmDelete(item)} hitSlop={8}>
-            <Ionicons name="trash-outline" size={18} color={colors.danger} />
-          </Pressable>
-        </View>
-      )}
+        );
+      }}
       ListEmptyComponent={
         !editing && !loadingListings ? (
           <View style={styles.emptyState}>
@@ -448,6 +491,20 @@ const styles = StyleSheet.create({
   listingPrice: { fontSize: fontSize.sm, color: colors.accent, fontWeight: '600', marginTop: 2 },
   editButtonRow: { padding: spacing.sm },
   deleteButton: { padding: spacing.sm },
+  staleBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.accentSoft,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    marginTop: -spacing.xs,
+    marginBottom: spacing.sm,
+  },
+  staleBannerText: { flex: 1, fontSize: fontSize.xs, color: colors.textSecondary },
+  staleBannerButton: { paddingHorizontal: spacing.sm, paddingVertical: 4 },
+  staleBannerButtonText: { fontSize: fontSize.xs, fontWeight: '700', color: colors.accent },
   emptyState: { paddingVertical: spacing.xl, alignItems: 'center' },
   emptyStateText: { color: colors.textMuted, fontSize: fontSize.sm },
   logoutButton: {

@@ -6,7 +6,7 @@ import { router } from 'expo-router';
 import { Badge } from './Badge';
 import { FavoriteButton } from './FavoriteButton';
 import { colors, fontSize, radius, spacing } from '../constants/theme';
-import { categoryBadgeLabel, formatPrice, initialsFor } from '../lib/format';
+import { categoryBadgeLabel, formatListingAge, formatPrice, initialsFor } from '../lib/format';
 import type { Listing } from '../lib/types';
 
 export const ListingCard = memo(function ListingCard({ listing }: { listing: Listing }) {
@@ -51,6 +51,11 @@ export const ListingCard = memo(function ListingCard({ listing }: { listing: Lis
             {listing.location}
           </Text>
         </View>
+        {listing.last_confirmed_at && (
+          <Text style={styles.age} numberOfLines={1}>
+            {formatListingAge(listing.last_confirmed_at)}
+          </Text>
+        )}
 
         <View style={styles.footerRow}>
           <View>
@@ -121,6 +126,7 @@ const styles = StyleSheet.create({
   title: { fontSize: fontSize.sm, fontWeight: '700', color: colors.textPrimary },
   locationRow: { flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 3 },
   location: { fontSize: fontSize.xs, color: colors.textMuted, flexShrink: 1 },
+  age: { fontSize: 10, color: colors.textMuted, marginTop: 2 },
   footerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',

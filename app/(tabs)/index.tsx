@@ -48,7 +48,7 @@ export default function HomeScreen() {
       }
       let query = supabase
         .from('listings')
-        .select('id, title, price, currency, price_unit, location, category, photos, view_count, is_premium, owner_id, created_at, owner:profiles(full_name, avatar_url, role)')
+        .select('id, title, price, currency, price_unit, location, category, photos, view_count, is_premium, owner_id, created_at, last_confirmed_at, owner:profiles(full_name, avatar_url, role)')
         .order('created_at', { ascending: false });
       if (categoryFilter !== 'all') query = query.eq('category', categoryFilter);
       const { data, error } = await query;

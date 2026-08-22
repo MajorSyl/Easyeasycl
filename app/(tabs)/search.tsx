@@ -44,7 +44,7 @@ export default function SearchScreen() {
     const term = escapeForFilter(text.trim());
     const maxPrice = budgetText.trim() ? Number(budgetText) : null;
 
-    let listingsQuery = supabase.from('listings').select('id, title, price, currency, price_unit, location, category, photos, view_count, is_premium, owner_id, created_at, owner:profiles(full_name, avatar_url, role)');
+    let listingsQuery = supabase.from('listings').select('id, title, price, currency, price_unit, location, category, photos, view_count, is_premium, owner_id, created_at, last_confirmed_at, owner:profiles(full_name, avatar_url, role)');
 
     if (term) {
       listingsQuery = listingsQuery.or(`title.ilike.%${term}%,location.ilike.%${term}%`);
