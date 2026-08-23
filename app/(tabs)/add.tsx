@@ -1,7 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -16,6 +15,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../lib/auth-context';
 import { friendlyErrorMessage } from '../../lib/errors';
+import { appAlert } from '../../lib/alert';
 import { notifyListingsChanged } from '../../lib/listings-cache-bus';
 import { sanitizeText } from '../../lib/sanitize';
 import { useTabBarGap } from '../../lib/use-bottom-gap';
@@ -107,13 +107,13 @@ export default function AddListingScreen() {
     setSubmitting(false);
 
     if (error) {
-      Alert.alert('Could not publish listing', friendlyErrorMessage(error));
+      appAlert('Could not publish listing', friendlyErrorMessage(error));
       return;
     }
 
     resetForm();
     notifyListingsChanged();
-    Alert.alert('Listing published', 'Your listing is now live on Easyfen.', [
+    appAlert('Listing published', 'Your listing is now live on Easyfen.', [
       { text: 'View on Home', onPress: () => router.push('/') },
     ]);
   }

@@ -1,12 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Dimensions,
   FlatList,
   Pressable,
   ScrollView,
-  Share,
   StyleSheet,
   Text,
   View,
@@ -18,6 +16,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '../../lib/supabase';
 import { friendlyErrorMessage } from '../../lib/errors';
 import { useAuth } from '../../lib/auth-context';
+import { appAlert } from '../../lib/alert';
+import { shareText } from '../../lib/share';
 import { useBottomGap } from '../../lib/use-bottom-gap';
 import { getOrCreateConversation } from '../../lib/conversations';
 import { colors, fontSize, radius, spacing } from '../../constants/theme';
@@ -76,9 +76,9 @@ export default function HotelDetailScreen() {
 
   async function handleShare() {
     if (!hotel) return;
-    await Share.share({
-      message: `${hotel.name}\n${formatPrice(hotel.rate, hotel.currency, hotel.rate_unit)} · ${hotel.location}\n\nFound on Easyfen`,
-    });
+    await shareText(
+      `${hotel.name}\n${formatPrice(hotel.rate, hotel.currency, hotel.rate_unit)} · ${hotel.location}\n\nFound on Easyfen`
+    );
   }
 
   async function submitRating(score: number) {
@@ -94,7 +94,7 @@ export default function HotelDetailScreen() {
       const { data } = await supabase.from('hotels').select('rating, rating_count').eq('id', hotel.id).single();
       if (data) setHotel((prev) => prev ? { ...prev, rating: data.rating, rating_count: data.rating_count } : prev);
     } catch (err) {
-      Alert.alert('Could not submit rating', friendlyErrorMessage(err));
+      appAlert('Could not submit rating', friendlyErrorMessage(err));
     } finally {
       setSubmittingRating(false);
     }
@@ -107,7 +107,7 @@ export default function HotelDetailScreen() {
       return;
     }
     if (session.user.id === hotel.owner_id) {
-      Alert.alert('This is your hotel', 'You cannot message yourself.');
+      appAlert('This is your hotel', 'You cannot message yourself.');
       return;
     }
     if (starting) return;
@@ -116,7 +116,7 @@ export default function HotelDetailScreen() {
       const conversationId = await getOrCreateConversation(session.user.id, hotel.owner_id, null);
       router.push(`/messages/${conversationId}`);
     } catch (err) {
-      Alert.alert('Could not start conversation', friendlyErrorMessage(err));
+      appAlert('Could not start conversation', friendlyErrorMessage(err));
     } finally {
       setStarting(false);
     }

@@ -1,11 +1,12 @@
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../lib/auth-context';
 import { friendlyErrorMessage } from '../lib/errors';
+import { appAlert } from '../lib/alert';
 import { colors, fontSize, fontWeight, radius, spacing } from '../constants/theme';
 
 type SavedSearch = {
@@ -51,7 +52,7 @@ export default function SavedSearchesScreen() {
   );
 
   function confirmRemove(item: SavedSearch) {
-    Alert.alert('Remove saved search', 'You will no longer be notified about this search.', [
+    appAlert('Remove saved search', 'You will no longer be notified about this search.', [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Remove', style: 'destructive', onPress: () => removeSearch(item) },
     ]);
@@ -60,7 +61,7 @@ export default function SavedSearchesScreen() {
   async function removeSearch(item: SavedSearch) {
     const { error } = await supabase.from('saved_searches').delete().eq('id', item.id);
     if (error) {
-      Alert.alert('Could not remove search', friendlyErrorMessage(error));
+      appAlert('Could not remove search', friendlyErrorMessage(error));
       return;
     }
     setItems((prev) => prev.filter((s) => s.id !== item.id));

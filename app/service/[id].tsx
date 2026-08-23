@@ -1,10 +1,8 @@
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Pressable,
   ScrollView,
-  Share,
   StyleSheet,
   Text,
   View,
@@ -16,6 +14,8 @@ import { supabase } from '../../lib/supabase';
 import { friendlyErrorMessage } from '../../lib/errors';
 import { useAuth } from '../../lib/auth-context';
 import { useBottomGap } from '../../lib/use-bottom-gap';
+import { appAlert } from '../../lib/alert';
+import { shareText } from '../../lib/share';
 import { getOrCreateConversation } from '../../lib/conversations';
 import { colors, fontSize, radius, spacing } from '../../constants/theme';
 import { FavoriteButton } from '../../components/FavoriteButton';
@@ -64,9 +64,9 @@ export default function ServiceDetailScreen() {
 
   async function handleShare() {
     if (!service) return;
-    await Share.share({
-      message: `${service.business_name} · ${service.category}\n${formatPrice(service.rate, service.currency, service.rate_unit)} · ${service.location}\n\nFound on Easyfen`,
-    });
+    await shareText(
+      `${service.business_name} · ${service.category}\n${formatPrice(service.rate, service.currency, service.rate_unit)} · ${service.location}\n\nFound on Easyfen`
+    );
   }
 
   async function submitRating(score: number) {
@@ -82,7 +82,7 @@ export default function ServiceDetailScreen() {
       const { data } = await supabase.from('services').select('rating, rating_count').eq('id', service.id).single();
       if (data) setService((prev) => prev ? { ...prev, rating: data.rating, rating_count: data.rating_count } : prev);
     } catch (err) {
-      Alert.alert('Could not submit rating', friendlyErrorMessage(err));
+      appAlert('Could not submit rating', friendlyErrorMessage(err));
     } finally {
       setSubmittingRating(false);
     }
@@ -95,7 +95,7 @@ export default function ServiceDetailScreen() {
       return;
     }
     if (session.user.id === service.owner_id) {
-      Alert.alert('This is your service', 'You cannot hire yourself.');
+      appAlert('This is your service', 'You cannot hire yourself.');
       return;
     }
     if (starting) return;
@@ -104,7 +104,7 @@ export default function ServiceDetailScreen() {
       const conversationId = await getOrCreateConversation(session.user.id, service.owner_id, null);
       router.push(`/messages/${conversationId}`);
     } catch (err) {
-      Alert.alert('Could not start conversation', friendlyErrorMessage(err));
+      appAlert('Could not start conversation', friendlyErrorMessage(err));
     } finally {
       setStarting(false);
     }

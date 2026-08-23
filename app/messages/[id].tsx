@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
   KeyboardAvoidingView,
   Platform,
@@ -18,6 +17,7 @@ import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../lib/auth-context';
 import { useKeyboardHeight } from '../../lib/use-keyboard-height';
 import { friendlyErrorMessage } from '../../lib/errors';
+import { appAlert } from '../../lib/alert';
 import { sanitizeText } from '../../lib/sanitize';
 import { colors, fontSize, fontWeight, radius, spacing } from '../../constants/theme';
 import { initialsFor, roleLabel } from '../../lib/format';
@@ -139,7 +139,7 @@ export default function ChatThreadScreen() {
     setSending(false);
     if (error) {
       setDraft(body);
-      Alert.alert('Message not sent', friendlyErrorMessage(error));
+      appAlert('Message not sent', friendlyErrorMessage(error));
     }
   }
 

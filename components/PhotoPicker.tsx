@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { ActivityIndicator, Alert, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { uploadListingPhoto } from '../lib/upload';
+import { appAlert } from '../lib/alert';
 import { colors, fontSize, radius, spacing } from '../constants/theme';
 
 const MAX_PHOTOS = 10;
@@ -22,16 +23,7 @@ export function PhotoPicker({
   function pickAndUpload() {
     const remaining = MAX_PHOTOS - photos.length;
     if (remaining <= 0) return;
-    // react-native-web's Alert.alert is a no-op (it never renders anything),
-    // so the native action-sheet chooser below silently does nothing on
-    // web — go straight to the file/gallery picker there instead, which
-    // does have real web support and still lets a mobile browser offer its
-    // camera as one of the picker's own options.
-    if (Platform.OS === 'web') {
-      chooseFromGallery(remaining);
-      return;
-    }
-    Alert.alert('Add photos', undefined, [
+    appAlert('Add photos', undefined, [
       { text: 'Take a photo', onPress: () => captureFromCamera() },
       { text: 'Choose from gallery', onPress: () => chooseFromGallery(remaining) },
       { text: 'Cancel', style: 'cancel' },
@@ -41,7 +33,7 @@ export function PhotoPicker({
   async function captureFromCamera() {
     const permission = await ImagePicker.requestCameraPermissionsAsync();
     if (!permission.granted) {
-      Alert.alert('Camera access needed', 'Please allow camera access to take listing photos.');
+      appAlert('Camera access needed', 'Please allow camera access to take listing photos.');
       return;
     }
     const result = await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], quality: 0.7 });
@@ -51,7 +43,7 @@ export function PhotoPicker({
   async function chooseFromGallery(remaining: number) {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
-      Alert.alert('Photo access needed', 'Please allow photo library access to add listing photos.');
+      appAlert('Photo access needed', 'Please allow photo library access to add listing photos.');
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -74,7 +66,7 @@ export function PhotoPicker({
       }
       onChange([...photos, ...uploaded]);
     } catch {
-      Alert.alert('Upload failed', 'One or more photos could not be uploaded. Please try again.');
+      appAlert('Upload failed', 'One or more photos could not be uploaded. Please try again.');
     } finally {
       setUploading(false);
     }

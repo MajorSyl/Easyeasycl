@@ -1,12 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Dimensions,
   FlatList,
   Pressable,
   ScrollView,
-  Share,
   StyleSheet,
   Text,
   View,
@@ -18,6 +16,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '../../lib/supabase';
 import { friendlyErrorMessage } from '../../lib/errors';
 import { useAuth } from '../../lib/auth-context';
+import { appAlert } from '../../lib/alert';
+import { shareText } from '../../lib/share';
 import { useBottomGap } from '../../lib/use-bottom-gap';
 import { getOrCreateConversation } from '../../lib/conversations';
 import { colors, fontSize, fontWeight, radius, shadow, spacing } from '../../constants/theme';
@@ -75,9 +75,9 @@ export default function ListingDetailScreen() {
 
   async function handleShare() {
     if (!listing) return;
-    await Share.share({
-      message: `${listing.title}\n${formatPrice(listing.price, listing.currency, listing.price_unit)} · ${listing.location}\n\nFound on Easyfen`,
-    });
+    await shareText(
+      `${listing.title}\n${formatPrice(listing.price, listing.currency, listing.price_unit)} · ${listing.location}\n\nFound on Easyfen`
+    );
   }
 
   async function submitReport(reason: string) {
@@ -86,10 +86,10 @@ export default function ListingDetailScreen() {
       .from('reports')
       .insert({ reporter_id: session.user.id, item_type: 'listing', item_id: listing.id, reason });
     if (error) {
-      Alert.alert('Could not submit report', friendlyErrorMessage(error));
+      appAlert('Could not submit report', friendlyErrorMessage(error));
       return;
     }
-    Alert.alert('Listing reported', 'This listing has been suspended pending review. Thank you for the report.', [
+    appAlert('Listing reported', 'This listing has been suspended pending review. Thank you for the report.', [
       { text: 'OK', onPress: () => router.back() },
     ]);
   }
@@ -101,7 +101,7 @@ export default function ListingDetailScreen() {
       return;
     }
     if (session.user.id === listing.owner_id) return;
-    Alert.alert('Report this listing', 'Why are you reporting this listing?', [
+    appAlert('Report this listing', 'Why are you reporting this listing?', [
       { text: 'Spam or scam', onPress: () => submitReport('Spam or scam') },
       { text: 'Misleading information', onPress: () => submitReport('Misleading information') },
       { text: 'Inappropriate content', onPress: () => submitReport('Inappropriate content') },
@@ -116,7 +116,7 @@ export default function ListingDetailScreen() {
       return;
     }
     if (session.user.id === listing.owner_id) {
-      Alert.alert('This is your listing', 'You cannot message yourself.');
+      appAlert('This is your listing', 'You cannot message yourself.');
       return;
     }
     if (starting) return;
@@ -125,7 +125,7 @@ export default function ListingDetailScreen() {
       const conversationId = await getOrCreateConversation(session.user.id, listing.owner_id, listing.id);
       router.push(`/messages/${conversationId}`);
     } catch (err) {
-      Alert.alert('Could not start conversation', friendlyErrorMessage(err));
+      appAlert('Could not start conversation', friendlyErrorMessage(err));
     } finally {
       setStarting(false);
     }

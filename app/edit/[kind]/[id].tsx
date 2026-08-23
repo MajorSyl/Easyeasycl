@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -17,6 +16,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '../../../lib/supabase';
 import { useAuth } from '../../../lib/auth-context';
 import { friendlyErrorMessage } from '../../../lib/errors';
+import { appAlert } from '../../../lib/alert';
 import { notifyListingsChanged } from '../../../lib/listings-cache-bus';
 import { sanitizeText } from '../../../lib/sanitize';
 import { colors, fontSize, radius, spacing } from '../../../constants/theme';
@@ -150,7 +150,7 @@ export default function EditListingScreen() {
 
     setSaving(false);
     if (error) {
-      Alert.alert('Could not save changes', friendlyErrorMessage(error));
+      appAlert('Could not save changes', friendlyErrorMessage(error));
       return;
     }
     notifyListingsChanged();

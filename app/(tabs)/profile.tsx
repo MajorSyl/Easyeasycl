@@ -1,7 +1,6 @@
 import { useCallback, useRef, useState, type ReactNode } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
   Pressable,
   StyleSheet,
@@ -17,6 +16,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../lib/auth-context';
 import { friendlyErrorMessage } from '../../lib/errors';
+import { appAlert } from '../../lib/alert';
 import { notifyListingsChanged } from '../../lib/listings-cache-bus';
 import { useTabBarGap } from '../../lib/use-bottom-gap';
 import { uploadAvatar } from '../../lib/upload';
@@ -143,7 +143,7 @@ export default function ProfileScreen() {
     if (!session) return;
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
-      Alert.alert('Photo access needed', 'Please allow photo library access to set a profile picture.');
+      appAlert('Photo access needed', 'Please allow photo library access to set a profile picture.');
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -158,7 +158,7 @@ export default function ProfileScreen() {
       const url = await uploadAvatar(result.assets[0].uri, session.user.id);
       setAvatarUrl(url);
     } catch {
-      Alert.alert('Upload failed', 'Could not upload profile picture. Please try again.');
+      appAlert('Upload failed', 'Could not upload profile picture. Please try again.');
     } finally {
       setAvatarUploading(false);
     }
@@ -181,7 +181,7 @@ export default function ProfileScreen() {
       .eq('id', session.user.id);
     setSaving(false);
     if (error) {
-      Alert.alert('Could not save', friendlyErrorMessage(error));
+      appAlert('Could not save', friendlyErrorMessage(error));
       return;
     }
     await refreshProfile();
@@ -189,7 +189,7 @@ export default function ProfileScreen() {
   }
 
   function confirmDelete(item: MyListing) {
-    Alert.alert('Delete listing', `Remove "${item.title}" from Easyfen? This can't be undone.`, [
+    appAlert('Delete listing', `Remove "${item.title}" from Easyfen? This can't be undone.`, [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Delete', style: 'destructive', onPress: () => deleteListing(item) },
     ]);
@@ -198,7 +198,7 @@ export default function ProfileScreen() {
   async function deleteListing(item: MyListing) {
     const { error } = await supabase.from('listings').delete().eq('id', item.id);
     if (error) {
-      Alert.alert('Could not delete', friendlyErrorMessage(error));
+      appAlert('Could not delete', friendlyErrorMessage(error));
       return;
     }
     listingsFetchedAt.current = 0;
@@ -216,7 +216,7 @@ export default function ProfileScreen() {
       .eq('id', item.id);
     setConfirmingId(null);
     if (error) {
-      Alert.alert('Could not confirm', friendlyErrorMessage(error));
+      appAlert('Could not confirm', friendlyErrorMessage(error));
       return;
     }
     setMyListings((prev) => prev.map((l) => (l.id === item.id ? { ...l, lastConfirmedAt: nowIso } : l)));
@@ -231,11 +231,11 @@ export default function ProfileScreen() {
       .eq('id', session.user.id);
     setRequestingVerification(false);
     if (error) {
-      Alert.alert('Could not request verification', friendlyErrorMessage(error));
+      appAlert('Could not request verification', friendlyErrorMessage(error));
       return;
     }
     await refreshProfile();
-    Alert.alert('Request sent', "We'll review your phone number and verify your account soon.");
+    appAlert('Request sent', "We'll review your phone number and verify your account soon.");
   }
 
   async function handleLogOut() {

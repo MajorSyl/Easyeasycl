@@ -8,6 +8,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { AuthProvider } from '../lib/auth-context';
 import { FavoritesProvider } from '../lib/favorites-context';
+import { AlertProvider } from '../lib/alert';
 import { colors, fontSize, fontWeight, spacing } from '../constants/theme';
 import { WELCOME_SEEN_KEY } from './welcome';
 
@@ -53,19 +54,21 @@ export default function RootLayout() {
         <SafeAreaProvider>
           <AuthProvider>
             <FavoritesProvider>
-              <StatusBar style="dark" />
-              <View style={{ flex: 1 }}>
-                <Stack screenOptions={{ headerShown: false }}>
-                  <Stack.Screen name="auth" options={{ presentation: 'modal' }} />
-                  <Stack.Screen name="welcome" />
-                </Stack>
-                {checkingWelcome && (
-                  <View style={StyleSheet.absoluteFill} pointerEvents="auto">
-                    <View style={{ flex: 1, backgroundColor: colors.background }} />
-                  </View>
-                )}
-                <WebFooter />
-              </View>
+              <AlertProvider>
+                <StatusBar style="dark" />
+                <View style={{ flex: 1 }}>
+                  <Stack screenOptions={{ headerShown: false }}>
+                    <Stack.Screen name="auth" options={{ presentation: 'modal' }} />
+                    <Stack.Screen name="welcome" />
+                  </Stack>
+                  {checkingWelcome && (
+                    <View style={StyleSheet.absoluteFill} pointerEvents="auto">
+                      <View style={{ flex: 1, backgroundColor: colors.background }} />
+                    </View>
+                  )}
+                  <WebFooter />
+                </View>
+              </AlertProvider>
             </FavoritesProvider>
           </AuthProvider>
         </SafeAreaProvider>

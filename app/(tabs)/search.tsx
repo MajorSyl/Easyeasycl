@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, FlatList, Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -8,6 +8,7 @@ import { useTabBarGap } from '../../lib/use-bottom-gap';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../lib/auth-context';
 import { friendlyErrorMessage } from '../../lib/errors';
+import { appAlert } from '../../lib/alert';
 import { ListingCard } from '../../components/ListingCard';
 import type { Listing } from '../../lib/types';
 
@@ -113,10 +114,10 @@ export default function SearchScreen() {
     });
     setSavingSearch(false);
     if (error) {
-      Alert.alert('Could not save search', friendlyErrorMessage(error));
+      appAlert('Could not save search', friendlyErrorMessage(error));
       return;
     }
-    Alert.alert('Search saved', "We'll notify you when a new listing matches this search.");
+    appAlert('Search saved', "We'll notify you when a new listing matches this search.");
   }
 
   return (

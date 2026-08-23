@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../lib/auth-context';
 import { friendlyErrorMessage } from '../../lib/errors';
+import { appAlert } from '../../lib/alert';
 import { colors, fontSize, fontWeight, spacing } from '../../constants/theme';
 import { ListingCard } from '../../components/ListingCard';
 import { getOrCreateConversation } from '../../lib/conversations';
@@ -72,14 +73,14 @@ export default function PublicProfileScreen() {
       .from('reports')
       .insert({ reporter_id: session.user.id, item_type: 'user', item_id: profile.id, reason });
     if (error) {
-      Alert.alert('Could not submit report', friendlyErrorMessage(error));
+      appAlert('Could not submit report', friendlyErrorMessage(error));
     } else {
-      Alert.alert('Report submitted', "Thank you — our team will review this.");
+      appAlert('Report submitted', "Thank you — our team will review this.");
     }
   }
 
   function handleReport() {
-    Alert.alert('Report this user', 'Why are you reporting this user?', [
+    appAlert('Report this user', 'Why are you reporting this user?', [
       { text: 'Spam or scam', onPress: () => submitReport('Spam or scam') },
       { text: 'Inappropriate content', onPress: () => submitReport('Inappropriate content') },
       { text: 'Harassment', onPress: () => submitReport('Harassment') },
@@ -89,7 +90,7 @@ export default function PublicProfileScreen() {
 
   function handleBlock() {
     if (!session || !profile) return;
-    Alert.alert('Block this user?', 'You will no longer be able to message each other.', [
+    appAlert('Block this user?', 'You will no longer be able to message each other.', [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Block',
@@ -99,9 +100,9 @@ export default function PublicProfileScreen() {
             .from('blocks')
             .insert({ blocker_id: session.user.id, blocked_id: profile.id });
           if (error) {
-            Alert.alert('Could not block user', friendlyErrorMessage(error));
+            appAlert('Could not block user', friendlyErrorMessage(error));
           } else {
-            Alert.alert('User blocked');
+            appAlert('User blocked');
           }
         },
       },
@@ -113,7 +114,7 @@ export default function PublicProfileScreen() {
       router.push('/auth');
       return;
     }
-    Alert.alert('More options', undefined, [
+    appAlert('More options', undefined, [
       { text: 'Report user', onPress: handleReport },
       { text: 'Block user', style: 'destructive', onPress: handleBlock },
       { text: 'Cancel', style: 'cancel' },

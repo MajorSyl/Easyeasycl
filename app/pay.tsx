@@ -1,11 +1,12 @@
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../lib/auth-context';
 import { friendlyErrorMessage } from '../lib/errors';
+import { appAlert } from '../lib/alert';
 import { colors, fontSize, fontWeight, radius, spacing } from '../constants/theme';
 import {
   MOBILE_MONEY_RECEIVING,
@@ -109,7 +110,7 @@ export default function PayScreen() {
   async function handleSubmit() {
     if (!session || !product || submitting) return;
     if (!reference.trim()) {
-      Alert.alert('Enter the reference code', 'You should have received this by SMS after sending the payment.');
+      appAlert('Enter the reference code', 'You should have received this by SMS after sending the payment.');
       return;
     }
     if (purpose === 'listing_boost' && !listingId) return;
@@ -126,14 +127,14 @@ export default function PayScreen() {
     setSubmitting(false);
 
     if (error) {
-      Alert.alert('Could not submit', friendlyErrorMessage(error));
+      appAlert('Could not submit', friendlyErrorMessage(error));
       return;
     }
 
     setReference('');
     setExisting({ kind: 'pending' });
     await refreshProfile();
-    Alert.alert(
+    appAlert(
       'Submitted for review',
       "We'll verify the payment and activate it shortly. You can check back here for the status."
     );
