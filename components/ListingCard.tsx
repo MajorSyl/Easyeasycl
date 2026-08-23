@@ -1,11 +1,11 @@
 import { memo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { Badge } from './Badge';
 import { FavoriteButton } from './FavoriteButton';
 import { NoPhotoPlaceholder } from './NoPhotoPlaceholder';
+import { LazyPhoto } from './LazyPhoto';
 import { colors, fontSize, fontWeight, radius, shadow, spacing } from '../constants/theme';
 import { categoryBadgeLabel, formatListingAge, formatPrice, initialsFor } from '../lib/format';
 import type { Listing } from '../lib/types';
@@ -20,11 +20,10 @@ export const ListingCard = memo(function ListingCard({ listing }: { listing: Lis
     >
       <View style={styles.imageWrap}>
         {listing.photos[0] ? (
-          <Image
-            source={{ uri: listing.photos[0] }}
+          <LazyPhoto
+            uri={listing.photos[0]}
             style={styles.image}
             contentFit="cover"
-            accessible
             accessibilityLabel={`Photo of ${listing.title}`}
           />
         ) : (

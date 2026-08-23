@@ -1,11 +1,11 @@
 import { memo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { Badge } from './Badge';
 import { FavoriteButton } from './FavoriteButton';
 import { NoPhotoPlaceholder } from './NoPhotoPlaceholder';
+import { LazyPhoto } from './LazyPhoto';
 import { colors, fontSize, radius, spacing } from '../constants/theme';
 import { formatPrice } from '../lib/format';
 import type { Hotel } from '../lib/types';
@@ -15,7 +15,7 @@ export const HotelCard = memo(function HotelCard({ hotel }: { hotel: Hotel }) {
     <Pressable style={styles.card} onPress={() => router.push(`/hotel/${hotel.id}`)}>
       <View style={styles.imageWrap}>
         {hotel.photos[0] ? (
-          <Image source={{ uri: hotel.photos[0] }} style={styles.image} contentFit="cover" />
+          <LazyPhoto uri={hotel.photos[0]} style={styles.image} contentFit="cover" />
         ) : (
           <View style={[styles.image, styles.imagePlaceholder]}>
             <NoPhotoPlaceholder />

@@ -9,7 +9,6 @@ import {
   Text,
   View,
 } from 'react-native';
-import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -25,6 +24,7 @@ import { Badge } from '../../components/Badge';
 import { FavoriteButton } from '../../components/FavoriteButton';
 import { AmenityBar, type AmenityItem } from '../../components/AmenityBar';
 import { NoPhotoPlaceholder } from '../../components/NoPhotoPlaceholder';
+import { LazyPhoto } from '../../components/LazyPhoto';
 import { categoryBadgeLabel, formatListingAge, formatPrice, initialsFor } from '../../lib/format';
 import type { Listing, RateUnit } from '../../lib/types';
 
@@ -177,11 +177,11 @@ export default function ListingDetailScreen() {
                   setPhotoIndex(Math.round(e.nativeEvent.contentOffset.x / heroWidth))
                 }
                 renderItem={({ item, index }) => (
-                  <Image
-                    source={{ uri: item }}
+                  <LazyPhoto
+                    uri={item}
                     style={styles.photo}
                     contentFit="cover"
-                    accessible
+                    alwaysLoad={index === 0}
                     accessibilityLabel={`Photo ${index + 1} of ${listing.photos.length} of ${listing.title}`}
                   />
                 )}
