@@ -148,6 +148,18 @@ While investigating a "the web still shows old branding" report, I found a Verce
 2. The job finishes in ~1 minute and prints a link to the build page on expo.dev in its Summary
 3. Open that link on the phone; when the build says **Finished** (15–60 min on the free tier), tap **Install**
 
+This produces a `preview`-profile `.apk` — for sideloading/testing, not what Play Store accepts.
+
+## Building the production Android App Bundle for Play Store submission
+
+`eas.json` has a `production` profile (`buildType: "app-bundle"`, `distribution: "store"`, `autoIncrement: true` so `versionCode` bumps itself on every build).
+
+1. On GitHub, open the **Actions** tab → **Build Production Android AAB** → **Run workflow**
+2. Same pattern as the APK workflow above — watch progress and download the `.aab` from the printed expo.dev link
+3. This step only produces the build artifact. Uploading it to Play Console and finishing the store listing (screenshots, description, content rating, Data Safety form, target audience) is a manual step in your Play Console account — nothing here automates that part.
+
+> **Splash screen isn't wired up yet.** `assets/splash-icon.png` exists but nothing in `app.json` references it, so the app currently shows Expo's bare default splash instead of the intended one. Fixing it needs `expo-splash-screen` added as a dependency (`npx expo install expo-splash-screen`) plus its config plugin added to `app.json`'s `plugins` array — this environment had no npm registry access when this was audited, so it couldn't be installed and verified here. This is a native-config change (like the icon/permissions), so it needs a fresh build via the workflow above to actually appear — an OTA update alone won't show it.
+
 ## Pre-launch checklist
 
 - [ ] Replace placeholder legal page content with real, reviewed policy text
@@ -157,7 +169,8 @@ While investigating a "the web still shows old branding" report, I found a Verce
 - [ ] **Rotate the Expo access token** — a previous version of this repo's docs had it committed in plaintext; even though it's since been redacted, it lived in git history and should be treated as compromised. Generate a new one at [expo.dev/settings/access-tokens](https://expo.dev/settings/access-tokens) and update the `EXPO_TOKEN` GitHub secret before revoking the old one, or builds will stop working in between.
 - [ ] Enable Supabase's leaked-password protection (Authentication → Policies)
 - [ ] Add the two Supabase secrets to `MajorSyl/easyfen-backups` if you haven't yet (`SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`) and confirm a weekly backup has actually succeeded once, and that its table list covers the newer tables (see Weekly database backups above)
-- [ ] App Store / Play Store submission needs a `production` EAS build profile (`eas build --platform android --profile production` / iOS equivalent) and store review — neither has happened yet
+- [ ] The `production` EAS build profile now exists (`eas.json` + the **Build Production Android AAB** GitHub Actions workflow) but has never actually been run — trigger it, then upload the resulting `.aab` to Play Console and complete the store listing (screenshots, description, content rating, Data Safety form). iOS submission needs its own equivalent (Apple Developer account, App Store Connect listing) and hasn't been started.
+- [ ] Wire up the splash screen (`expo-splash-screen` + `app.json` plugin config — see "Building the production Android App Bundle" above) — the asset exists but isn't referenced anywhere yet
 - [ ] Replace the placeholder mobile money receiving number/account name in `constants/payments.ts` (`MOBILE_MONEY_RECEIVING`) with real ones, and review the placeholder prices in `PAYMENT_PRODUCTS` before accepting real purchases (see Monetization above)
 - [ ] Decide whether new listings need a pre-publish admin review gate before going live, or retroactive moderation (current behavior) is acceptable — see Trust infrastructure above
 - [ ] If real SMS-based phone verification (OTP) is wanted instead of the current manual admin-approval flow, an SMS provider (Twilio/MessageBird/etc.) needs to be configured in Supabase Auth settings — nothing here today sends an SMS

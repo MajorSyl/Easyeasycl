@@ -1,0 +1,55 @@
+name: Build Production Android AAB
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Confirm Expo login
+        run: npx eas-cli whoami
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Start production Android App Bundle build on EAS (no wait)
+        run: |
+          npx eas-cli build --platform android --profile production --non-interactive --no-wait --json > build.json
+          cat build.json
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Write build page link to job summary
+        run: |
+          BUILD_ID=$(jq -r '.[0].id' build.json)
+          ACCOUNT=$(jq -r '.[0].project.ownerAccount.name' build.json)
+          PROJECT=$(jq -r '.[0].project.name' build.json)
+          {
+            echo "## Easyfen production Android App Bundle (.aab) build started"
+            echo ""
+            echo "This builds a **store-signed .aab**, distinct from the preview .apk workflow — this is the file"
+            echo "you upload to Play Console. Usually takes 15-60 minutes on the free tier."
+            echo ""
+            echo "**Open this page to watch progress and download the .aab when it's done:**"
+            echo ""
+            echo "https://expo.dev/accounts/${ACCOUNT}/projects/${PROJECT}/builds/${BUILD_ID}"
+            echo ""
+            echo "This workflow only produces the build artifact — it does not submit to Play Console."
+            echo "Uploading the .aab and completing the Play Console listing (store copy, screenshots,"
+            echo "content rating, data safety form) still needs to be done by hand in your Play Console account."
+          } >> "$GITHUB_STEP_SUMMARY"
