@@ -1,0 +1,152 @@
+import { createClient } from '@/lib/supabase-server';
+import { redirect } from 'next/navigation';
+import { reviewPayment } from '../actions';
+
+const PURPOSE_LABELS: Record<string, string> = {
+  listing_boost: 'Listing Boost',
+  agent_subscription: 'Agent Subscription',
+  agent_verification: 'Verified Agent',
+};
+
+export default async function PaymentsPage() {
+  const supabase = await createClient();
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) redirect('/login');
+
+  const isAdmin = session.user.app_metadata?.is_admin === true ||
+    (await supabase.from('profiles').select('is_admin').eq('id', session.user.id).single()).data?.is_admin === true;
+  if (!isAdmin) redirect('/login');
+
+  const { data: payments } = await supabase
+    .from('payments')
+    .select('id, purpose, related_listing_id, amount, currency, momo_provider, momo_reference, status, submitted_at, user:profiles!user_id(full_name)')
+    .order('submitted_at', { ascending: false })
+    .limit(200);
+
+  const pending = (payments ?? []).filter((p) => p.status === 'pending');
+  const reviewed = (payments ?? []).filter((p) => p.status !== 'pending');
+
+  const listingIds = pending.map((p) => p.related_listing_id).filter(Boolean) as string[];
+  const { data: listings } = listingIds.length
+    ? await supabase.from('listings').select('id, title').in('id', listingIds)
+    : { data: [] };
+  const listingTitleById = new Map((listings ?? []).map((l) => [l.id, l.title]));
+
+  function PaymentRow({ p, actionable }: { p: NonNullable<typeof payments>[number]; actionable: boolean }) {
+    return (
+      <tr key={p.id}>
+        <td>
+          <div style={{ fontWeight: 600 }}>{(p.user as any)?.full_name ?? 'Unknown'}</div>
+          <div className="muted" style={{ fontSize: 11 }}>{new Date(p.submitted_at).toLocaleString('en-GB')}</div>
+        </td>
+        <td><span className="badge badge-blue">{PURPOSE_LABELS[p.purpose] ?? p.purpose}</span></td>
+        <td className="muted truncate">
+          {p.related_listing_id ? listingTitleById.get(p.related_listing_id) ?? p.related_listing_id.slice(0, 8) : '—'}
+        </td>
+        <td style={{ fontWeight: 600 }}>{p.currency} {Number(p.amount).toLocaleString('en-US')}</td>
+        <td className="muted">{p.momo_provider === 'orange_money' ? 'Orange Money' : 'Africell Money'}</td>
+        <td className="muted" style={{ fontFamily: 'monospace' }}>{p.momo_reference}</td>
+        <td>
+          {p.status === 'pending' ? (
+            <span className="badge badge-amber">Pending</span>
+          ) : p.status === 'approved' ? (
+            <span className="badge badge-green">Approved</span>
+          ) : (
+            <span className="badge badge-gray">Rejected</span>
+          )}
+        </td>
+        {actionable && (
+          <td>
+            <div style={{ display: 'flex', gap: 6 }}>
+              <form action={async () => { 'use server'; await reviewPayment(p.id, 'approve'); }}>
+                <button type="submit" className="btn btn-sm" style={{ background: '#16a34a', color: '#fff', border: 'none' }}>
+                  Approve
+                </button>
+              </form>
+              <form
+                action={async (fd: FormData) => {
+                  'use server';
+                  await reviewPayment(p.id, 'reject', (fd.get('reason') as string) || 'Reference could not be verified');
+                }}
+                style={{ display: 'inline-flex', gap: 6 }}
+              >
+                <input
+                  type="text"
+                  name="reason"
+                  placeholder="Rejection reason"
+                  className="form-select"
+                  style={{ width: 140 }}
+                />
+                <button type="submit" className="btn btn-danger btn-sm">Reject</button>
+              </form>
+            </div>
+          </td>
+        )}
+      </tr>
+    );
+  }
+
+  return (
+    <>
+      <div className="topbar">
+        <h1>Payments <span className="muted" style={{ fontSize: 14, fontWeight: 400 }}>({pending.length} pending)</span></h1>
+      </div>
+      <div className="content">
+        <div className="card">
+          <div className="card-header">
+            <span className="card-title">Pending review</span>
+          </div>
+          <div className="overflow-x">
+            <table>
+              <thead>
+                <tr>
+                  <th>Payer</th>
+                  <th>Purpose</th>
+                  <th>Listing</th>
+                  <th>Amount</th>
+                  <th>Provider</th>
+                  <th>Reference</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pending.map((p) => (
+                  <PaymentRow key={p.id} p={p} actionable />
+                ))}
+              </tbody>
+            </table>
+            {!pending.length && <div className="empty">No pending payments.</div>}
+          </div>
+        </div>
+
+        <div className="card">
+          <div className="card-header">
+            <span className="card-title">Recently reviewed</span>
+          </div>
+          <div className="overflow-x">
+            <table>
+              <thead>
+                <tr>
+                  <th>Payer</th>
+                  <th>Purpose</th>
+                  <th>Listing</th>
+                  <th>Amount</th>
+                  <th>Provider</th>
+                  <th>Reference</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {reviewed.slice(0, 50).map((p) => (
+                  <PaymentRow key={p.id} p={p} actionable={false} />
+                ))}
+              </tbody>
+            </table>
+            {!reviewed.length && <div className="empty">Nothing reviewed yet.</div>}
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}

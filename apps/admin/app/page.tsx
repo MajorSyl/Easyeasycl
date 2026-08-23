@@ -20,6 +20,7 @@ export default async function OverviewPage() {
     { count: totalServices },
     { count: totalMessages },
     { count: totalReports },
+    { count: pendingPayments },
   ] = await Promise.all([
     supabase.from('profiles').select('*', { count: 'exact', head: true }),
     supabase.from('profiles').select('*', { count: 'exact', head: true }).gte('created_at', weekAgo),
@@ -28,6 +29,7 @@ export default async function OverviewPage() {
     supabase.from('services').select('*', { count: 'exact', head: true }),
     supabase.from('messages').select('*', { count: 'exact', head: true }),
     supabase.from('reports').select('*', { count: 'exact', head: true }),
+    supabase.from('payments').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
   ]);
 
   const totalContent = (totalListings ?? 0) + (totalHotels ?? 0) + (totalServices ?? 0);
@@ -37,6 +39,7 @@ export default async function OverviewPage() {
     { label: 'Properties / Hotels / Services', value: totalContent.toLocaleString(), sub: `${totalListings ?? 0} · ${totalHotels ?? 0} · ${totalServices ?? 0}` },
     { label: 'Messages Sent', value: (totalMessages ?? 0).toLocaleString(), sub: 'all time' },
     { label: 'Open Reports', value: (totalReports ?? 0).toLocaleString(), sub: (totalReports ?? 0) > 0 ? '⚠️ needs review' : 'all clear ✓' },
+    { label: 'Pending Payments', value: (pendingPayments ?? 0).toLocaleString(), sub: (pendingPayments ?? 0) > 0 ? '⚠️ needs review' : 'all clear ✓' },
   ];
 
   return (
@@ -69,6 +72,12 @@ export default async function OverviewPage() {
             </p>
             <p style={{ fontSize: 13, color: '#667085', lineHeight: 1.6 }}>
               <strong>Reports</strong> — review user-submitted reports. One click to hide the offending item or dismiss the report.
+            </p>
+            <p style={{ fontSize: 13, color: '#667085', lineHeight: 1.6 }}>
+              <strong>Payments</strong> — there is no live payment gateway. Every boost/subscription/verification
+              purchase is a mobile money reference code a user submits; check it actually arrived in your Orange
+              Money / Africell Money account before clicking Approve — approving activates the purchase immediately
+              and there is no automated refund if you get it wrong.
             </p>
             <p style={{ fontSize: 13, color: '#101828', marginTop: 8 }}>
               <strong>⚙️ To set your account as admin:</strong> Supabase Dashboard → Table Editor → profiles → find your row → set <code style={{ background: '#F3F4F6', padding: '1px 4px', borderRadius: 4 }}>is_admin = true</code>.

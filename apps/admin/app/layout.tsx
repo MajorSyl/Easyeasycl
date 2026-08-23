@@ -11,6 +11,7 @@ const navItems = [
   { href: '/users', label: 'Users', icon: '👥' },
   { href: '/content', label: 'Content', icon: '🏠' },
   { href: '/reports', label: 'Reports', icon: '🚩' },
+  { href: '/payments', label: 'Payments', icon: '💳' },
 ];
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {

@@ -35,6 +35,7 @@ type MyListing = {
   createdAt: string;
   lastConfirmedAt: string;
   isActive: boolean;
+  isPremium: boolean;
 };
 
 const STALE_AFTER_DAYS = 30;
@@ -66,6 +67,22 @@ export default function ProfileScreen() {
   const [saving, setSaving] = useState(false);
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
   const [requestingVerification, setRequestingVerification] = useState(false);
+  const [subscriptionUntil, setSubscriptionUntil] = useState<string | null>(null);
+
+  const loadSubscriptionStatus = useCallback(async () => {
+    if (!session) {
+      setSubscriptionUntil(null);
+      return;
+    }
+    const { data } = await supabase
+      .from('agent_subscriptions')
+      .select('ends_at')
+      .eq('user_id', session.user.id)
+      .gt('ends_at', new Date().toISOString())
+      .order('ends_at', { ascending: false })
+      .maybeSingle();
+    setSubscriptionUntil(data?.ends_at ?? null);
+  }, [session]);
 
   const loadMyListings = useCallback(async (force = false) => {
     if (!session) {
@@ -77,7 +94,7 @@ export default function ProfileScreen() {
     const uid = session.user.id;
     const { data: listings, error } = await supabase
       .from('listings')
-      .select('id, title, price, currency, price_unit, created_at, last_confirmed_at, is_active')
+      .select('id, title, price, currency, price_unit, created_at, last_confirmed_at, is_active, is_premium')
       .eq('owner_id', uid);
 
     if (error) {
@@ -95,6 +112,7 @@ export default function ProfileScreen() {
       createdAt: item.created_at,
       lastConfirmedAt: item.last_confirmed_at,
       isActive: item.is_active,
+      isPremium: item.is_premium,
     }));
 
     combined.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
@@ -106,7 +124,8 @@ export default function ProfileScreen() {
   useFocusEffect(
     useCallback(() => {
       loadMyListings();
-    }, [loadMyListings])
+      loadSubscriptionStatus();
+    }, [loadMyListings, loadSubscriptionStatus])
   );
 
   function startEditing() {
@@ -293,6 +312,14 @@ export default function ProfileScreen() {
                   </Pressable>
                 ) : null}
 
+                {profile?.role === 'agent' &&
+                  profile?.verification_tier !== 'agent_verified' &&
+                  profile?.verification_tier !== 'id_verified' && (
+                    <Pressable style={styles.verifyButton} onPress={() => router.push('/pay?purpose=agent_verification')}>
+                      <Text style={styles.verifyButtonText}>Become a Verified Agent</Text>
+                    </Pressable>
+                  )}
+
                 <Pressable style={styles.editButton} onPress={startEditing}>
                   <Ionicons name="pencil-outline" size={14} color={colors.accent} />
                   <Text style={styles.editButtonText}>Edit Profile</Text>
@@ -353,6 +380,21 @@ export default function ProfileScreen() {
             </Pressable>
           )}
 
+          {!editing && profile?.role === 'agent' && (
+            <Pressable style={styles.savedRow} onPress={() => router.push('/pay?purpose=agent_subscription')}>
+              <Ionicons name="star" size={18} color={colors.gold} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.savedRowText}>Agent Subscription</Text>
+                <Text style={styles.savedRowSubtext}>
+                  {subscriptionUntil
+                    ? `Active until ${new Date(subscriptionUntil).toLocaleDateString('en-GB')}`
+                    : 'Keep all your listings featured'}
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+            </Pressable>
+          )}
+
           {!editing && (
             <View style={styles.sectionHeaderRow}>
               <Text style={styles.sectionTitle}>My Listings</Text>
@@ -369,6 +411,12 @@ export default function ProfileScreen() {
               <View style={styles.listingBody}>
                 <View style={styles.listingKindRow}>
                   <Text style={styles.listingKind}>{kindLabels[item.kind]}</Text>
+                  {item.isPremium && (
+                    <View style={styles.featuredBadge}>
+                      <Ionicons name="star" size={9} color="#fff" />
+                      <Text style={styles.featuredBadgeText}>FEATURED</Text>
+                    </View>
+                  )}
                   {!item.isActive && (
                     <View style={styles.suspendedBadge}>
                       <Text style={styles.suspendedBadgeText}>SUSPENDED</Text>
@@ -412,6 +460,16 @@ export default function ProfileScreen() {
                   )}
                 </Pressable>
               </View>
+            )}
+            {item.isActive && !item.isPremium && (
+              <Pressable
+                style={styles.boostBanner}
+                onPress={() => router.push(`/pay?purpose=listing_boost&listingId=${item.id}`)}
+              >
+                <Ionicons name="rocket-outline" size={14} color={colors.gold} />
+                <Text style={styles.boostBannerText}>Feature this listing for more views</Text>
+                <Text style={styles.boostBannerButtonText}>Boost</Text>
+              </Pressable>
             )}
           </View>
         );
@@ -543,6 +601,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
   },
   savedRowText: { flex: 1, fontSize: fontSize.md, fontWeight: fontWeight.semibold, color: colors.textPrimary },
+  savedRowSubtext: { fontSize: fontSize.xs, color: colors.textMuted, marginTop: 2 },
   sectionHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.sm },
   sectionTitle: { fontSize: fontSize.md, fontWeight: fontWeight.bold, color: colors.textPrimary },
   listingRow: {
@@ -560,6 +619,16 @@ const styles = StyleSheet.create({
   listingKind: { fontSize: fontSize.xs, fontWeight: fontWeight.bold, color: colors.textMuted, letterSpacing: 0.4 },
   suspendedBadge: { backgroundColor: colors.danger, borderRadius: radius.sm, paddingHorizontal: 6, paddingVertical: 2 },
   suspendedBadgeText: { fontSize: fontSize.xs, fontWeight: fontWeight.bold, color: '#fff', letterSpacing: 0.4 },
+  featuredBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: colors.gold,
+    borderRadius: radius.sm,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  featuredBadgeText: { fontSize: fontSize.xs, fontWeight: fontWeight.bold, color: '#fff', letterSpacing: 0.4 },
   suspendedNote: { fontSize: fontSize.xs, color: colors.danger, marginTop: 4 },
   listingTitle: { fontSize: fontSize.sm, fontWeight: fontWeight.bold, color: colors.textPrimary, marginTop: 2 },
   listingPrice: { fontSize: fontSize.sm, color: colors.accent, fontWeight: fontWeight.semibold, marginTop: 2 },
@@ -579,6 +648,19 @@ const styles = StyleSheet.create({
   staleBannerText: { flex: 1, fontSize: fontSize.xs, color: colors.textSecondary },
   staleBannerButton: { paddingHorizontal: spacing.sm, paddingVertical: 4 },
   staleBannerButtonText: { fontSize: fontSize.xs, fontWeight: fontWeight.bold, color: colors.accent },
+  boostBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.goldSoft,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    marginTop: -spacing.xs,
+    marginBottom: spacing.sm,
+  },
+  boostBannerText: { flex: 1, fontSize: fontSize.xs, color: colors.textSecondary },
+  boostBannerButtonText: { fontSize: fontSize.xs, fontWeight: fontWeight.bold, color: colors.gold },
   emptyState: { paddingVertical: spacing.xl, alignItems: 'center', gap: spacing.sm },
   emptyStateText: { color: colors.textMuted, fontSize: fontSize.sm },
   logoutButton: {

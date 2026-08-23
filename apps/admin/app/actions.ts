@@ -89,6 +89,21 @@ export async function dismissReport(reportId: string) {
   revalidatePath('/reports');
 }
 
+export async function reviewPayment(paymentId: string, decision: 'approve' | 'reject', reason?: string) {
+  const supabase = await createClient();
+  await requireAdmin(supabase);
+  if (decision !== 'approve' && decision !== 'reject') throw new Error('Invalid decision');
+  const { error } = await supabase.rpc('admin_review_payment', {
+    payment_id: paymentId,
+    decision,
+    reason: reason || null,
+  });
+  if (error) throw error;
+  revalidatePath('/payments');
+  revalidatePath('/content');
+  revalidatePath('/users');
+}
+
 export async function hideReportedItem(
   table: 'listings' | 'hotels' | 'services',
   itemId: string,

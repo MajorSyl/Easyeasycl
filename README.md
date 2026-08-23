@@ -84,7 +84,17 @@ This has had a real hardening pass, not just a review — every claim below was 
 
 ## Admin dashboard (`apps/admin/`)
 
-Separate Next.js app for moderation: user list + role management, phone verification approval (approve/revoke, with the pending-request date shown), flagged-account review with a Clear action, content flags (`is_verified`/`is_premium`/`is_active`), and a reports queue. Deployed independently on Vercel. Has its own `package.json` — install and run it from inside `apps/admin/`, not the repo root.
+Separate Next.js app for moderation: user list + role management, phone verification approval (approve/revoke, with the pending-request date shown), flagged-account review with a Clear action, content flags (`is_verified`/`is_premium`/`is_active`), a reports queue, and a payments review queue (see Monetization below). Deployed independently on Vercel. Has its own `package.json` — install and run it from inside `apps/admin/`, not the repo root.
+
+## Monetization
+
+There is no live payment gateway — mobile money merchant/API credentials aren't set up yet, and this app never fakes a successful charge. Instead, purchases go through **manual mobile money verification**: the buyer sends money in their own mobile money app to a number this business controls, then submits the SMS reference code in-app; an admin checks the money actually arrived and approves before anything activates.
+
+- Three purchasable products, all defined with placeholder pricing in `constants/payments.ts`: a 7-day listing boost (`listing_boost`), a 30-day agent subscription that keeps all of an agent's listings featured (`agent_subscription`), and paid agent verification (`agent_verification`). One shared purchase screen (`app/pay.tsx`) drives all three via `?purpose=`.
+- `payments` is the ledger and single source of truth (`pending` → `approved`/`rejected`). A client can only insert their own row in `pending` state — `status`/`reviewed_at`/`reviewed_by` are not client-writable, so a forged pre-approved insert is rejected by RLS. The only way a payment becomes `approved` is the admin-gated `admin_review_payment` RPC, which also activates the effect (flips `listings.is_premium`, writes `listing_boosts`/`agent_subscriptions`, or bumps `verification_tier`) in the same transaction.
+- Boosts and subscriptions lapse automatically: a `pg_cron` job (`expire_premium_listings`, every 15 minutes) turns `is_premium` back off once neither an active boost nor an active subscription still covers that listing.
+- **Before accepting real money**, replace the placeholder values in `constants/payments.ts` (`MOBILE_MONEY_RECEIVING` — currently `REPLACE_WITH_YOUR_ORANGE_MONEY_NUMBER` / `REPLACE_WITH_YOUR_BUSINESS_NAME`) with your actual Orange Money / Africell Money receiving number and account name, and revisit the placeholder prices.
+- There is no automated refund path — approving a payment in the admin dashboard is immediate and irreversible from the app's side, so admins should verify the reference code against the actual mobile money account before approving.
 
 ## Weekly database backups
 
@@ -143,7 +153,7 @@ While investigating a "the web still shows old branding" report, I found a Verce
 - [ ] Enable Supabase's leaked-password protection (Authentication → Policies)
 - [ ] Add the two Supabase secrets to `MajorSyl/easyfen-backups` if you haven't yet (`SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`) and confirm a weekly backup has actually succeeded once, and that its table list covers the newer tables (see Weekly database backups above)
 - [ ] App Store / Play Store submission needs a `production` EAS build profile (`eas build --platform android --profile production` / iOS equivalent) and store review — neither has happened yet
-- [ ] If `is_premium` is meant to charge money, no payment processor is wired up yet
+- [ ] Replace the placeholder mobile money receiving number/account name in `constants/payments.ts` (`MOBILE_MONEY_RECEIVING`) with real ones, and review the placeholder prices in `PAYMENT_PRODUCTS` before accepting real purchases (see Monetization above)
 - [ ] Decide whether new listings need a pre-publish admin review gate before going live, or retroactive moderation (current behavior) is acceptable — see Trust infrastructure above
 - [ ] If real SMS-based phone verification (OTP) is wanted instead of the current manual admin-approval flow, an SMS provider (Twilio/MessageBird/etc.) needs to be configured in Supabase Auth settings — nothing here today sends an SMS
 
