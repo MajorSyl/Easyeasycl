@@ -18,7 +18,7 @@ export default function TermsScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
-        <Text style={styles.updated}>Last updated: July 2025</Text>
+        <Text style={styles.updated}>Last updated: August 2026</Text>
 
         <Section title="1. Acceptance of Terms">
           By accessing or using the Easyfen Platform, you agree to be bound by these Terms of Service.
@@ -65,9 +65,9 @@ export default function TermsScreen() {
           relevant parties.
         </Section>
 
-        <Section title="7. Fees">
-          Basic use of the Platform is free. We may offer premium features for a fee. All applicable
-          fees will be clearly disclosed before you are charged.
+        <Section title="7. Fees and Payments">
+          {`Basic use of the Platform — browsing, messaging, and posting standard listings — is free. Paid features (such as a featured listing or an agent subscription) are clearly priced before you purchase.\n\n` +
+            `Easyfen does not process card or bank payments directly. Paid features are purchased by sending payment via mobile money to a number we provide, then submitting the reference code and a screenshot of the payment confirmation for manual review. A feature only activates once an Easyfen administrator confirms the payment. Submitting a payment for review does not guarantee approval — for example, if the reference code or screenshot cannot be verified, the payment will be rejected. Contact us (Section 12) if you believe a payment was rejected in error.`}
         </Section>
 
         <Section title="8. Intellectual Property">
@@ -91,8 +91,9 @@ export default function TermsScreen() {
         </Section>
 
         <Section title="11. Governing Law">
-          These Terms are governed by and construed in accordance with applicable law. Any disputes shall
-          be resolved through good-faith negotiation, or if unsuccessful, through binding arbitration.
+          These Terms are governed by the laws of the Republic of Sierra Leone. Any dispute arising from
+          these Terms or your use of the Platform shall first be addressed through good-faith negotiation
+          between the parties; if unresolved, the courts of Sierra Leone shall have exclusive jurisdiction.
         </Section>
 
         <Section title="12. Contact">

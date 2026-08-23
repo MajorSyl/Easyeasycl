@@ -162,7 +162,7 @@ This produces a `preview`-profile `.apk` — for sideloading/testing, not what P
 
 ## Pre-launch checklist
 
-- [ ] Replace placeholder legal page content with real, reviewed policy text
+- [ ] `/privacy`, `/terms`, `/guidelines`, `/agent-agreement` have real, substantive draft content (Sierra Leone governing law, accurate description of what data is actually collected including payment screenshots, no false claims like location tracking) — but this is **a first pass, not lawyer-reviewed**. Get local legal review before launch, and confirm `support@easyfen.com` / `agents@easyfen.com` are real, monitored inboxes (they're referenced as the contact method but were never verified to exist).
 - [ ] Confirm which Vercel project actually serves `easyfen.com` (see warning above)
 - [ ] Turn "Confirm email" back on in Supabase Dashboard → Authentication → Settings (may be off from testing)
 - [ ] Remove or mark inactive any seed/test listings before going public

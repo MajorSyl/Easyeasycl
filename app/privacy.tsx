@@ -18,7 +18,7 @@ export default function PrivacyPolicyScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
-        <Text style={styles.updated}>Last updated: July 2025</Text>
+        <Text style={styles.updated}>Last updated: August 2026</Text>
 
         <Section title="1. Introduction">
           Easyfen ("we", "our", or "us") is committed to protecting your personal information. This
@@ -30,9 +30,11 @@ export default function PrivacyPolicyScreen() {
           {`We collect the following categories of information:\n\n` +
             `• Account information: name, email address, phone number, and profile photo.\n` +
             `• Listing content: property descriptions, photos, pricing, and location details you upload.\n` +
-            `• Usage data: pages visited, search queries, listings viewed, and interactions on the Platform.\n` +
-            `• Device information: device type, operating system, and unique device identifiers.\n` +
-            `• Location: approximate location when you search for nearby listings (only with your permission).`}
+            `• Messages: the content of messages you send other users through the Platform's chat.\n` +
+            `• Payment verification: if you purchase a paid feature (a featured listing, an agent subscription, or agent verification), we collect the mobile money reference code and a screenshot of your payment confirmation, which you submit for an admin to manually verify. This screenshot may show details from your mobile money app, such as your phone number or account balance — only upload what's needed to confirm the transaction (you can crop the screenshot first).\n` +
+            `• Usage data: listings viewed, favorites, saved searches, and interactions on the Platform.\n` +
+            `• Device information: device type, operating system, and unique device identifiers.\n\n` +
+            `We do not collect your location. The Platform does not use GPS or any other location service — "near you" or distance-based results are not currently a feature.`}
         </Section>
 
         <Section title="3. How We Use Your Information">
@@ -46,21 +48,28 @@ export default function PrivacyPolicyScreen() {
 
         <Section title="4. Sharing of Information">
           {`We do not sell your personal information. We may share your information with:\n\n` +
-            `• Other users, to the extent necessary to facilitate a transaction (e.g. contact details shared after a booking is confirmed).\n` +
-            `• Service providers who assist us in operating the Platform (e.g. hosting, analytics, payment processing), under strict confidentiality agreements.\n` +
-            `• Law enforcement or regulatory bodies when required by law.`}
+            `• Other users, to the extent necessary to facilitate a transaction (e.g. your name and messages are visible to an agent or buyer you contact).\n` +
+            `• Our hosting and database provider (Supabase), who stores Platform data on our behalf.\n` +
+            `• An Easyfen administrator, who reviews payment screenshots and reference codes to manually verify mobile money payments, and who reviews reported listings and accounts.\n` +
+            `• Law enforcement or regulatory bodies when required by Sierra Leonean law.\n\n` +
+            `We do not currently use third-party advertising or analytics services.`}
         </Section>
 
         <Section title="5. Data Retention">
           We retain your personal information for as long as your account is active or as needed to provide
-          you services. You may request deletion of your account and associated data at any time by
-          contacting us at support@easyfen.com.
+          you services. Payment screenshots are retained as a record of the transaction for as long as
+          the associated purchase remains relevant to your account (for example, an active listing boost or
+          subscription), and may be kept longer where needed for dispute resolution or as required by law.
+          You may request deletion of your account and associated data at any time by contacting us (see
+          Section 11).
         </Section>
 
         <Section title="6. Security">
-          We implement industry-standard technical and organizational measures to protect your data against
-          unauthorised access, alteration, disclosure, or destruction. No method of transmission over the
-          internet is 100% secure; we cannot guarantee absolute security.
+          We implement technical and organizational measures to protect your data against unauthorised
+          access, alteration, disclosure, or destruction — including database-level access controls (Row
+          Level Security) that restrict each user to their own data, and storage limits that reject
+          non-image uploads. No method of transmission over the internet is 100% secure; we cannot
+          guarantee absolute security.
         </Section>
 
         <Section title="7. Your Rights">
@@ -72,9 +81,9 @@ export default function PrivacyPolicyScreen() {
             `To exercise these rights, contact us at support@easyfen.com.`}
         </Section>
 
-        <Section title="8. Cookies and Tracking">
-          Our web platform uses cookies and similar technologies to maintain session state and collect
-          analytics. You can control cookie preferences through your browser settings.
+        <Section title="8. Cookies and Local Storage">
+          On the web version of the Platform, we use browser local storage (not third-party cookies) to
+          keep you signed in between visits. We do not use this to track you across other websites.
         </Section>
 
         <Section title="9. Children's Privacy">
@@ -88,7 +97,11 @@ export default function PrivacyPolicyScreen() {
           via email or an in-app notification at least 14 days before the changes take effect.
         </Section>
 
-        <Section title="11. Contact Us">
+        <Section title="11. Governing Law">
+          This Privacy Policy is governed by the laws of the Republic of Sierra Leone.
+        </Section>
+
+        <Section title="12. Contact Us">
           {`If you have questions about this Privacy Policy, please contact:\n\nEasyfen Support\nsupport@easyfen.com`}
         </Section>
 

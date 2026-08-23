@@ -18,7 +18,7 @@ export default function AgentAgreementScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
-        <Text style={styles.updated}>Last updated: July 2025</Text>
+        <Text style={styles.updated}>Last updated: August 2026</Text>
 
         <Text style={styles.intro}>
           This Agent Onboarding Agreement ("Agreement") sets out the terms under which real estate
@@ -52,9 +52,8 @@ export default function AgentAgreementScreen() {
         </Section>
 
         <Section title="4. Platform Fees">
-          Easyfen may charge agents a subscription fee or per-listing fee to access premium placement
-          or advanced features. All applicable fees will be clearly disclosed before you are charged.
-          Standard listings are free of charge.
+          {`Standard listings are free of charge. Easyfen offers optional paid features — a featured listing boost, an agent subscription that keeps all your listings featured, and paid agent verification — priced in the app before purchase.\n\n` +
+            `These are purchased via mobile money (see Terms of Service, Section 7), not automated card billing. A feature activates only after Easyfen manually confirms your payment.`}
         </Section>
 
         <Section title="5. Conduct">
@@ -65,9 +64,10 @@ export default function AgentAgreementScreen() {
         </Section>
 
         <Section title="6. Verification">
-          Easyfen may request documentation to verify your professional credentials (e.g. a copy of
-          your agent licence or registration certificate). Failure to provide verification upon request
-          may result in your agent status being suspended or removed.
+          {`Easyfen currently offers two optional verification steps, reviewed manually by an administrator:\n\n` +
+            `• Phone verification, at no cost.\n` +
+            `• Verified Agent review, a paid feature (Section 4) after which your profile and listings display a Verified Agent badge if approved.\n\n` +
+            `Neither step currently requires submitting a professional licence or registration document. Easyfen may introduce document-based verification in the future, in which case this Agreement will be updated first.`}
         </Section>
 
         <Section title="7. Intellectual Property">
@@ -92,9 +92,9 @@ export default function AgentAgreementScreen() {
         </Section>
 
         <Section title="10. Governing Law">
-          This Agreement is governed by and construed in accordance with applicable law. Disputes
-          shall be resolved in accordance with the dispute resolution process set out in the
-          Terms of Service.
+          This Agreement is governed by the laws of the Republic of Sierra Leone. Disputes shall be
+          resolved in accordance with the dispute resolution process set out in the Terms of Service
+          (good-faith negotiation, then the courts of Sierra Leone).
         </Section>
 
         <Section title="11. Contact">

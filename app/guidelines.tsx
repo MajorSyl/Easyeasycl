@@ -18,7 +18,7 @@ export default function GuidelinesScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
-        <Text style={styles.updated}>Last updated: July 2025</Text>
+        <Text style={styles.updated}>Last updated: August 2026</Text>
 
         <Text style={styles.intro}>
           Easyfen is built on trust between property seekers, owners, and agents.
@@ -64,8 +64,8 @@ export default function GuidelinesScreen() {
 
         <Section title="Reporting Violations">
           {`If you see content that violates these guidelines, use the Report button on the listing or profile, ` +
-            `or contact us at support@easyfen.com. We review all reports and take appropriate action, ` +
-            `usually within 48 hours.`}
+            `or contact us at support@easyfen.com. Reporting a listing suspends it immediately while we review it. ` +
+            `We aim to review reports as quickly as possible.`}
         </Section>
 
         <Section title="Enforcement">
