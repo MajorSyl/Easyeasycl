@@ -75,9 +75,9 @@ export default async function OverviewPage() {
             </p>
             <p style={{ fontSize: 13, color: '#667085', lineHeight: 1.6 }}>
               <strong>Payments</strong> — there is no live payment gateway. Every boost/subscription/verification
-              purchase is a mobile money reference code a user submits; check it actually arrived in your Orange
-              Money / Africell Money account before clicking Approve — approving activates the purchase immediately
-              and there is no automated refund if you get it wrong.
+              purchase is a mobile money reference code plus a screenshot a user submits; check the screenshot and
+              confirm the money actually arrived in your Orange Money / Afrimoney account before clicking Approve —
+              approving activates the purchase immediately and there is no automated refund if you get it wrong.
             </p>
             <p style={{ fontSize: 13, color: '#101828', marginTop: 8 }}>
               <strong>⚙️ To set your account as admin:</strong> Supabase Dashboard → Table Editor → profiles → find your row → set <code style={{ background: '#F3F4F6', padding: '1px 4px', borderRadius: 4 }}>is_admin = true</code>.

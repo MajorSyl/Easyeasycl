@@ -1,5 +1,7 @@
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Image } from 'expo-image';
+import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -7,6 +9,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../lib/auth-context';
 import { friendlyErrorMessage } from '../lib/errors';
 import { appAlert } from '../lib/alert';
+import { uploadPaymentScreenshot } from '../lib/upload';
 import { colors, fontSize, fontWeight, radius, spacing } from '../constants/theme';
 import {
   MOBILE_MONEY_RECEIVING,
@@ -29,6 +32,8 @@ export default function PayScreen() {
 
   const [provider, setProvider] = useState<MobileMoneyProvider>('orange_money');
   const [reference, setReference] = useState('');
+  const [screenshotUrl, setScreenshotUrl] = useState<string | null>(null);
+  const [uploadingScreenshot, setUploadingScreenshot] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [checking, setChecking] = useState(true);
   const [existing, setExisting] = useState<ExistingStatus>({ kind: 'none' });
@@ -107,10 +112,34 @@ export default function PayScreen() {
     }, [checkExisting])
   );
 
+  async function pickScreenshot() {
+    if (!session) return;
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      appAlert('Photo access needed', 'Please allow photo library access to attach a payment screenshot.');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.7 });
+    if (result.canceled || !result.assets[0]) return;
+    setUploadingScreenshot(true);
+    try {
+      const url = await uploadPaymentScreenshot(result.assets[0].uri, session.user.id);
+      setScreenshotUrl(url);
+    } catch (err) {
+      appAlert('Could not upload screenshot', friendlyErrorMessage(err));
+    } finally {
+      setUploadingScreenshot(false);
+    }
+  }
+
   async function handleSubmit() {
     if (!session || !product || submitting) return;
     if (!reference.trim()) {
       appAlert('Enter the reference code', 'You should have received this by SMS after sending the payment.');
+      return;
+    }
+    if (!screenshotUrl) {
+      appAlert('Attach a screenshot', 'Upload a screenshot of the payment confirmation before submitting.');
       return;
     }
     if (purpose === 'listing_boost' && !listingId) return;
@@ -123,6 +152,7 @@ export default function PayScreen() {
       amount: product.amount,
       momo_provider: provider,
       momo_reference: reference.trim(),
+      screenshot_url: screenshotUrl,
     });
     setSubmitting(false);
 
@@ -132,6 +162,7 @@ export default function PayScreen() {
     }
 
     setReference('');
+    setScreenshotUrl(null);
     setExisting({ kind: 'pending' });
     await refreshProfile();
     appAlert(
@@ -234,16 +265,43 @@ export default function PayScreen() {
             autoCapitalize="characters"
           />
 
+          <Text style={styles.sectionTitle}>3. Upload payment screenshot</Text>
+          <Text style={styles.helperText}>A screenshot of the payment confirmation from your mobile money app.</Text>
           <Pressable
-            style={[styles.submitButton, !reference.trim() && styles.submitButtonDisabled]}
-            disabled={!reference.trim() || submitting}
+            style={styles.screenshotBox}
+            onPress={pickScreenshot}
+            disabled={uploadingScreenshot}
+            accessibilityRole="button"
+            accessibilityLabel={screenshotUrl ? 'Change payment screenshot' : 'Upload payment screenshot'}
+          >
+            {uploadingScreenshot ? (
+              <ActivityIndicator color={colors.accent} />
+            ) : screenshotUrl ? (
+              <>
+                <Image source={{ uri: screenshotUrl }} style={styles.screenshotThumb} contentFit="cover" />
+                <View style={styles.screenshotOverlay}>
+                  <Ionicons name="camera-outline" size={16} color="#fff" />
+                  <Text style={styles.screenshotOverlayText}>Change</Text>
+                </View>
+              </>
+            ) : (
+              <>
+                <Ionicons name="image-outline" size={26} color={colors.textMuted} />
+                <Text style={styles.screenshotBoxText}>Tap to upload screenshot</Text>
+              </>
+            )}
+          </Pressable>
+
+          <Pressable
+            style={[styles.submitButton, (!reference.trim() || !screenshotUrl) && styles.submitButtonDisabled]}
+            disabled={!reference.trim() || !screenshotUrl || submitting}
             onPress={handleSubmit}
           >
             {submitting ? (
               <ActivityIndicator color="#fff" />
             ) : (
               <Text
-                style={[styles.submitButtonText, !reference.trim() && styles.submitButtonTextDisabled]}
+                style={[styles.submitButtonText, (!reference.trim() || !screenshotUrl) && styles.submitButtonTextDisabled]}
               >
                 Submit for Review
               </Text>
@@ -326,6 +384,34 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     marginBottom: spacing.lg,
   },
+  screenshotBox: {
+    height: 140,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    borderStyle: 'dashed',
+    borderRadius: radius.md,
+    backgroundColor: colors.card,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    marginBottom: spacing.lg,
+    overflow: 'hidden',
+  },
+  screenshotBoxText: { fontSize: fontSize.sm, color: colors.textSecondary, fontWeight: fontWeight.semibold },
+  screenshotThumb: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
+  screenshotOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    paddingVertical: 6,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+  },
+  screenshotOverlayText: { color: '#fff', fontSize: fontSize.xs, fontWeight: fontWeight.semibold },
   submitButton: { backgroundColor: colors.accent, borderRadius: radius.md, paddingVertical: spacing.md, alignItems: 'center' },
   submitButtonDisabled: { backgroundColor: colors.border },
   submitButtonText: { color: '#fff', fontSize: fontSize.md, fontWeight: fontWeight.bold },

@@ -55,6 +55,26 @@ export async function uploadListingPhoto(uri: string, userId: string): Promise<s
   return data.publicUrl;
 }
 
+export async function uploadPaymentScreenshot(uri: string, userId: string): Promise<string> {
+  const compressedUri = await compressForUpload(uri);
+  const path = `${userId}/${Date.now()}-${Math.round(Math.random() * 1e6)}.jpg`;
+
+  const response = await fetch(compressedUri);
+  const arrayBuffer = await response.arrayBuffer();
+  if (arrayBuffer.byteLength > MAX_UPLOAD_BYTES) {
+    throw new Error('Screenshot is too large. Please choose a smaller image.');
+  }
+
+  const { error } = await supabase.storage
+    .from('payment-screenshots')
+    .upload(path, arrayBuffer, { contentType: 'image/jpeg' });
+
+  if (error) throw error;
+
+  const { data } = supabase.storage.from('payment-screenshots').getPublicUrl(path);
+  return data.publicUrl;
+}
+
 export async function uploadAvatar(uri: string, userId: string): Promise<string> {
   const compressedUri = await compressForUpload(uri);
   const path = `${userId}/${Date.now()}-avatar.jpg`;

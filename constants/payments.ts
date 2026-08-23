@@ -28,14 +28,20 @@ export const PAYMENT_PRODUCTS: Record<
   },
 };
 
+// Exactly two providers, matching what's actually usable in Sierra Leone.
+// The internal value `africell_money` is kept as-is (it's the payments
+// table's CHECK-constrained column value — renaming it would mean a data
+// migration for no real benefit); only the display label changed to match
+// the product's real branding, "Afrimoney".
 export type MobileMoneyProvider = 'orange_money' | 'africell_money';
 
 // TODO before launch: replace with the real numbers payments should be sent
 // to. There is no live payment gateway wired up — every purchase is
-// verified manually by an admin against the reference code the payer
-// submits (see admin_review_payment in the payments migration and
-// apps/admin/app/payments/page.tsx). Until these are real, do not point
-// real users at the boost/subscription/verification purchase screens.
+// verified manually by an admin against the reference code and payment
+// screenshot the payer submits (see admin_review_payment in the payments
+// migration and apps/admin/app/payments/page.tsx). Until these are real, do
+// not point real users at the boost/subscription/verification purchase
+// screens.
 export const MOBILE_MONEY_RECEIVING: Record<MobileMoneyProvider, { label: string; number: string; accountName: string }> = {
   orange_money: {
     label: 'Orange Money',
@@ -43,8 +49,8 @@ export const MOBILE_MONEY_RECEIVING: Record<MobileMoneyProvider, { label: string
     accountName: 'REPLACE_WITH_YOUR_BUSINESS_NAME',
   },
   africell_money: {
-    label: 'Africell Money',
-    number: 'REPLACE_WITH_YOUR_AFRICELL_MONEY_NUMBER',
+    label: 'Afrimoney',
+    number: 'REPLACE_WITH_YOUR_AFRIMONEY_NUMBER',
     accountName: 'REPLACE_WITH_YOUR_BUSINESS_NAME',
   },
 };

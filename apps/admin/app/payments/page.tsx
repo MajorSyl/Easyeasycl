@@ -19,7 +19,7 @@ export default async function PaymentsPage() {
 
   const { data: payments } = await supabase
     .from('payments')
-    .select('id, purpose, related_listing_id, amount, currency, momo_provider, momo_reference, status, submitted_at, user:profiles!user_id(full_name)')
+    .select('id, purpose, related_listing_id, amount, currency, momo_provider, momo_reference, screenshot_url, status, submitted_at, user:profiles!user_id(full_name)')
     .order('submitted_at', { ascending: false })
     .limit(200);
 
@@ -44,8 +44,21 @@ export default async function PaymentsPage() {
           {p.related_listing_id ? listingTitleById.get(p.related_listing_id) ?? p.related_listing_id.slice(0, 8) : '—'}
         </td>
         <td style={{ fontWeight: 600 }}>{p.currency} {Number(p.amount).toLocaleString('en-US')}</td>
-        <td className="muted">{p.momo_provider === 'orange_money' ? 'Orange Money' : 'Africell Money'}</td>
+        <td className="muted">{p.momo_provider === 'orange_money' ? 'Orange Money' : 'Afrimoney'}</td>
         <td className="muted" style={{ fontFamily: 'monospace' }}>{p.momo_reference}</td>
+        <td>
+          {p.screenshot_url ? (
+            <a href={p.screenshot_url} target="_blank" rel="noopener noreferrer">
+              <img
+                src={p.screenshot_url}
+                alt="Payment screenshot"
+                style={{ width: 48, height: 48, objectFit: 'cover', borderRadius: 6, border: '1px solid #E4E7EC' }}
+              />
+            </a>
+          ) : (
+            <span className="muted" style={{ fontSize: 11 }}>None</span>
+          )}
+        </td>
         <td>
           {p.status === 'pending' ? (
             <span className="badge badge-amber">Pending</span>
@@ -106,6 +119,7 @@ export default async function PaymentsPage() {
                   <th>Amount</th>
                   <th>Provider</th>
                   <th>Reference</th>
+                  <th>Screenshot</th>
                   <th>Status</th>
                   <th>Actions</th>
                 </tr>
@@ -134,6 +148,7 @@ export default async function PaymentsPage() {
                   <th>Amount</th>
                   <th>Provider</th>
                   <th>Reference</th>
+                  <th>Screenshot</th>
                   <th>Status</th>
                 </tr>
               </thead>
