@@ -503,10 +503,37 @@ export default function ProfileScreen() {
       }
       ListFooterComponent={
         !editing ? (
-          <Pressable style={styles.logoutButton} onPress={handleLogOut}>
-            <Ionicons name="log-out-outline" size={18} color={colors.danger} />
-            <Text style={styles.logoutButtonText}>Log Out</Text>
-          </Pressable>
+          <>
+            {/* WebFooter (privacy/terms/guidelines links) only renders on
+                web — without this, native iOS/Android users would have no
+                in-app way to reach these pages at all. */}
+            <View style={styles.legalRow}>
+              <Pressable onPress={() => router.push('/privacy')} hitSlop={6}>
+                <Text style={styles.legalLink}>Privacy Policy</Text>
+              </Pressable>
+              <Text style={styles.legalSep}>·</Text>
+              <Pressable onPress={() => router.push('/terms')} hitSlop={6}>
+                <Text style={styles.legalLink}>Terms of Service</Text>
+              </Pressable>
+              <Text style={styles.legalSep}>·</Text>
+              <Pressable onPress={() => router.push('/guidelines')} hitSlop={6}>
+                <Text style={styles.legalLink}>Community Guidelines</Text>
+              </Pressable>
+              {profile?.role === 'agent' && (
+                <>
+                  <Text style={styles.legalSep}>·</Text>
+                  <Pressable onPress={() => router.push('/agent-agreement')} hitSlop={6}>
+                    <Text style={styles.legalLink}>Agent Agreement</Text>
+                  </Pressable>
+                </>
+              )}
+            </View>
+
+            <Pressable style={styles.logoutButton} onPress={handleLogOut}>
+              <Ionicons name="log-out-outline" size={18} color={colors.danger} />
+              <Text style={styles.logoutButtonText}>Log Out</Text>
+            </Pressable>
+          </>
         ) : null
       }
     />
@@ -688,4 +715,15 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   logoutButtonText: { color: colors.danger, fontWeight: fontWeight.bold, fontSize: fontSize.md },
+  legalRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: spacing.xl,
+    paddingHorizontal: spacing.md,
+  },
+  legalLink: { fontSize: fontSize.xs, color: colors.textSecondary, textDecorationLine: 'underline' },
+  legalSep: { fontSize: fontSize.xs, color: colors.textMuted },
 });

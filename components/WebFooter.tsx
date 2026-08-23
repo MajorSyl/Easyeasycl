@@ -6,6 +6,7 @@ const LINKS = [
   { label: 'Privacy Policy', href: '/privacy' },
   { label: 'Terms of Service', href: '/terms' },
   { label: 'Community Guidelines', href: '/guidelines' },
+  { label: 'Agent Agreement', href: '/agent-agreement' },
 ] as const;
 
 export function WebFooter() {

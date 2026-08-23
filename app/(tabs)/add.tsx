@@ -239,7 +239,12 @@ export default function AddListingScreen() {
             </Text>
           )}
         </Pressable>
-        <Text style={styles.terms}>By posting, you agree to our Community Guidelines</Text>
+        <Text style={styles.terms}>
+          By posting, you agree to our{' '}
+          <Text style={styles.termsLink} onPress={() => router.push('/guidelines')}>
+            Community Guidelines
+          </Text>
+        </Text>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -316,4 +321,5 @@ const styles = StyleSheet.create({
   publishButtonText: { color: '#fff', fontSize: fontSize.md, fontWeight: fontWeight.bold },
   publishButtonTextDisabled: { color: colors.textMuted },
   terms: { textAlign: 'center', fontSize: fontSize.xs, color: colors.textMuted, marginTop: spacing.sm },
+  termsLink: { color: colors.accent, fontWeight: fontWeight.semibold, textDecorationLine: 'underline' },
 });
