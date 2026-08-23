@@ -77,7 +77,13 @@ export function PhotoPicker({
 
   if (photos.length === 0) {
     return (
-      <Pressable style={styles.emptyBox} onPress={pickAndUpload} disabled={uploading}>
+      <Pressable
+        style={styles.emptyBox}
+        onPress={pickAndUpload}
+        disabled={uploading}
+        accessibilityRole="button"
+        accessibilityLabel="Upload listing photos"
+      >
         {uploading ? (
           <ActivityIndicator color={colors.accent} />
         ) : (
@@ -93,16 +99,34 @@ export function PhotoPicker({
 
   return (
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.thumbRow}>
-      {photos.map((url) => (
+      {photos.map((url, index) => (
         <View key={url} style={styles.thumbWrap}>
-          <Image source={{ uri: url }} style={styles.thumb} contentFit="cover" />
-          <Pressable style={styles.removeButton} onPress={() => removePhoto(url)} hitSlop={13}>
+          <Image
+            source={{ uri: url }}
+            style={styles.thumb}
+            contentFit="cover"
+            accessible
+            accessibilityLabel={`Listing photo ${index + 1}`}
+          />
+          <Pressable
+            style={styles.removeButton}
+            onPress={() => removePhoto(url)}
+            hitSlop={13}
+            accessibilityRole="button"
+            accessibilityLabel={`Remove photo ${index + 1}`}
+          >
             <Ionicons name="close" size={12} color="#fff" />
           </Pressable>
         </View>
       ))}
       {photos.length < MAX_PHOTOS && (
-        <Pressable style={styles.addTile} onPress={pickAndUpload} disabled={uploading}>
+        <Pressable
+          style={styles.addTile}
+          onPress={pickAndUpload}
+          disabled={uploading}
+          accessibilityRole="button"
+          accessibilityLabel="Add another photo"
+        >
           {uploading ? <ActivityIndicator color={colors.accent} /> : <Ionicons name="add" size={24} color={colors.textMuted} />}
         </Pressable>
       )}

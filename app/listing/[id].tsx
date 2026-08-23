@@ -175,12 +175,18 @@ export default function ListingDetailScreen() {
                 onMomentumScrollEnd={(e) =>
                   setPhotoIndex(Math.round(e.nativeEvent.contentOffset.x / heroWidth))
                 }
-                renderItem={({ item }) => (
-                  <Image source={{ uri: item }} style={styles.photo} contentFit="cover" />
+                renderItem={({ item, index }) => (
+                  <Image
+                    source={{ uri: item }}
+                    style={styles.photo}
+                    contentFit="cover"
+                    accessible
+                    accessibilityLabel={`Photo ${index + 1} of ${listing.photos.length} of ${listing.title}`}
+                  />
                 )}
               />
               {listing.photos.length > 1 && (
-                <View style={styles.photoDots}>
+                <View style={styles.photoDots} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
                   {listing.photos.map((url, i) => (
                     <View key={url} style={[styles.dot, i === photoIndex && styles.dotActive]} />
                   ))}
@@ -194,16 +200,34 @@ export default function ListingDetailScreen() {
           )}
 
           <View style={styles.photoTopBar}>
-            <Pressable style={styles.roundButton} onPress={() => router.back()} hitSlop={8}>
+            <Pressable
+              style={styles.roundButton}
+              onPress={() => router.back()}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel="Go back"
+            >
               <Ionicons name="chevron-back" size={20} color={colors.textPrimary} />
             </Pressable>
             <View style={styles.topBarRight}>
               {session?.user.id !== listing.owner_id && (
-                <Pressable style={styles.roundButton} onPress={handleReport} hitSlop={8}>
+                <Pressable
+                  style={styles.roundButton}
+                  onPress={handleReport}
+                  hitSlop={8}
+                  accessibilityRole="button"
+                  accessibilityLabel="Report this listing"
+                >
                   <Ionicons name="flag-outline" size={18} color={colors.textPrimary} />
                 </Pressable>
               )}
-              <Pressable style={styles.roundButton} onPress={handleShare} hitSlop={8}>
+              <Pressable
+                style={styles.roundButton}
+                onPress={handleShare}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel="Share this listing"
+              >
                 <Ionicons name="share-outline" size={18} color={colors.textPrimary} />
               </Pressable>
             </View>

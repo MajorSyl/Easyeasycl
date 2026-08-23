@@ -11,10 +11,21 @@ import type { Listing } from '../lib/types';
 
 export const ListingCard = memo(function ListingCard({ listing }: { listing: Listing }) {
   return (
-    <Pressable style={styles.card} onPress={() => router.push(`/listing/${listing.id}`)}>
+    <Pressable
+      style={styles.card}
+      onPress={() => router.push(`/listing/${listing.id}`)}
+      accessibilityRole="button"
+      accessibilityLabel={`${listing.title}, ${formatPrice(listing.price, listing.currency, listing.price_unit)}, ${listing.location}`}
+    >
       <View style={styles.imageWrap}>
         {listing.photos[0] ? (
-          <Image source={{ uri: listing.photos[0] }} style={styles.image} contentFit="cover" />
+          <Image
+            source={{ uri: listing.photos[0] }}
+            style={styles.image}
+            contentFit="cover"
+            accessible
+            accessibilityLabel={`Photo of ${listing.title}`}
+          />
         ) : (
           <View style={[styles.image, styles.imagePlaceholder]}>
             <Ionicons name="image-outline" size={28} color={colors.textMuted} />
@@ -30,11 +41,14 @@ export const ListingCard = memo(function ListingCard({ listing }: { listing: Lis
         </View>
 
         <View style={styles.bottomRow}>
-          <View style={styles.statPill}>
+          <View style={styles.statPill} accessibilityLabel={`${listing.view_count} views`}>
             <Ionicons name="eye-outline" size={12} color="#fff" />
             <Text style={styles.statText}>{listing.view_count}</Text>
           </View>
-          <View style={styles.statPill}>
+          <View
+            style={styles.statPill}
+            accessibilityLabel={`${listing.photos.length} photo${listing.photos.length === 1 ? '' : 's'}`}
+          >
             <Ionicons name="camera-outline" size={12} color="#fff" />
             <Text style={styles.statText}>{listing.photos.length}</Text>
           </View>
@@ -61,14 +75,20 @@ export const ListingCard = memo(function ListingCard({ listing }: { listing: Lis
           ) : (
             <View />
           )}
-          <View style={styles.agentRow}>
+          <Pressable
+            style={styles.agentRow}
+            onPress={() => router.push(`/user/${listing.owner_id}`)}
+            hitSlop={6}
+            accessibilityRole="button"
+            accessibilityLabel={`View ${listing.owner?.full_name ?? 'agent'}'s profile`}
+          >
             <View style={styles.avatar}>
               <Text style={styles.avatarText}>{initialsFor(listing.owner?.full_name ?? null)}</Text>
             </View>
             <Text style={styles.agentName} numberOfLines={1}>
               {listing.owner?.full_name ?? 'Unknown'}
             </Text>
-          </View>
+          </Pressable>
         </View>
       </View>
     </Pressable>
@@ -132,7 +152,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
     gap: spacing.xs,
   },
-  agentRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  agentRow: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 6, marginVertical: -6 },
   agentName: { fontSize: fontSize.xs, fontWeight: fontWeight.medium, color: colors.textSecondary, maxWidth: 70 },
   avatar: {
     width: 20,

@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, fontSize, fontWeight, radius, spacing } from '../../constants/theme';
+import { useTabBarGap } from '../../lib/use-bottom-gap';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../lib/auth-context';
 import { friendlyErrorMessage } from '../../lib/errors';
@@ -26,6 +27,7 @@ function escapeForFilter(text: string) {
 
 export default function SearchScreen() {
   const insets = useSafeAreaInsets();
+  const tabBarGap = useTabBarGap();
   const { session } = useAuth();
   const [query, setQuery] = useState('');
   const [budget, setBudget] = useState('');
@@ -128,7 +130,18 @@ export default function SearchScreen() {
             placeholderTextColor={colors.textMuted}
             value={query}
             onChangeText={setQuery}
+            accessibilityLabel="Search by location or keyword"
           />
+          {query.length > 0 && (
+            <Pressable
+              onPress={() => setQuery('')}
+              hitSlop={14}
+              accessibilityRole="button"
+              accessibilityLabel="Clear search text"
+            >
+              <Ionicons name="close-circle" size={18} color={colors.textMuted} />
+            </Pressable>
+          )}
         </View>
 
         <View style={styles.filterRow}>
@@ -141,15 +154,26 @@ export default function SearchScreen() {
               value={budget}
               onChangeText={setBudget}
               keyboardType="decimal-pad"
+              accessibilityLabel="Maximum budget"
             />
           </View>
-          <Pressable style={styles.sortButton} onPress={() => setSortMenuOpen(true)}>
-            <Ionicons name="options-outline" size={20} color={colors.textPrimary} />
+          <Pressable
+            style={styles.sortButton}
+            onPress={() => setSortMenuOpen(true)}
+            accessibilityRole="button"
+            accessibilityLabel="Sort results"
+            accessibilityHint={`Currently sorted by ${sortLabels[sortMode]}`}
+          >
+            <Ionicons name="swap-vertical-outline" size={20} color={colors.textPrimary} />
           </Pressable>
           <Pressable
             style={[styles.sortButton, !canSaveSearch && styles.sortButtonDisabled]}
             onPress={saveSearch}
             disabled={!canSaveSearch || savingSearch}
+            accessibilityRole="button"
+            accessibilityLabel="Save this search"
+            accessibilityHint="Notifies you when a new listing matches this search"
+            accessibilityState={{ disabled: !canSaveSearch || savingSearch }}
           >
             {savingSearch ? (
               <ActivityIndicator size="small" color={colors.accent} />
@@ -170,7 +194,7 @@ export default function SearchScreen() {
         <FlatList
           data={results}
           keyExtractor={(item) => `${item.kind}-${item.id}`}
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={[styles.listContent, { paddingBottom: tabBarGap + spacing.lg }]}
           renderItem={({ item }) => <ListingCard listing={item.data} />}
           ListEmptyComponent={
             <View style={styles.emptyState}>
@@ -190,8 +214,12 @@ export default function SearchScreen() {
       )}
 
       <Modal visible={sortMenuOpen} transparent animationType="fade" onRequestClose={() => setSortMenuOpen(false)}>
-        <Pressable style={styles.backdrop} onPress={() => setSortMenuOpen(false)}>
-          <View style={styles.sheet}>
+        <Pressable
+          style={styles.backdrop}
+          onPress={() => setSortMenuOpen(false)}
+          accessibilityLabel="Close sort menu"
+        >
+          <View style={styles.sheet} accessibilityRole="menu">
             {(Object.keys(sortLabels) as SortMode[]).map((mode) => (
               <Pressable
                 key={mode}
@@ -200,6 +228,8 @@ export default function SearchScreen() {
                   setSortMode(mode);
                   setSortMenuOpen(false);
                 }}
+                accessibilityRole="menuitem"
+                accessibilityState={{ selected: mode === sortMode }}
               >
                 <Text style={[styles.optionText, mode === sortMode && styles.optionTextActive]}>
                   {sortLabels[mode]}
@@ -242,10 +272,10 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   budgetPrefix: { fontSize: fontSize.sm, color: colors.textMuted, fontWeight: fontWeight.semibold },
-  budgetInput: { flex: 1, fontSize: fontSize.sm, color: colors.textPrimary, paddingVertical: 10 },
+  budgetInput: { flex: 1, fontSize: fontSize.sm, color: colors.textPrimary, paddingVertical: 12 },
   sortButton: {
-    width: 42,
-    height: 42,
+    width: 44,
+    height: 44,
     borderRadius: radius.md,
     backgroundColor: colors.card,
     borderWidth: 1,

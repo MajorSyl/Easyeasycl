@@ -18,6 +18,7 @@ import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../lib/auth-context';
 import { friendlyErrorMessage } from '../../lib/errors';
 import { notifyListingsChanged } from '../../lib/listings-cache-bus';
+import { useTabBarGap } from '../../lib/use-bottom-gap';
 import { uploadAvatar } from '../../lib/upload';
 import { sanitizeText } from '../../lib/sanitize';
 import { colors, fontSize, fontWeight, radius, spacing } from '../../constants/theme';
@@ -51,6 +52,7 @@ const kindLabels: Record<ListingKind, string> = {
 
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
+  const tabBarGap = useTabBarGap();
   const { session, profile, signOut, refreshProfile } = useAuth();
   const [myListings, setMyListings] = useState<MyListing[]>([]);
   const [loadingListings, setLoadingListings] = useState(true);
@@ -255,7 +257,7 @@ export default function ProfileScreen() {
   return (
     <FlatList
       style={[styles.container, { paddingTop: insets.top }]}
-      contentContainerStyle={styles.scrollContent}
+      contentContainerStyle={[styles.scrollContent, { paddingBottom: tabBarGap + spacing.lg }]}
       data={editing ? [] : myListings}
       keyExtractor={(item) => `${item.kind}-${item.id}`}
       ListHeaderComponent={
@@ -265,12 +267,15 @@ export default function ProfileScreen() {
               style={styles.avatar}
               onPress={editing ? pickAvatar : undefined}
               disabled={avatarUploading}
+              accessibilityRole={editing ? 'button' : undefined}
+              accessibilityLabel={editing ? 'Change profile photo' : 'Profile photo'}
             >
               {(editing ? avatarUrl : profile?.avatar_url) ? (
                 <Image
                   source={{ uri: (editing ? avatarUrl : profile?.avatar_url) as string }}
                   style={styles.avatarImage}
                   contentFit="cover"
+                  accessible={false}
                 />
               ) : (
                 <Text style={styles.avatarText}>{initialsFor(profile?.full_name ?? null)}</Text>
@@ -437,10 +442,18 @@ export default function ProfileScreen() {
                 style={styles.editButtonRow}
                 onPress={() => router.push(`/edit/${item.kind}/${item.id}`)}
                 hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel={`Edit ${item.title}`}
               >
                 <Ionicons name="pencil-outline" size={18} color={colors.accent} />
               </Pressable>
-              <Pressable style={styles.deleteButton} onPress={() => confirmDelete(item)} hitSlop={8}>
+              <Pressable
+                style={styles.deleteButton}
+                onPress={() => confirmDelete(item)}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel={`Delete ${item.title}`}
+              >
                 <Ionicons name="trash-outline" size={18} color={colors.danger} />
               </Pressable>
             </View>

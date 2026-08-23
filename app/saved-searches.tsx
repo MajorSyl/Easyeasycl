@@ -76,7 +76,7 @@ export default function SavedSearchesScreen() {
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.header}>
-        <Pressable onPress={() => router.back()} hitSlop={8}>
+        <Pressable onPress={() => router.back()} hitSlop={8} accessibilityRole="button" accessibilityLabel="Go back">
           <Ionicons name="chevron-back" size={22} color={colors.textPrimary} />
         </Pressable>
         <Ionicons name="bookmark" size={18} color={colors.accent} />
@@ -100,7 +100,12 @@ export default function SavedSearchesScreen() {
               <Text style={styles.rowText} numberOfLines={1}>
                 {labelFor(item)}
               </Text>
-              <Pressable onPress={() => confirmRemove(item)} hitSlop={8}>
+              <Pressable
+                onPress={() => confirmRemove(item)}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel={`Delete saved search: ${labelFor(item)}`}
+              >
                 <Ionicons name="trash-outline" size={18} color={colors.danger} />
               </Pressable>
             </View>

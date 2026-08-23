@@ -188,7 +188,7 @@ export default function EditListingScreen() {
     >
       <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
         <View style={styles.header}>
-          <Pressable onPress={() => router.back()} hitSlop={8}>
+          <Pressable onPress={() => router.back()} hitSlop={8} accessibilityRole="button" accessibilityLabel="Go back">
             <Ionicons name="chevron-back" size={22} color={colors.textPrimary} />
           </Pressable>
           <Text style={styles.heading}>Edit Listing</Text>

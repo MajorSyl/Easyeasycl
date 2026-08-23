@@ -152,12 +152,14 @@ export default function ChatThreadScreen() {
       keyboardVerticalOffset={insets.top}
     >
       <View style={styles.header}>
-        <Pressable onPress={() => router.back()} hitSlop={8}>
+        <Pressable onPress={() => router.back()} hitSlop={8} accessibilityRole="button" accessibilityLabel="Go back">
           <Ionicons name="chevron-back" size={22} color={colors.textPrimary} />
         </Pressable>
         <Pressable
           style={styles.headerProfile}
           onPress={() => otherUser && router.push(`/user/${otherUser.id}`)}
+          accessibilityRole="button"
+          accessibilityLabel={`View ${otherUser?.full_name ?? 'this user'}'s profile`}
         >
           <View style={styles.avatarWrap}>
             <View style={styles.avatar}>
@@ -222,12 +224,16 @@ export default function ChatThreadScreen() {
             value={draft}
             onChangeText={setDraft}
             multiline
+            accessibilityLabel="Message text"
           />
         </Pressable>
         <Pressable
           style={[styles.sendButton, (!draft.trim() || sending) && styles.sendButtonDisabled]}
           onPress={handleSend}
           disabled={!draft.trim() || sending}
+          accessibilityRole="button"
+          accessibilityLabel="Send message"
+          accessibilityState={{ disabled: !draft.trim() || sending }}
         >
           <Ionicons name="send" size={18} color="#fff" />
         </Pressable>
@@ -307,9 +313,9 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
   },
   sendButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: colors.accent,
     alignItems: 'center',
     justifyContent: 'center',

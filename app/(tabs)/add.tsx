@@ -18,6 +18,7 @@ import { useAuth } from '../../lib/auth-context';
 import { friendlyErrorMessage } from '../../lib/errors';
 import { notifyListingsChanged } from '../../lib/listings-cache-bus';
 import { sanitizeText } from '../../lib/sanitize';
+import { useTabBarGap } from '../../lib/use-bottom-gap';
 import { colors, fontSize, fontWeight, radius, spacing } from '../../constants/theme';
 import { PhotoPicker } from '../../components/PhotoPicker';
 import { SelectField, type SelectOption } from '../../components/SelectField';
@@ -37,6 +38,7 @@ const rateUnitOptions: SelectOption<'hour' | 'day'>[] = [
 
 export default function AddListingScreen() {
   const insets = useSafeAreaInsets();
+  const tabBarGap = useTabBarGap();
   const { session, profile } = useAuth();
 
   const [photos, setPhotos] = useState<string[]>([]);
@@ -121,7 +123,10 @@ export default function AddListingScreen() {
       style={[styles.container, { paddingTop: insets.top }]}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+      <ScrollView
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: tabBarGap + spacing.lg }]}
+        keyboardShouldPersistTaps="handled"
+      >
         <Text style={styles.heading}>Create Listing</Text>
         <Text style={styles.subheading}>Get your property in front of thousands.</Text>
 

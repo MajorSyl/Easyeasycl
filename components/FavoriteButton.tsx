@@ -21,7 +21,14 @@ export function FavoriteButton({ itemType, itemId }: { itemType: ItemType; itemI
   }
 
   return (
-    <Pressable style={styles.button} onPress={handlePress} hitSlop={8}>
+    <Pressable
+      style={styles.button}
+      onPress={handlePress}
+      hitSlop={8}
+      accessibilityRole="button"
+      accessibilityLabel={favorited ? 'Remove from favorites' : 'Add to favorites'}
+      accessibilityState={{ selected: favorited }}
+    >
       <Ionicons
         name={favorited ? 'heart' : 'heart-outline'}
         size={18}

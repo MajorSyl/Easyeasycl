@@ -130,7 +130,7 @@ export default function NotificationsScreen() {
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.header}>
-        <Pressable onPress={() => router.back()} hitSlop={8}>
+        <Pressable onPress={() => router.back()} hitSlop={8} accessibilityRole="button" accessibilityLabel="Go back">
           <Ionicons name="chevron-back" size={22} color={colors.textPrimary} />
         </Pressable>
         <Ionicons name="notifications-outline" size={18} color={colors.accent} />

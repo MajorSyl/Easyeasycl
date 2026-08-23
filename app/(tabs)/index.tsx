@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
@@ -8,15 +8,15 @@ import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../lib/auth-context';
 import { subscribeListingsChanged } from '../../lib/listings-cache-bus';
 import { colors, fontSize, fontWeight, radius, shadow, spacing } from '../../constants/theme';
+import { useTabBarGap } from '../../lib/use-bottom-gap';
 import { ListingCard } from '../../components/ListingCard';
 import { PropertyCard } from '../../components/PropertyCard';
 import { FilterPills, type PillOption } from '../../components/FilterPills';
-import { SearchPill, type SegmentOption } from '../../components/SearchPill';
+import { EdgeFade } from '../../components/EdgeFade';
 import { initialsFor } from '../../lib/format';
 import type { Listing, ListingCategory } from '../../lib/types';
 
 type CategoryFilter = 'all' | ListingCategory;
-type QuickSegment = 'rent' | 'buy' | 'sell';
 
 const categoryOptions: PillOption<CategoryFilter>[] = [
   { value: 'all', label: 'All Properties' },
@@ -26,14 +26,9 @@ const categoryOptions: PillOption<CategoryFilter>[] = [
   { value: 'daily_hourly', label: 'Daily/Hourly' },
 ];
 
-const quickSegments: SegmentOption<QuickSegment>[] = [
-  { value: 'rent', label: 'Rent' },
-  { value: 'buy', label: 'Buy' },
-  { value: 'sell', label: 'Sell' },
-];
-
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
+  const tabBarGap = useTabBarGap();
   const { session, profile } = useAuth();
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>('all');
   const [listings, setListings] = useState<Listing[]>([]);
@@ -145,13 +140,8 @@ export default function HomeScreen() {
     router.push(session ? '/profile' : '/auth');
   }
 
-  const quickSegmentValue: QuickSegment | undefined =
-    categoryFilter === 'for_rent' ? 'rent' : categoryFilter === 'for_sale' ? 'buy' : undefined;
-
-  function handleQuickSegment(segment: QuickSegment) {
-    if (segment === 'rent') setCategoryFilter('for_rent');
-    else if (segment === 'buy') setCategoryFilter('for_sale');
-    else router.push(session ? '/add' : '/auth');
+  function openAddListing() {
+    router.push(session ? '/add' : '/auth');
   }
 
   // "New Listings" — a fresh-first strip, not a fake proximity search (the
@@ -191,7 +181,7 @@ export default function HomeScreen() {
         data={recommended}
         keyExtractor={(item) => item.id}
         renderItem={renderRecommendedCard}
-        contentContainerStyle={styles.listContent}
+        contentContainerStyle={[styles.listContent, { paddingBottom: tabBarGap + spacing.lg }]}
         ItemSeparatorComponent={() => <View style={{ height: spacing.md }} />}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
         ListHeaderComponent={
@@ -202,7 +192,14 @@ export default function HomeScreen() {
                 <Text style={styles.headline}>Find Your{'\n'}Dream Home</Text>
               </View>
               <View style={styles.headerIcons}>
-                <Pressable style={styles.iconButton} onPress={() => router.push(session ? '/notifications' : '/auth')} hitSlop={8}>
+                <Pressable
+                  style={styles.iconButton}
+                  onPress={() => router.push(session ? '/notifications' : '/auth')}
+                  hitSlop={8}
+                  accessibilityRole="button"
+                  accessibilityLabel="Notifications"
+                  accessibilityHint={unreadCount > 0 ? `${unreadCount} unread` : undefined}
+                >
                   <Ionicons name="notifications-outline" size={18} color={colors.textPrimary} />
                   {unreadCount > 0 && (
                     <View style={styles.unreadBadge}>
@@ -210,13 +207,32 @@ export default function HomeScreen() {
                     </View>
                   )}
                 </Pressable>
-                <Pressable style={styles.iconButton} onPress={openMessages} hitSlop={8}>
+                <Pressable
+                  style={styles.iconButton}
+                  onPress={openMessages}
+                  hitSlop={8}
+                  accessibilityRole="button"
+                  accessibilityLabel="Messages"
+                  accessibilityHint={unreadCount > 0 ? 'You have unread messages' : undefined}
+                >
                   <Ionicons name="chatbubble-outline" size={18} color={colors.textPrimary} />
                   {unreadCount > 0 && <View style={styles.unreadDot} />}
                 </Pressable>
-                <Pressable style={styles.avatar} onPress={openProfile} hitSlop={8}>
+                <Pressable
+                  style={styles.avatar}
+                  onPress={openProfile}
+                  hitSlop={8}
+                  accessibilityRole="button"
+                  accessibilityLabel="Your profile"
+                >
                   {profile?.avatar_url ? (
-                    <Image source={{ uri: profile.avatar_url }} style={styles.avatarImage} contentFit="cover" />
+                    <Image
+                      source={{ uri: profile.avatar_url }}
+                      style={styles.avatarImage}
+                      contentFit="cover"
+                      accessible
+                      accessibilityLabel="Your profile photo"
+                    />
                   ) : (
                     <Text style={styles.avatarText}>{initialsFor(profile?.full_name ?? null)}</Text>
                   )}
@@ -224,14 +240,15 @@ export default function HomeScreen() {
               </View>
             </View>
 
-            <Pressable style={styles.searchBar} onPress={() => router.push('/search')}>
+            <Pressable
+              style={styles.searchBar}
+              onPress={() => router.push('/search')}
+              accessibilityRole="search"
+              accessibilityLabel="Search properties, land, and neighborhoods"
+            >
               <Ionicons name="search" size={18} color={colors.textMuted} />
               <Text style={styles.searchPlaceholder}>Search your location</Text>
             </Pressable>
-
-            <View style={styles.segmentWrap}>
-              <SearchPill options={quickSegments} value={quickSegmentValue} onChange={handleQuickSegment} />
-            </View>
 
             <Pressable style={styles.neighborhoodRow} onPress={() => router.push('/neighborhoods')}>
               <View style={styles.neighborhoodIcon}>
@@ -245,17 +262,37 @@ export default function HomeScreen() {
               <FilterPills options={categoryOptions} value={categoryFilter} onChange={setCategoryFilter} />
             </View>
 
+            <Pressable
+              style={styles.sellBanner}
+              onPress={openAddListing}
+              accessibilityRole="button"
+              accessibilityLabel="List your property"
+              accessibilityHint="Opens the form to post a new listing for rent, sale, or land"
+            >
+              <View style={styles.sellBannerIcon}>
+                <Ionicons name="megaphone-outline" size={20} color="#fff" />
+              </View>
+              <View style={styles.sellBannerBody}>
+                <Text style={styles.sellBannerTitle}>List Your Property</Text>
+                <Text style={styles.sellBannerSubtitle}>Reach renters and buyers across Sierra Leone</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color="#fff" />
+            </Pressable>
+
             {freshListings.length > 0 && (
               <View style={styles.section}>
                 <Text style={styles.sectionTitle}>New Listings</Text>
-                <FlatList
-                  data={freshListings}
-                  keyExtractor={(item) => item.id}
-                  renderItem={renderFreshCard}
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={styles.freshRow}
-                />
+                <View style={styles.freshCarouselWrap}>
+                  <FlatList
+                    data={freshListings}
+                    keyExtractor={(item) => item.id}
+                    renderItem={renderFreshCard}
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.freshRow}
+                  />
+                  <EdgeFade />
+                </View>
               </View>
             )}
 
@@ -268,9 +305,13 @@ export default function HomeScreen() {
           </View>
         }
         ListEmptyComponent={
-          !loading ? (
+          loading ? (
+            <View style={styles.loadingState}>
+              <ActivityIndicator color={colors.accent} />
+            </View>
+          ) : (
             <EmptyState label={loadError ? "Couldn't load properties. Pull down to try again." : 'No properties yet'} />
-          ) : null
+          )
         }
       />
     </View>
@@ -358,7 +399,31 @@ const styles = StyleSheet.create({
     ...shadow.card,
   },
   searchPlaceholder: { color: colors.textMuted, fontSize: fontSize.sm },
-  segmentWrap: { marginHorizontal: spacing.lg },
+  sellBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    marginHorizontal: spacing.lg,
+    marginTop: spacing.sm,
+    marginBottom: spacing.lg,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    backgroundColor: colors.accent,
+    borderRadius: radius.lg,
+    minHeight: 44,
+    ...shadow.raised,
+  },
+  sellBannerIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sellBannerBody: { flex: 1 },
+  sellBannerTitle: { fontSize: fontSize.md, fontWeight: fontWeight.bold, color: '#fff' },
+  sellBannerSubtitle: { fontSize: fontSize.xs, color: 'rgba(255,255,255,0.92)', marginTop: 2 },
   neighborhoodRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -386,10 +451,15 @@ const styles = StyleSheet.create({
   sectionTitle: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: colors.textPrimary },
   recommendedHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.sm },
   viewAll: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: colors.accent },
-  freshRow: { paddingHorizontal: spacing.lg, gap: spacing.md },
-  freshCard: { width: 190, height: 240 },
+  // No fixed height here — a card's text can grow taller under large
+  // system font sizes (Dynamic Type), and a hard-clipped height would
+  // truncate or overlap that content instead of just growing the row.
+  freshCarouselWrap: { position: 'relative' },
+  freshRow: { paddingLeft: spacing.lg, paddingRight: spacing.xxl, gap: spacing.md, alignItems: 'stretch' },
+  freshCard: { width: 190 },
   recommendedCard: { paddingHorizontal: spacing.lg },
   listContent: { paddingBottom: spacing.xxl },
+  loadingState: { paddingTop: spacing.xxl, alignItems: 'center' },
   emptyState: { paddingTop: spacing.xxl, alignItems: 'center', gap: spacing.sm },
   emptyStateText: { color: colors.textMuted, fontSize: fontSize.sm },
 });

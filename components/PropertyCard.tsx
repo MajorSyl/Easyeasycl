@@ -14,10 +14,21 @@ import type { Listing } from '../lib/types';
 // layout, which stays as-is everywhere it's already used.
 export const PropertyCard = memo(function PropertyCard({ listing }: { listing: Listing }) {
   return (
-    <Pressable style={styles.card} onPress={() => router.push(`/listing/${listing.id}`)}>
+    <Pressable
+      style={styles.card}
+      onPress={() => router.push(`/listing/${listing.id}`)}
+      accessibilityRole="button"
+      accessibilityLabel={`${listing.title}, ${formatPrice(listing.price, listing.currency, listing.price_unit)}, ${listing.location}`}
+    >
       <View style={styles.imageWrap}>
         {listing.photos[0] ? (
-          <Image source={{ uri: listing.photos[0] }} style={styles.image} contentFit="cover" />
+          <Image
+            source={{ uri: listing.photos[0] }}
+            style={styles.image}
+            contentFit="cover"
+            accessible
+            accessibilityLabel={`Photo of ${listing.title}`}
+          />
         ) : (
           <View style={[styles.image, styles.imagePlaceholder]}>
             <Ionicons name="image-outline" size={22} color={colors.textMuted} />

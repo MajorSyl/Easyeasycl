@@ -161,7 +161,7 @@ export default function PayScreen() {
   return (
     <ScrollView style={[styles.container, { paddingTop: insets.top }]} contentContainerStyle={styles.scrollContent}>
       <View style={styles.header}>
-        <Pressable onPress={() => router.back()} hitSlop={8}>
+        <Pressable onPress={() => router.back()} hitSlop={8} accessibilityRole="button" accessibilityLabel="Go back">
           <Ionicons name="chevron-back" size={22} color={colors.textPrimary} />
         </Pressable>
         <Text style={styles.headerTitle}>{product.label}</Text>
@@ -204,7 +204,12 @@ export default function PayScreen() {
                 key={key}
                 style={[styles.providerPill, provider === key && styles.providerPillActive]}
                 onPress={() => setProvider(key)}
+                accessibilityRole="button"
+                accessibilityState={{ selected: provider === key }}
               >
+                {/* Matches FilterPills' active pattern: fill + checkmark + bold,
+                    so selection is never signaled by color alone. */}
+                {provider === key && <Ionicons name="checkmark" size={14} color="#fff" style={styles.providerPillCheck} />}
                 <Text style={[styles.providerPillText, provider === key && styles.providerPillTextActive]}>
                   {MOBILE_MONEY_RECEIVING[key].label}
                 </Text>
@@ -295,9 +300,10 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
     alignItems: 'center',
   },
-  providerPillActive: { backgroundColor: colors.accent, borderColor: colors.accent },
+  providerPillActive: { backgroundColor: colors.accent, borderColor: colors.accent, flexDirection: 'row', justifyContent: 'center' },
+  providerPillCheck: { marginRight: 4 },
   providerPillText: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: colors.textSecondary },
-  providerPillTextActive: { color: '#fff' },
+  providerPillTextActive: { color: '#fff', fontWeight: fontWeight.bold },
   receivingCard: {
     backgroundColor: colors.accentSoft,
     borderRadius: radius.md,
