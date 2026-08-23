@@ -6,15 +6,19 @@ A marketplace app for finding and listing properties in Freetown, Sierra Leone. 
 
 ## What's in the app
 
-- **Home** — browse property listings; filter by For Rent / For Sale / Land / Daily-Hourly; save favorites with the heart icon
-- **Search** — search by name or neighborhood, with an NLE budget filter and price sorting
+- **Home** — browse property listings; filter by For Rent / For Sale / Land / Daily-Hourly; save favorites with the heart icon; "Listed X days ago" freshness signal on every card; "Browse by Neighborhood" entry point
+- **Search** — search by name or neighborhood, with an NLE budget filter and price sorting; save a search to get notified when a new listing matches it
+- **Neighborhood browsing** — active listings grouped by known Freetown areas (Aberdeen, Wilberforce, Congo Cross, Lumley, Goderich, and others), each showing a live count
+- **Saved Searches** — manage your saved searches from Profile; delete ones you no longer want
+- **Notifications** — unread messages and new saved-search matches in one feed; tapping a match opens the listing and marks it read
 - **Add Listing** — post a property with up to 10 compressed photos
 - **Messages** — real-time chat between buyers and agents, with online status, unread counts, and per-user blocking
-- **Profile** — edit your details, choose your role (regular user or agent), manage/edit/delete your listings, upload an avatar
-- **Public profiles** — view any agent's active listings, message them, report or block them
+- **Profile** — edit your details, choose your role (regular user or agent), manage/edit/delete your listings, upload an avatar, request phone verification, confirm a listing is still available when it's gone stale
+- **Public profiles** — view any agent's active listings, message them, report or block them; verification badge shown if they have one
+- **Listing report flow** — anyone can report a listing (not their own); it's suspended immediately and the owner's account is flagged for admin review
 - **Legal pages** — `/privacy`, `/terms`, `/guidelines`, `/agent-agreement`, linked from a footer on every web page
 
-Sign-in is email + password. Browsing works without an account; posting, favoriting, messaging, and rating require one.
+Sign-in is email + password. Browsing works without an account; posting, favoriting, messaging, saving searches, and rating require one.
 
 > **Legal page content is placeholder text**, not reviewed legal copy — replace it with your actual policies before app store submission or a public launch. See `app/privacy.tsx`, `app/terms.tsx`, `app/guidelines.tsx`, `app/agent-agreement.tsx`.
 
@@ -24,36 +28,51 @@ Sign-in is email + password. Browsing works without an account; posting, favorit
 app/                    Expo Router screens (the mobile + web app)
 components/              Shared UI (ListingCard, Logo, PhotoPicker, ...)
 lib/                     Supabase client, auth context, upload, sanitize, errors
-constants/theme.ts       Design tokens (colors, spacing, type scale)
+constants/theme.ts       Design tokens (colors, spacing, type scale, shadows)
+constants/neighborhoods.ts  Known Freetown neighborhood names used for browsing
 assets/                  App icon, adaptive icon layers, favicon, splash
 assets/brand/            Source SVGs + exported sizes for the logo/icon
 apps/admin/               Separate Next.js app — moderation dashboard (its own package.json)
 .github/workflows/        CI: OTA publish, on-demand APK build
 ```
 
-## Brand
+## Brand & design system
 
 The mark is a magnifying glass standing in for the "a" in a lowercase "easyfen" wordmark (blue "e/s/y", gold "fen") — echoing the app's core action, search. Source SVGs live in `assets/brand/`; the in-app version renders via `components/Logo.tsx` (react-native-svg, not a static image, so it scales cleanly at any size). The app icon uses the glass mark alone, since the full wordmark doesn't read at notification-icon sizes.
+
+`constants/theme.ts` holds the design tokens (colors, spacing, type scale, font weights, shadows) and is built around the brand mark's actual colors — `accent` is the logo's blue (`#3E6FBF`), `gold` is its gold, used for premium/verified/rating signals. Every color pairing in the app was checked against WCAG AA (4.5:1 for text, 3:1 for large text/UI) rather than picked by eye; `textMuted` in particular was previously ~2.5:1 (failed) and is now ~4.9:1. Screens use these tokens consistently rather than inline hex values — if you're adding a new screen, pull colors/spacing/type from `theme.ts`, don't hardcode.
 
 ## Where the data lives
 
 Everything is stored in a Supabase project called **Easyfen** (project ref `axeprqcffgwgocglijst`). This same Supabase project also hosts an unrelated inventory/staff-tracking app (`stores`, `staff`, `products`, `batches`, `alerts` tables) — leave those alone when working in this DB.
 
-- Tables: `profiles`, `listings`, `favorites`, `conversations`, `messages`, `ratings`, `reports`, `blocks` (plus `hotels`/`services` — legacy, unused by the app's current UI, kept intact rather than dropped)
+- **Core tables**: `profiles`, `listings`, `favorites`, `conversations`, `messages`, `ratings`, `reports`, `blocks` (plus `hotels`/`services` — legacy, unused by the app's current UI, kept intact rather than dropped)
+- **Retention/trust tables**: `saved_searches` + `saved_search_matches` (saved-search alerts, matches populated by a trigger on listing insert), `enquiry_receipts` (tracks a listing's first buyer message and the agent's first response time, populated by a trigger on message insert — no UI built for this yet, just the tracking table)
+- **Trust columns on `listings`**: `last_confirmed_at` (freshness signal, backfilled to `created_at` for old rows)
+- **Trust columns on `profiles`**: `verification_tier` (`none` / `phone_verified` / `agent_verified` / `id_verified` — only the first two are wired up; the other two are schema-ready but have no UI anywhere, admin included), `phone_verification_requested_at` (self-serve request flag), `flagged_for_review_at` (set automatically when one of a user's listings gets reported)
 - Storage buckets: `listing-photos`, `avatars` — both capped at 5MB, images-only (`allowed_mime_types`), enforced at the storage layer, not just client-side
 - Chat updates arrive live via Supabase Realtime; presence channel (`online-users`) tracks who's online
 - Row Level Security is enabled on every table — see **Security** below for what that actually guarantees
+
+## Trust infrastructure
+
+- **Listing freshness**: every listing has `last_confirmed_at`. Cards and the detail view show "Listed X days ago"; once a listing's own agent hasn't confirmed it in 30+ days, My Listings shows a "Still available?" prompt that updates the timestamp on confirmation.
+- **Phone verification**: no SMS provider is configured in this project, so this is manual rather than an automated OTP flow — a user taps "Verify Phone" in Profile (sets a request flag), an admin reviews and approves from the admin Users page. The tier itself is never client-settable, even by its own owner — see Security below.
+- **Report → suspend → flag**: reporting a listing (available to anyone except its owner) immediately sets it inactive and flags the owner's account for admin review, via a database trigger — not something the client can be tricked into doing to an arbitrary listing. My Listings shows a "SUSPENDED" badge so the owner knows something happened; the admin Users page shows a "Flagged" badge with a Clear action.
+- **Enquiry receipts**: `enquiry_receipts` records a listing's first buyer message and the agent's first response time automatically, entirely server-side (a trigger on `messages`, not a client write) — intended as raw data for a future agent-responsiveness signal; no UI surfaces it yet.
+- **What's still missing**: there's no pre-publish review gate — a new listing goes live immediately and moderation is retroactive only (via the report flow above or a manual sweep of the admin content page). Adding a "pending until approved" step is a deliberate product decision, not a bug, and hasn't been made yet.
 
 ## Security
 
 This has had a real hardening pass, not just a review — every claim below was verified against the live project (RLS simulated as `anon` and as a second real user, not just read from policy definitions).
 
-- **RLS**: users can only read/write their own data; public listing rows are readable by anyone (required for browsing), but `profiles.phone` has no direct SELECT grant for `anon` or `authenticated` — neither an unauthenticated request nor another logged-in user can scrape phone numbers straight off the table. The only way to read a phone number is `get_profile_phone`/`get_profile_phones`, two `SECURITY DEFINER` RPCs that return a phone only to its owner or an admin (checked server-side against `auth.uid()`/the admin JWT claim) — verified with impersonated-role SQL tests for the owner, a stranger, and an admin
+- **RLS**: users can only read/write their own data; public listing rows are readable by anyone (required for browsing), but `profiles.phone` has no direct SELECT grant for `anon` or `authenticated` — neither an unauthenticated request nor another logged-in user can scrape phone numbers straight off the table. The only way to read a phone number is `get_profile_phone`/`get_profile_phones`, two `SECURITY DEFINER` RPCs that return a phone only to its owner or an admin (checked server-side against `auth.uid()`/the admin JWT claim).
+- **Column-level write lockdown**: `profiles.is_admin` and `profiles.verification_tier` and `listings.is_verified`/`is_premium`/`is_active` are *not* directly client-writable at all, even by the row's own owner. This closed two real, verified-exploitable bugs found during hardening: any signed-in user could previously run `update profiles set is_admin = true where id = auth.uid()` and pass the admin dashboard's fallback admin check; an agent could self-set `is_verified`/`is_premium` (fake trust badges) or flip a report-suspended listing's `is_active` straight back to `true`, defeating the report flow outright. Both are fixed by narrowing the table-level grant to an explicit safe-column list and routing the sensitive fields through admin-gated `SECURITY DEFINER` RPCs (`admin_set_verification_tier`, `admin_set_listing_flags`) that re-check the caller's admin JWT claim server-side. If you add a new "trust/admin-only" column to `profiles` or `listings`, follow this same pattern — don't just add the column and assume RLS row-ownership checks are enough, since they don't restrict *which columns* an owner can touch.
 - **Rate limiting** (DB-enforced via triggers, not client-side): max 5 new listings per user per 10 minutes; max 20 messages per user per minute; duplicate-listing detection blocks an identical repost within 24h
 - **File uploads**: 5MB limit + image-only MIME allowlist enforced by Supabase Storage itself; the client also rejects (rather than silently uploads) any file that fails image processing
 - **IDOR**: editing a listing checks `owner_id` both before rendering the form and again on save; every RLS-protected mutation was tested cross-user (a second account cannot read, edit, or delete another user's data — 0 rows affected, not just an error)
 - **Input sanitization**: `lib/sanitize.ts` strips HTML tags and control characters from every text field before it's stored (listing text, messages, profile fields) — defense in depth; no `dangerouslySetInnerHTML` exists anywhere in the codebase, so there's no live XSS render path today, but this keeps stored data clean regardless of how it's rendered elsewhere later
-- **Block/report**: `blocks` table + RLS deny message sends between blocked pairs at the database level, not just hidden in the UI; `reports` supports flagging listings or users
+- **Block/report**: `blocks` table + RLS deny message sends between blocked pairs at the database level, not just hidden in the UI; `reports` supports flagging listings or users, and a listing report auto-suspends + flags the owner (see Trust infrastructure above)
 - **Admin dashboard**: every server action re-checks `is_admin` independently of RLS (defense in depth); `middleware.ts` verifies the session server-side on every request before a page renders — not a client-side-only gate
 - **No `service_role` key anywhere in this codebase.** Admin auth runs entirely on the anon key + RLS/JWT claims via SSR cookies — there's nothing to leak. The one place a `service_role` key is legitimately used is the backup script (see below), and it lives only in that separate repo's GitHub Actions secrets, never in any client bundle.
 - **Bot deterrence**: signup has a honeypot field + minimum time-on-form check (no third-party CAPTCHA account required)
@@ -61,14 +80,17 @@ This has had a real hardening pass, not just a review — every claim below was 
 **Known open items** (need your account access, not code):
 - Leaked-password protection is disabled in Supabase Auth settings (Authentication → Policies) — one toggle, flagged by Supabase's own advisor
 - Supabase automated backups require a paid plan — see the DIY weekly backup below instead
+- The `hotels`/`services` legacy tables were not brought under the same column-level write lockdown as `listings` — lower priority since they're unreachable from the app's UI, but a direct API call could still self-set their `is_verified`/`is_premium`/`is_active` today
 
 ## Admin dashboard (`apps/admin/`)
 
-Separate Next.js app for moderation: user list + role management, content flags (`is_verified`/`is_premium`/`is_active`), and a reports queue. Deployed independently on Vercel. Has its own `package.json` — install and run it from inside `apps/admin/`, not the repo root.
+Separate Next.js app for moderation: user list + role management, phone verification approval (approve/revoke, with the pending-request date shown), flagged-account review with a Clear action, content flags (`is_verified`/`is_premium`/`is_active`), and a reports queue. Deployed independently on Vercel. Has its own `package.json` — install and run it from inside `apps/admin/`, not the repo root.
 
 ## Weekly database backups
 
-Since we're on Supabase's free tier (no automated backups included), a separate private repo — **[MajorSyl/easyfen-backups](https://github.com/MajorSyl/easyfen-backups)** — runs a GitHub Actions workflow every Sunday at 00:00 UTC that exports all ten tables to a dated JSON file, using the `service_role` key (kept only in that repo's Actions secrets) to bypass RLS for a complete export. Keeps the last 12 weekly snapshots. `auth.users` (passwords/tokens) is deliberately excluded — this backs up application data, not authentication credentials.
+Since we're on Supabase's free tier (no automated backups included), a separate private repo — **[MajorSyl/easyfen-backups](https://github.com/MajorSyl/easyfen-backups)** — runs a GitHub Actions workflow every Sunday at 00:00 UTC that exports tables to a dated JSON file, using the `service_role` key (kept only in that repo's Actions secrets) to bypass RLS for a complete export. Keeps the last 12 weekly snapshots. `auth.users` (passwords/tokens) is deliberately excluded — this backs up application data, not authentication credentials.
+
+> The backup script was written against the original ten tables. `saved_searches`, `saved_search_matches`, and `enquiry_receipts` were added afterward — confirm the backup script's table list includes them before relying on it as a complete export.
 
 ## Running the app for development
 
@@ -119,9 +141,11 @@ While investigating a "the web still shows old branding" report, I found a Verce
 - [ ] Remove or mark inactive any seed/test listings before going public
 - [ ] **Rotate the Expo access token** — a previous version of this repo's docs had it committed in plaintext; even though it's since been redacted, it lived in git history and should be treated as compromised. Generate a new one at [expo.dev/settings/access-tokens](https://expo.dev/settings/access-tokens) and update the `EXPO_TOKEN` GitHub secret before revoking the old one, or builds will stop working in between.
 - [ ] Enable Supabase's leaked-password protection (Authentication → Policies)
-- [ ] Add the two Supabase secrets to `MajorSyl/easyfen-backups` if you haven't yet (`SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`) and confirm a weekly backup has actually succeeded once
+- [ ] Add the two Supabase secrets to `MajorSyl/easyfen-backups` if you haven't yet (`SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`) and confirm a weekly backup has actually succeeded once, and that its table list covers the newer tables (see Weekly database backups above)
 - [ ] App Store / Play Store submission needs a `production` EAS build profile (`eas build --platform android --profile production` / iOS equivalent) and store review — neither has happened yet
 - [ ] If `is_premium` is meant to charge money, no payment processor is wired up yet
+- [ ] Decide whether new listings need a pre-publish admin review gate before going live, or retroactive moderation (current behavior) is acceptable — see Trust infrastructure above
+- [ ] If real SMS-based phone verification (OTP) is wanted instead of the current manual admin-approval flow, an SMS provider (Twilio/MessageBird/etc.) needs to be configured in Supabase Auth settings — nothing here today sends an SMS
 
 ## Architecture notes
 
@@ -131,3 +155,4 @@ While investigating a "the web still shows old branding" report, I found a Verce
 - Home tab uses a 60s in-memory cache with pub/sub invalidation (`lib/listings-cache-bus.ts`) — any add/edit/delete triggers a refresh
 - Android bottom inset is clamped to a 48px minimum (`lib/use-bottom-gap.ts`) — some Android skins report a zero inset while still overlaying a system nav bar
 - `lib/errors.ts` maps Postgres/Supabase errors to plain-English messages; nothing raw ever reaches an Alert
+- Side effects that must not be spoofable by the client (saved-search match notifications, enquiry receipts, report-triggered suspension) are implemented as Postgres triggers with `SECURITY DEFINER` functions, not client-side logic — the client only ever inserts the "cause" row (a listing, a message, a report); the "effect" row is always written server-side
