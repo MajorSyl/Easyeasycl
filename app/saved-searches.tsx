@@ -70,7 +70,7 @@ export default function SavedSearchesScreen() {
   function labelFor(item: SavedSearch) {
     const parts: string[] = [];
     if (item.query) parts.push(`"${item.query}"`);
-    if (item.max_price != null) parts.push(`under NLE ${Math.round(item.max_price).toLocaleString('en-US')}`);
+    if (item.max_price != null) parts.push(`under SLE ${Math.round(item.max_price).toLocaleString('en-US')}`);
     return parts.length ? parts.join(' · ') : 'All listings';
   }
 

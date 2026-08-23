@@ -224,7 +224,7 @@ export default function PayScreen() {
       ) : (
         <>
           <View style={styles.priceCard}>
-            <Text style={styles.priceAmount}>NLE {product.amount.toLocaleString('en-US')}</Text>
+            <Text style={styles.priceAmount}>SLE {product.amount.toLocaleString('en-US')}</Text>
             <Text style={styles.priceDuration}>{product.durationLabel}</Text>
             <Text style={styles.priceDescription}>{product.description}</Text>
           </View>
@@ -249,7 +249,7 @@ export default function PayScreen() {
             ))}
           </View>
           <View style={styles.receivingCard}>
-            <Text style={styles.receivingLabel}>Send NLE {product.amount.toLocaleString('en-US')} to</Text>
+            <Text style={styles.receivingLabel}>Send SLE {product.amount.toLocaleString('en-US')} to</Text>
             <Text style={styles.receivingNumber}>{MOBILE_MONEY_RECEIVING[provider].number}</Text>
             <Text style={styles.receivingName}>{MOBILE_MONEY_RECEIVING[provider].accountName}</Text>
           </View>

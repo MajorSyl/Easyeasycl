@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { Badge } from './Badge';
 import { FavoriteButton } from './FavoriteButton';
+import { NoPhotoPlaceholder } from './NoPhotoPlaceholder';
 import { colors, fontSize, fontWeight, radius, shadow, spacing } from '../constants/theme';
 import { categoryBadgeLabel, formatListingAge, formatPrice } from '../lib/format';
 import type { Listing } from '../lib/types';
@@ -31,7 +32,7 @@ export const PropertyCard = memo(function PropertyCard({ listing }: { listing: L
           />
         ) : (
           <View style={[styles.image, styles.imagePlaceholder]}>
-            <Ionicons name="image-outline" size={22} color={colors.textMuted} />
+            <NoPhotoPlaceholder compact />
           </View>
         )}
       </View>
@@ -41,7 +42,7 @@ export const PropertyCard = memo(function PropertyCard({ listing }: { listing: L
           <Badge label={categoryBadgeLabel(listing.category)} variant="dark" />
           {listing.is_premium && <Badge label="PREMIUM" variant="premium" />}
         </View>
-        <Text style={styles.title} numberOfLines={1}>
+        <Text style={styles.title} numberOfLines={1} ellipsizeMode="tail">
           {listing.title}
         </Text>
         <View style={styles.locationRow}>

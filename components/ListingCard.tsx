@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { Badge } from './Badge';
 import { FavoriteButton } from './FavoriteButton';
+import { NoPhotoPlaceholder } from './NoPhotoPlaceholder';
 import { colors, fontSize, fontWeight, radius, shadow, spacing } from '../constants/theme';
 import { categoryBadgeLabel, formatListingAge, formatPrice, initialsFor } from '../lib/format';
 import type { Listing } from '../lib/types';
@@ -28,7 +29,7 @@ export const ListingCard = memo(function ListingCard({ listing }: { listing: Lis
           />
         ) : (
           <View style={[styles.image, styles.imagePlaceholder]}>
-            <Ionicons name="image-outline" size={28} color={colors.textMuted} />
+            <NoPhotoPlaceholder />
           </View>
         )}
 
@@ -57,7 +58,7 @@ export const ListingCard = memo(function ListingCard({ listing }: { listing: Lis
 
       <View style={styles.body}>
         <Text style={styles.price}>{formatPrice(listing.price, listing.currency, listing.price_unit)}</Text>
-        <Text style={styles.title} numberOfLines={1}>
+        <Text style={styles.title} numberOfLines={2} ellipsizeMode="tail">
           {listing.title}
         </Text>
         <View style={styles.locationRow}>
@@ -138,6 +139,7 @@ const styles = StyleSheet.create({
   price: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: colors.accent },
   title: {
     fontSize: fontSize.sm,
+    lineHeight: 18,
     fontWeight: fontWeight.semibold,
     color: colors.textPrimary,
     marginTop: 2,

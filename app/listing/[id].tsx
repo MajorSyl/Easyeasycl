@@ -24,6 +24,7 @@ import { colors, fontSize, fontWeight, radius, shadow, spacing } from '../../con
 import { Badge } from '../../components/Badge';
 import { FavoriteButton } from '../../components/FavoriteButton';
 import { AmenityBar, type AmenityItem } from '../../components/AmenityBar';
+import { NoPhotoPlaceholder } from '../../components/NoPhotoPlaceholder';
 import { categoryBadgeLabel, formatListingAge, formatPrice, initialsFor } from '../../lib/format';
 import type { Listing, RateUnit } from '../../lib/types';
 
@@ -195,7 +196,7 @@ export default function ListingDetailScreen() {
             </>
           ) : (
             <View style={[styles.photo, styles.photoPlaceholder]}>
-              <Ionicons name="image-outline" size={40} color={colors.textMuted} />
+              <NoPhotoPlaceholder />
             </View>
           )}
 

@@ -34,7 +34,7 @@ function savedSearchLabel(search: { query: string | null; max_price: number | nu
   if (!search) return 'your saved search';
   const parts: string[] = [];
   if (search.query) parts.push(`"${search.query}"`);
-  if (search.max_price != null) parts.push(`under NLE ${Math.round(search.max_price).toLocaleString('en-US')}`);
+  if (search.max_price != null) parts.push(`under SLE ${Math.round(search.max_price).toLocaleString('en-US')}`);
   return parts.length ? parts.join(' · ') : 'your saved search';
 }
 

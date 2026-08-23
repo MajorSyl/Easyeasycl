@@ -16,7 +16,7 @@ export const ServiceCard = memo(function ServiceCard({ service, onHire }: { serv
 
       <View style={styles.body}>
         <View style={styles.titleRow}>
-          <Text style={styles.title} numberOfLines={1}>
+          <Text style={styles.title} numberOfLines={1} ellipsizeMode="tail">
             {service.business_name}
           </Text>
           <FavoriteButton itemType="service" itemId={service.id} />

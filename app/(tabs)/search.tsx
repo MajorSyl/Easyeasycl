@@ -147,7 +147,7 @@ export default function SearchScreen() {
 
         <View style={styles.filterRow}>
           <View style={styles.budgetField}>
-            <Text style={styles.budgetPrefix}>NLE</Text>
+            <Text style={styles.budgetPrefix}>SLE</Text>
             <TextInput
               style={styles.budgetInput}
               placeholder="Budget"

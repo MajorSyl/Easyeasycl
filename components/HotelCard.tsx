@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { Badge } from './Badge';
 import { FavoriteButton } from './FavoriteButton';
+import { NoPhotoPlaceholder } from './NoPhotoPlaceholder';
 import { colors, fontSize, radius, spacing } from '../constants/theme';
 import { formatPrice } from '../lib/format';
 import type { Hotel } from '../lib/types';
@@ -17,7 +18,7 @@ export const HotelCard = memo(function HotelCard({ hotel }: { hotel: Hotel }) {
           <Image source={{ uri: hotel.photos[0] }} style={styles.image} contentFit="cover" />
         ) : (
           <View style={[styles.image, styles.imagePlaceholder]}>
-            <Ionicons name="business-outline" size={28} color={colors.textMuted} />
+            <NoPhotoPlaceholder />
           </View>
         )}
 
@@ -42,7 +43,7 @@ export const HotelCard = memo(function HotelCard({ hotel }: { hotel: Hotel }) {
       </View>
 
       <View style={styles.body}>
-        <Text style={styles.title} numberOfLines={1}>
+        <Text style={styles.title} numberOfLines={2} ellipsizeMode="tail">
           {hotel.name}
         </Text>
         <View style={styles.locationRow}>

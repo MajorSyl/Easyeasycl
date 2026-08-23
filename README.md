@@ -7,7 +7,7 @@ A marketplace app for finding and listing properties in Freetown, Sierra Leone. 
 ## What's in the app
 
 - **Home** — browse property listings; filter by For Rent / For Sale / Land / Daily-Hourly; save favorites with the heart icon; "Listed X days ago" freshness signal on every card; "Browse by Neighborhood" entry point
-- **Search** — search by name or neighborhood, with an NLE budget filter and price sorting; save a search to get notified when a new listing matches it
+- **Search** — search by name or neighborhood, with an SLE budget filter and price sorting; save a search to get notified when a new listing matches it
 - **Neighborhood browsing** — active listings grouped by known Freetown areas (Aberdeen, Wilberforce, Congo Cross, Lumley, Goderich, and others), each showing a live count
 - **Saved Searches** — manage your saved searches from Profile; delete ones you no longer want
 - **Notifications** — unread messages and new saved-search matches in one feed; tapping a match opens the listing and marks it read
