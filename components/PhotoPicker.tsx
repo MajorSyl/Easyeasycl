@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
@@ -22,6 +22,15 @@ export function PhotoPicker({
   function pickAndUpload() {
     const remaining = MAX_PHOTOS - photos.length;
     if (remaining <= 0) return;
+    // react-native-web's Alert.alert is a no-op (it never renders anything),
+    // so the native action-sheet chooser below silently does nothing on
+    // web — go straight to the file/gallery picker there instead, which
+    // does have real web support and still lets a mobile browser offer its
+    // camera as one of the picker's own options.
+    if (Platform.OS === 'web') {
+      chooseFromGallery(remaining);
+      return;
+    }
     Alert.alert('Add photos', undefined, [
       { text: 'Take a photo', onPress: () => captureFromCamera() },
       { text: 'Choose from gallery', onPress: () => chooseFromGallery(remaining) },
