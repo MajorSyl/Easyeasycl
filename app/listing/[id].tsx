@@ -20,13 +20,23 @@ import { friendlyErrorMessage } from '../../lib/errors';
 import { useAuth } from '../../lib/auth-context';
 import { useBottomGap } from '../../lib/use-bottom-gap';
 import { getOrCreateConversation } from '../../lib/conversations';
-import { colors, fontSize, fontWeight, radius, spacing } from '../../constants/theme';
+import { colors, fontSize, fontWeight, radius, shadow, spacing } from '../../constants/theme';
 import { Badge } from '../../components/Badge';
 import { FavoriteButton } from '../../components/FavoriteButton';
+import { AmenityBar, type AmenityItem } from '../../components/AmenityBar';
 import { categoryBadgeLabel, formatListingAge, formatPrice, initialsFor } from '../../lib/format';
-import type { Listing } from '../../lib/types';
+import type { Listing, RateUnit } from '../../lib/types';
 
 const windowWidth = Dimensions.get('window').width;
+const HERO_MARGIN = spacing.lg;
+const heroWidth = windowWidth - HERO_MARGIN * 2;
+
+const priceUnitLabel: Record<Exclude<RateUnit, null>, string> = {
+  hour: 'Per Hour',
+  day: 'Per Day',
+  month: 'Per Month',
+  night: 'Per Night',
+};
 
 export default function ListingDetailScreen() {
   const insets = useSafeAreaInsets();
@@ -141,10 +151,19 @@ export default function ListingDetailScreen() {
     );
   }
 
+  const amenities: AmenityItem[] = [
+    ...(listing.bedrooms != null
+      ? [{ icon: 'bed-outline' as const, label: `${listing.bedrooms} Bed${listing.bedrooms === 1 ? '' : 's'}` }]
+      : []),
+    { icon: 'pricetag-outline' as const, label: categoryBadgeLabel(listing.category) },
+    { icon: 'eye-outline' as const, label: `${listing.view_count} Views` },
+    { icon: 'camera-outline' as const, label: `${listing.photos.length} Photos` },
+  ];
+
   return (
     <View style={styles.container}>
       <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
-        <View>
+        <View style={[styles.heroCard, { marginTop: insets.top + spacing.sm }]}>
           {listing.photos.length > 0 ? (
             <>
               <FlatList
@@ -154,7 +173,7 @@ export default function ListingDetailScreen() {
                 pagingEnabled
                 showsHorizontalScrollIndicator={false}
                 onMomentumScrollEnd={(e) =>
-                  setPhotoIndex(Math.round(e.nativeEvent.contentOffset.x / windowWidth))
+                  setPhotoIndex(Math.round(e.nativeEvent.contentOffset.x / heroWidth))
                 }
                 renderItem={({ item }) => (
                   <Image source={{ uri: item }} style={styles.photo} contentFit="cover" />
@@ -174,7 +193,7 @@ export default function ListingDetailScreen() {
             </View>
           )}
 
-          <View style={[styles.photoTopBar, { top: insets.top + spacing.sm }]}>
+          <View style={styles.photoTopBar}>
             <Pressable style={styles.roundButton} onPress={() => router.back()} hitSlop={8}>
               <Ionicons name="chevron-back" size={20} color={colors.textPrimary} />
             </Pressable>
@@ -187,9 +206,12 @@ export default function ListingDetailScreen() {
               <Pressable style={styles.roundButton} onPress={handleShare} hitSlop={8}>
                 <Ionicons name="share-outline" size={18} color={colors.textPrimary} />
               </Pressable>
-              <FavoriteButton itemType="listing" itemId={listing.id} />
             </View>
           </View>
+        </View>
+
+        <View style={styles.amenityWrap}>
+          <AmenityBar items={amenities} />
         </View>
 
         <View style={styles.body}>
@@ -213,27 +235,10 @@ export default function ListingDetailScreen() {
             <Text style={styles.listingAge}>{formatListingAge(listing.last_confirmed_at)}</Text>
           )}
 
-          <Text style={styles.price}>{formatPrice(listing.price, listing.currency, listing.price_unit)}</Text>
-
-          <View style={styles.statsRow}>
-            {listing.bedrooms != null && (
-              <View style={styles.statItem}>
-                <Ionicons name="bed-outline" size={16} color={colors.textSecondary} />
-                <Text style={styles.statText}>
-                  {listing.bedrooms} bedroom{listing.bedrooms === 1 ? '' : 's'}
-                </Text>
-              </View>
-            )}
-            <View style={styles.statItem}>
-              <Ionicons name="eye-outline" size={16} color={colors.textSecondary} />
-              <Text style={styles.statText}>{listing.view_count} views</Text>
-            </View>
-            <View style={styles.statItem}>
-              <Ionicons name="camera-outline" size={16} color={colors.textSecondary} />
-              <Text style={styles.statText}>
-                {listing.photos.length} photo{listing.photos.length === 1 ? '' : 's'}
-              </Text>
-            </View>
+          <Text style={styles.sectionTitle}>Pricing</Text>
+          <View style={styles.pricingCard}>
+            <Text style={styles.pricingLabel}>{listing.price_unit ? priceUnitLabel[listing.price_unit] : 'Pay Now'}</Text>
+            <Text style={styles.pricingAmount}>{formatPrice(listing.price, listing.currency, null)}</Text>
           </View>
 
           {listing.description && (
@@ -258,6 +263,9 @@ export default function ListingDetailScreen() {
       </ScrollView>
 
       <View style={[styles.footer, { paddingBottom: bottomGap + spacing.md }]}>
+        <View style={styles.favoriteFooterButton}>
+          <FavoriteButton itemType="listing" itemId={listing.id} />
+        </View>
         <Pressable style={styles.messageButton} onPress={messageAgent} disabled={starting}>
           {starting ? (
             <ActivityIndicator color="#fff" />
@@ -278,7 +286,14 @@ const styles = StyleSheet.create({
   centered: { alignItems: 'center', justifyContent: 'center' },
   notFound: { fontSize: fontSize.md, color: colors.textSecondary, marginBottom: spacing.sm },
   backLink: { fontSize: fontSize.md, color: colors.accent, fontWeight: fontWeight.semibold },
-  photo: { width: windowWidth, height: windowWidth * 0.75, backgroundColor: colors.border },
+  heroCard: {
+    marginHorizontal: HERO_MARGIN,
+    borderRadius: radius.xxl,
+    overflow: 'hidden',
+    backgroundColor: colors.border,
+    ...shadow.raised,
+  },
+  photo: { width: heroWidth, height: heroWidth * 0.85, backgroundColor: colors.border },
   photoPlaceholder: { alignItems: 'center', justifyContent: 'center' },
   photoDots: {
     position: 'absolute',
@@ -291,8 +306,9 @@ const styles = StyleSheet.create({
   dotActive: { backgroundColor: '#fff' },
   photoTopBar: {
     position: 'absolute',
-    left: spacing.lg,
-    right: spacing.lg,
+    top: spacing.sm,
+    left: spacing.sm,
+    right: spacing.sm,
     flexDirection: 'row',
     justifyContent: 'space-between',
   },
@@ -305,6 +321,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  amenityWrap: { marginHorizontal: HERO_MARGIN, marginTop: -radius.lg },
   body: { padding: spacing.lg },
   badgeRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   verifiedRow: { flexDirection: 'row', alignItems: 'center', gap: 3 },
@@ -313,11 +330,18 @@ const styles = StyleSheet.create({
   locationRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 },
   location: { fontSize: fontSize.sm, color: colors.textMuted },
   listingAge: { fontSize: fontSize.xs, color: colors.textMuted, marginTop: 4 },
-  price: { fontSize: fontSize.xxl, fontWeight: fontWeight.bold, color: colors.accent, marginTop: spacing.md },
-  statsRow: { flexDirection: 'row', gap: spacing.lg, marginTop: spacing.md },
-  statItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  statText: { fontSize: fontSize.sm, color: colors.textSecondary },
   sectionTitle: { fontSize: fontSize.md, fontWeight: fontWeight.bold, color: colors.textPrimary, marginTop: spacing.xl, marginBottom: spacing.sm },
+  pricingCard: {
+    backgroundColor: colors.card,
+    borderWidth: 1.5,
+    borderColor: colors.accent,
+    borderRadius: radius.lg,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    ...shadow.card,
+  },
+  pricingLabel: { fontSize: fontSize.xs, fontWeight: fontWeight.semibold, color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.4 },
+  pricingAmount: { fontSize: fontSize.xxl, fontWeight: fontWeight.bold, color: colors.accent, marginTop: 2 },
   description: { fontSize: fontSize.sm, color: colors.textSecondary, lineHeight: 22 },
   agentRow: {
     flexDirection: 'row',
@@ -346,18 +370,31 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
     padding: spacing.lg,
     backgroundColor: colors.card,
     borderTopWidth: 1,
     borderTopColor: colors.border,
   },
+  favoriteFooterButton: {
+    width: 48,
+    height: 48,
+    borderRadius: radius.pill,
+    backgroundColor: colors.card,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...shadow.card,
+  },
   messageButton: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: spacing.sm,
     backgroundColor: colors.accent,
-    borderRadius: radius.md,
+    borderRadius: radius.pill,
     paddingVertical: spacing.md,
   },
   messageButtonText: { color: '#fff', fontSize: fontSize.md, fontWeight: fontWeight.bold },

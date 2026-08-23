@@ -1,28 +1,30 @@
-// Design tokens. Colors are built around the brand mark (components/Logo.tsx):
-// a muted slate-blue + gold pair, not an arbitrary "pick a nice blue." Every
-// color below was checked against WCAG AA (4.5:1 for text, 3:1 for large
-// text / UI components) rather than chosen by eye — see the `contrast`
-// comments for the pairs that matter.
+// Design tokens. Ice-blue / electric-blue palette — soft sky-blue screen
+// backgrounds with white cards and a vibrant blue accent for CTAs, matched
+// against WCAG AA (4.5:1 for text, 3:1 for large text / UI components)
+// rather than chosen by eye — see the `contrast` comments for the pairs
+// that matter.
 export const colors = {
-  background: '#F7F8FA',
+  background: '#EBF3FF',
   card: '#FFFFFF',
-  border: '#ECEEF1',
+  border: '#DBEAFE',
 
-  textPrimary: '#101828',
-  // contrast: 7.7:1 on card, 7.2:1 on background
-  textSecondary: '#475467',
-  // contrast: 4.9:1 on card, 4.6:1 on background — was #98A2B3 (~2.5:1, failed AA)
-  textMuted: '#67718A',
+  textPrimary: '#0F172A',
+  // contrast: 7.6:1 on card, 6.8:1 on background
+  textSecondary: '#475569',
+  // contrast: 5.5:1 on card, 4.9:1 on background — the spec's literal
+  // #64748B only clears 4.3:1 against the new icy-blue background (fails
+  // the 4.5:1 AA floor), so this is darkened slightly from the reference.
+  textMuted: '#5A6B80',
 
-  // Brand blue, matched to the logo mark rather than a separate "app blue."
-  // contrast: 5.0:1 both as text-on-white and white-on-fill (buttons).
-  accent: '#3E6FBF',
-  accentSoft: '#E7EDF7',
-  accentStrong: '#2F5697',
+  // Vibrant electric blue, used for primary CTAs and the active filter state.
+  // contrast: 5.8:1 both as text-on-white and white-on-fill (buttons).
+  accent: '#0052FF',
+  accentSoft: '#DBEAFE',
+  accentStrong: '#0043D1',
 
-  // Brand gold, matched to the logo mark. Used for premium/verified/rating —
-  // signals of trust and status, which is what the mark's gold half stands
-  // for in the wordmark itself.
+  // Brand gold — kept for premium/verified/rating signals of trust and
+  // status, distinct from the blue interaction color so the two meanings
+  // never collide on screen.
   gold: '#B8912E',
   goldSoft: '#F6F1E5',
 
@@ -39,16 +41,18 @@ export const colors = {
   online: '#22C55E',
   // Anywhere online-ness needs to render as actual text (e.g. a status
   // message), use this instead — the bright green above is under 2.3:1 as
-  // text and fails AA.
-  success: '#15803D',
+  // text and fails AA. Darkened from #15803D, which only cleared 4.49:1
+  // against the new icy-blue background — just under the 4.5:1 AA floor.
+  success: '#106B30',
 
   favorite: '#FFFFFF',
-  favoriteIcon: '#5B8DEF',
+  favoriteIcon: '#3B82F6',
 
-  star: '#B8912E',
+  star: '#3B82F6',
 
-  // contrast: 4.7:1 both ways — was #E4483F (~4.0:1, just under AA)
-  danger: '#D6392F',
+  // contrast: 5.8:1 on card, 5.2:1 on background — was #D6392F, which
+  // dropped to 4.19:1 against the new icy-blue background (fails AA)
+  danger: '#C22A20',
 } as const;
 
 export const spacing = {
@@ -64,11 +68,14 @@ export const radius = {
   sm: 8,
   md: 12,
   lg: 16,
+  xl: 20,
+  xxl: 24,
   pill: 999,
 } as const;
 
 // Body text starts at 16 (mobile-standards minimum); nothing sits below the
-// 11pt legibility floor.
+// 11pt legibility floor. `display` is reserved for one-per-screen hero
+// headlines (welcome screen, empty states) — not for regular titles.
 export const fontSize = {
   xs: 11,
   sm: 14,
@@ -76,6 +83,7 @@ export const fontSize = {
   lg: 18,
   xl: 22,
   xxl: 28,
+  display: 32,
 } as const;
 
 export const fontWeight = {
@@ -91,7 +99,7 @@ export const shadow = {
   card: {
     shadowColor: '#0F172A',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
+    shadowOpacity: 0.05,
     shadowRadius: 8,
     elevation: 2,
   },
