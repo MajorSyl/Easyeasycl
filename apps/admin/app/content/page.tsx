@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase-server';
 import { redirect } from 'next/navigation';
-import { toggleListingFlag } from '../actions';
+import { toggleListingFlag, setListingModerationStatus } from '../actions';
 
 type TableName = 'listings' | 'hotels' | 'services';
 
@@ -14,10 +14,12 @@ export default async function ContentPage() {
   if (!isAdmin) redirect('/login');
 
   const [{ data: listings }, { data: hotels }, { data: services }] = await Promise.all([
-    supabase.from('listings').select('id, title, category, location, is_verified, is_premium, is_active, created_at, owner:profiles(full_name)').order('created_at', { ascending: false }),
+    supabase.from('listings').select('id, title, category, location, is_verified, is_premium, is_active, moderation_status, created_at, owner:profiles(full_name)').order('created_at', { ascending: false }),
     supabase.from('hotels').select('id, name, location, is_verified, is_premium, is_active, created_at, owner:profiles(full_name)').order('created_at', { ascending: false }),
     supabase.from('services').select('id, business_name, category, location, is_verified, is_premium, is_active, created_at, owner:profiles(full_name)').order('created_at', { ascending: false }),
   ]);
+
+  const pendingListings = (listings ?? []).filter((l) => l.moderation_status === 'pending');
 
   function ToggleForm({ table, id, field, value, label }: { table: TableName; id: string; field: 'is_verified' | 'is_premium' | 'is_active'; value: boolean; label: string }) {
     return (
@@ -54,6 +56,43 @@ export default async function ContentPage() {
       <div className="topbar"><h1>Content</h1></div>
       <div className="content">
 
+        {pendingListings.length > 0 && (
+          <div className="card">
+            <div className="card-header">
+              <span className="card-title">Pending listings ({pendingListings.length})</span>
+            </div>
+            <div className="overflow-x">
+              <table>
+                <thead>
+                  <tr><th>Title</th><th>Category</th><th>Location</th><th>Owner</th><th>Actions</th></tr>
+                </thead>
+                <tbody>
+                  {pendingListings.map((l) => (
+                    <tr key={l.id}>
+                      <td className="truncate" style={{ fontWeight: 600 }}>{l.title}</td>
+                      <td><span className="badge badge-gray">{l.category}</span></td>
+                      <td className="muted truncate">{l.location}</td>
+                      <td className="muted">{(l.owner as any)?.full_name ?? '—'}</td>
+                      <td>
+                        <div style={{ display: 'flex', gap: 6 }}>
+                          <form action={async () => { 'use server'; await setListingModerationStatus(l.id, 'approved'); }}>
+                            <button type="submit" className="btn btn-sm" style={{ background: '#16a34a', color: '#fff', border: 'none' }}>
+                              Approve
+                            </button>
+                          </form>
+                          <form action={async () => { 'use server'; await setListingModerationStatus(l.id, 'rejected'); }}>
+                            <button type="submit" className="btn btn-danger btn-sm">Reject</button>
+                          </form>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
         <div className="card">
           <div className="card-header">
             <span className="card-title">Properties ({listings?.length ?? 0})</span>
@@ -61,7 +100,7 @@ export default async function ContentPage() {
           <div className="overflow-x">
             <table>
               <thead>
-                <tr><th>Title</th><th>Category</th><th>Location</th><th>Owner</th><th>Verified</th><th>Premium</th><th>Active</th></tr>
+                <tr><th>Title</th><th>Category</th><th>Location</th><th>Owner</th><th>Moderation</th><th>Verified</th><th>Premium</th><th>Active</th></tr>
               </thead>
               <tbody>
                 {(listings ?? []).map((l) => (
@@ -70,6 +109,15 @@ export default async function ContentPage() {
                     <td><span className="badge badge-gray">{l.category}</span></td>
                     <td className="muted truncate">{l.location}</td>
                     <td className="muted">{(l.owner as any)?.full_name ?? '—'}</td>
+                    <td>
+                      {l.moderation_status === 'pending' ? (
+                        <span className="badge badge-amber">Pending</span>
+                      ) : l.moderation_status === 'rejected' ? (
+                        <span className="badge badge-gray">Rejected</span>
+                      ) : (
+                        <span className="badge badge-green">Approved</span>
+                      )}
+                    </td>
                     <td><ToggleForm table="listings" id={l.id} field="is_verified" value={l.is_verified} label="Verified" /></td>
                     <td><ToggleForm table="listings" id={l.id} field="is_premium" value={l.is_premium} label="Premium" /></td>
                     <td><ToggleForm table="listings" id={l.id} field="is_active" value={l.is_active} label="Active" /></td>

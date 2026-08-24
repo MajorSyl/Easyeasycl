@@ -39,6 +39,7 @@ type MyListing = {
   lastConfirmedAt: string;
   isActive: boolean;
   isPremium: boolean;
+  moderationStatus: 'pending' | 'approved' | 'rejected';
 };
 
 const STALE_AFTER_DAYS = 30;
@@ -99,7 +100,7 @@ export default function ProfileScreen() {
     const uid = session.user.id;
     const { data: listings, error } = await supabase
       .from('listings')
-      .select('id, title, price, currency, price_unit, created_at, last_confirmed_at, is_active, is_premium')
+      .select('id, title, price, currency, price_unit, created_at, last_confirmed_at, is_active, is_premium, moderation_status')
       .eq('owner_id', uid);
 
     if (error) {
@@ -118,6 +119,7 @@ export default function ProfileScreen() {
       lastConfirmedAt: item.last_confirmed_at,
       isActive: item.is_active,
       isPremium: item.is_premium,
+      moderationStatus: item.moderation_status,
     }));
 
     combined.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
@@ -447,6 +449,17 @@ export default function ProfileScreen() {
                       <Text style={styles.suspendedBadgeText}>SUSPENDED</Text>
                     </View>
                   )}
+                  {item.moderationStatus === 'pending' && (
+                    <View style={styles.pendingBadge}>
+                      <Ionicons name="time-outline" size={10} color={colors.gold} />
+                      <Text style={styles.pendingBadgeText}>PENDING REVIEW</Text>
+                    </View>
+                  )}
+                  {item.moderationStatus === 'rejected' && (
+                    <View style={styles.suspendedBadge}>
+                      <Text style={styles.suspendedBadgeText}>NOT APPROVED</Text>
+                    </View>
+                  )}
                 </View>
                 <Text style={styles.listingTitle} numberOfLines={1}>
                   {item.title}
@@ -455,6 +468,16 @@ export default function ProfileScreen() {
                 {!item.isActive && (
                   <Text style={styles.suspendedNote}>
                     This listing was reported and suspended pending admin review.
+                  </Text>
+                )}
+                {item.moderationStatus === 'pending' && (
+                  <Text style={styles.suspendedNote}>
+                    This listing is waiting for admin approval before it's visible to other users.
+                  </Text>
+                )}
+                {item.moderationStatus === 'rejected' && (
+                  <Text style={styles.suspendedNote}>
+                    An admin didn't approve this listing. Edit it and it will be resubmitted for review.
                   </Text>
                 )}
               </View>
@@ -689,6 +712,16 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
   },
   featuredBadgeText: { fontSize: fontSize.xs, fontWeight: fontWeight.bold, color: '#fff', letterSpacing: 0.4 },
+  pendingBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: colors.goldSoft,
+    borderRadius: radius.sm,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  pendingBadgeText: { fontSize: fontSize.xs, fontWeight: fontWeight.bold, color: colors.gold, letterSpacing: 0.4 },
   suspendedNote: { fontSize: fontSize.xs, color: colors.danger, marginTop: 4 },
   listingTitle: { fontSize: fontSize.sm, fontWeight: fontWeight.bold, color: colors.textPrimary, marginTop: 2 },
   listingPrice: { fontSize: fontSize.sm, color: colors.accent, fontWeight: fontWeight.semibold, marginTop: 2 },

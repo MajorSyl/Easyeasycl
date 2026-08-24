@@ -92,17 +92,21 @@ export default function AddListingScreen() {
     const cleanDescription = sanitizeText(description);
     const cleanLocation = sanitizeText(location);
 
-    const { error } = await supabase.from('listings').insert({
-      owner_id: session.user.id,
-      title: cleanTitle,
-      description: cleanDescription,
-      category: category!,
-      price: priceValue,
-      price_unit: category === 'daily_hourly' ? rateUnit : null,
-      location: cleanLocation,
-      bedrooms: bedrooms.trim() ? Number(bedrooms) : null,
-      photos,
-    });
+    const { data, error } = await supabase
+      .from('listings')
+      .insert({
+        owner_id: session.user.id,
+        title: cleanTitle,
+        description: cleanDescription,
+        category: category!,
+        price: priceValue,
+        price_unit: category === 'daily_hourly' ? rateUnit : null,
+        location: cleanLocation,
+        bedrooms: bedrooms.trim() ? Number(bedrooms) : null,
+        photos,
+      })
+      .select('moderation_status')
+      .single();
 
     setSubmitting(false);
 
@@ -113,9 +117,21 @@ export default function AddListingScreen() {
 
     resetForm();
     notifyListingsChanged();
-    appAlert('Listing published', 'Your listing is now live on Easyfen.', [
-      { text: 'View on Home', onPress: () => router.push('/') },
-    ]);
+    // moderation_status is set server-side (see the listings_set_moderation_status
+    // trigger) based on the admin's current approval-gate setting — never
+    // assumed client-side, since the client has no reliable way to know
+    // which was in effect at the moment this insert landed.
+    if (data?.moderation_status === 'pending') {
+      appAlert(
+        'Submitted for review',
+        "Your listing will go live once an admin approves it. You can check its status from My Listings.",
+        [{ text: 'OK', onPress: () => router.push('/profile') }]
+      );
+    } else {
+      appAlert('Listing published', 'Your listing is now live on Easyfen.', [
+        { text: 'View on Home', onPress: () => router.push('/') },
+      ]);
+    }
   }
 
   return (

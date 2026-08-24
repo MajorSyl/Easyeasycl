@@ -82,6 +82,24 @@ export async function toggleListingFlag(
   revalidatePath('/content');
 }
 
+export async function setListingModerationStatus(id: string, status: 'approved' | 'rejected') {
+  const supabase = await createClient();
+  await requireAdmin(supabase);
+  if (status !== 'approved' && status !== 'rejected') throw new Error('Invalid status');
+  const { error } = await supabase.rpc('admin_set_listing_flags', { item_id: id, moderation_status: status });
+  if (error) throw error;
+  revalidatePath('/content');
+}
+
+export async function setRequireListingApproval(value: boolean) {
+  const supabase = await createClient();
+  await requireAdmin(supabase);
+  const { error } = await supabase.from('app_settings').update({ require_listing_approval: value }).eq('id', true);
+  if (error) throw error;
+  revalidatePath('/settings');
+  revalidatePath('/content');
+}
+
 export async function dismissReport(reportId: string) {
   const supabase = await createClient();
   await requireAdmin(supabase);
