@@ -16,11 +16,18 @@ A marketplace app for finding and listing properties in Freetown, Sierra Leone. 
 - **Profile** — edit your details, choose your role (regular user or agent), manage/edit/delete your listings, upload an avatar, request phone verification, confirm a listing is still available when it's gone stale
 - **Public profiles** — view any agent's active listings, message them, report or block them; verification badge shown if they have one
 - **Listing report flow** — anyone can report a listing (not their own); it's suspended immediately and the owner's account is flagged for admin review
-- **Legal pages** — `/privacy`, `/terms`, `/guidelines`, `/agent-agreement`, linked from a footer on every web page
+- **Legal pages** — `/privacy`, `/terms`, `/guidelines`, `/agent-agreement`, linked from the bottom of the Profile screen only (`components/WebFooter.tsx` on web, an equivalent native-only row otherwise) — not shown on Home or any other screen
 
-Sign-in is email + password. Browsing works without an account; posting, favoriting, messaging, saving searches, and rating require one.
+Sign-in is email + password, or "Continue with Google" (Supabase Auth's Google OAuth provider — see Authentication below). Browsing works without an account; posting, favoriting, messaging, saving searches, and rating require one.
 
-> **Legal page content is placeholder text**, not reviewed legal copy — replace it with your actual policies before app store submission or a public launch. See `app/privacy.tsx`, `app/terms.tsx`, `app/guidelines.tsx`, `app/agent-agreement.tsx`.
+> **Legal page content is a substantive first draft**, not lawyer-reviewed copy — have it reviewed before app store submission or a public launch. See `app/privacy.tsx`, `app/terms.tsx`, `app/guidelines.tsx`, `app/agent-agreement.tsx`.
+
+## Authentication
+
+- Email/password via Supabase Auth, plus "Continue with Google" (`lib/google-auth.ts`, one button on `app/auth.tsx` for both sign-in and sign-up — Google has no separate sign-up step). Requires the Google provider already enabled in the Supabase dashboard with real Google Cloud Console credentials; this repo only does the app-side half.
+- **One manual step this repo can't do for you**: Supabase Auth rejects any OAuth `redirectTo` that isn't on its allow-list (Authentication → URL Configuration → Redirect URLs). Add the web callback (e.g. `https://easyfen.com/auth-callback`, plus whatever dev URL you test from) and a wildcard for the native deep link (`easyfen://**`) there, or Google sign-in will fail at the final redirect with an "invalid redirect URL" error from Supabase.
+- New Google sign-ins get a `profiles` row exactly like email signups do — same `handle_new_user()` trigger, same `role = 'user'` default (upgradeable to agent from the `/onboarding` picker, which a first-time Google sign-in is routed to the same as a first-time email signup). If a Google email matches an existing password-based account's (confirmed) email, Supabase Auth links the new identity to that same account automatically — this repo doesn't implement any account-merging logic itself, and shouldn't; that's GoTrue's job and doing it in application code would be a lot easier to get wrong (account takeover risk if an app-level merge doesn't check email verification as carefully as GoTrue already does).
+- Google sign-in only proves email identity — it never touches `verification_tier`, `payments`, or `app_settings`. Verified Agent status and launch-mode/payment state stay exactly as they already worked.
 
 ## Repo layout
 
@@ -175,6 +182,7 @@ This produces a `preview`-profile `.apk` — for sideloading/testing, not what P
 - [ ] Replace the placeholder mobile money receiving number/account name in `constants/payments.ts` (`MOBILE_MONEY_RECEIVING`) with real ones, and review the placeholder prices in `PAYMENT_PRODUCTS`, before turning launch mode off — while it's on (the default), purchases are free and don't touch these values at all (see Monetization above)
 - [ ] Decide whether new listings need a pre-publish admin review gate before going live, or retroactive moderation (current behavior) is acceptable — see Trust infrastructure above
 - [ ] If real SMS-based phone verification (OTP) is wanted instead of the current manual admin-approval flow, an SMS provider (Twilio/MessageBird/etc.) needs to be configured in Supabase Auth settings — nothing here today sends an SMS
+- [ ] Add the web callback URL and a native wildcard (`easyfen://**`) to Supabase Dashboard → Authentication → URL Configuration → Redirect URLs, or "Continue with Google" fails at the final redirect (see Authentication above)
 
 ## Architecture notes
 
