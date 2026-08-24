@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../lib/auth-context';
 import { subscribeListingsChanged } from '../../lib/listings-cache-bus';
+import { readCache, writeCache } from '../../lib/offline-cache';
 import { colors, fontSize, fontWeight, radius, shadow, spacing } from '../../constants/theme';
 import { useTabBarGap } from '../../lib/use-bottom-gap';
 import { ListingCard } from '../../components/ListingCard';
@@ -17,6 +18,8 @@ import { initialsFor } from '../../lib/format';
 import type { Listing, ListingCategory } from '../../lib/types';
 
 type CategoryFilter = 'all' | ListingCategory;
+
+const HOME_FEED_CACHE_KEY = 'easyfen_home_feed_cache_v1';
 
 const categoryOptions: PillOption<CategoryFilter>[] = [
   { value: 'all', label: 'All Properties' },
@@ -36,12 +39,21 @@ export default function HomeScreen() {
   const [loadError, setLoadError] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [showingSavedData, setShowingSavedData] = useState(false);
 
   // Switching category filters shouldn't re-hit the network every time if we
   // already have recent data for that filter — only refetch once the cached
   // copy is more than a minute old, or on pull-to-refresh.
   const CACHE_TTL_MS = 60_000;
+  // Also the offline fallback: this same map is persisted to disk (see
+  // HOME_FEED_CACHE_KEY below) so a fetch failure can fall back to the last
+  // successfully loaded feed instead of an empty/error screen.
   const cacheRef = useRef<Map<CategoryFilter, { rows: Listing[]; fetchedAt: number }>>(new Map());
+  const hydratedRef = useRef(false);
+
+  const persistCache = useCallback(() => {
+    writeCache(HOME_FEED_CACHE_KEY, Object.fromEntries(cacheRef.current));
+  }, []);
 
   const load = useCallback(
     async (force = false) => {
@@ -49,6 +61,7 @@ export default function HomeScreen() {
       if (!force && cached && Date.now() - cached.fetchedAt < CACHE_TTL_MS) {
         setListings(cached.rows);
         setLoadError(false);
+        setShowingSavedData(false);
         return;
       }
       let query = supabase
@@ -59,20 +72,47 @@ export default function HomeScreen() {
       if (categoryFilter !== 'all') query = query.eq('category', categoryFilter);
       const { data, error } = await query;
       if (error) {
-        setLoadError(true);
+        if (cached) {
+          setListings(cached.rows);
+          setLoadError(false);
+          setShowingSavedData(true);
+        } else {
+          setLoadError(true);
+          setShowingSavedData(false);
+        }
         return;
       }
       setLoadError(false);
+      setShowingSavedData(false);
       const rows = (data as unknown as Listing[]) ?? [];
       cacheRef.current.set(categoryFilter, { rows, fetchedAt: Date.now() });
       setListings(rows);
+      persistCache();
     },
-    [categoryFilter]
+    [categoryFilter, persistCache]
   );
 
   useEffect(() => {
-    setLoading(true);
-    load().finally(() => setLoading(false));
+    let cancelled = false;
+    async function run() {
+      if (!hydratedRef.current) {
+        const persisted = await readCache<Record<string, { rows: Listing[]; fetchedAt: number }>>(HOME_FEED_CACHE_KEY);
+        if (persisted && !cancelled) {
+          for (const [key, value] of Object.entries(persisted)) {
+            cacheRef.current.set(key as CategoryFilter, value);
+          }
+        }
+        hydratedRef.current = true;
+      }
+      if (cancelled) return;
+      setLoading(true);
+      await load();
+      if (!cancelled) setLoading(false);
+    }
+    run();
+    return () => {
+      cancelled = true;
+    };
   }, [load]);
 
   // Keep a ref to the latest `load` so the subscription callback never needs
@@ -240,6 +280,13 @@ export default function HomeScreen() {
               </View>
             </View>
 
+            {showingSavedData && (
+              <View style={styles.offlineBanner}>
+                <Ionicons name="cloud-offline-outline" size={16} color={colors.textMuted} />
+                <Text style={styles.offlineBannerText}>Showing saved listings — check your connection</Text>
+              </View>
+            )}
+
             <Pressable
               style={styles.searchBar}
               onPress={() => router.push('/search')}
@@ -399,6 +446,20 @@ const styles = StyleSheet.create({
     ...shadow.card,
   },
   searchPlaceholder: { color: colors.textMuted, fontSize: fontSize.sm },
+  offlineBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginHorizontal: spacing.lg,
+    marginBottom: spacing.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    backgroundColor: colors.card,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  offlineBannerText: { flex: 1, fontSize: fontSize.xs, color: colors.textMuted },
   sellBanner: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -17,6 +17,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../lib/auth-context';
 import { useSettings } from '../../lib/settings';
+import { readCache, writeCache } from '../../lib/offline-cache';
 import { friendlyErrorMessage } from '../../lib/errors';
 import { appAlert } from '../../lib/alert';
 import { notifyListingsChanged } from '../../lib/listings-cache-bus';
@@ -61,7 +62,10 @@ export default function ProfileScreen() {
   const [myListings, setMyListings] = useState<MyListing[]>([]);
   const [loadingListings, setLoadingListings] = useState(true);
   const [listingsLoadError, setListingsLoadError] = useState(false);
+  const [showingSavedListings, setShowingSavedListings] = useState(false);
   const listingsFetchedAt = useRef(0);
+  const myListingsCacheRef = useRef<MyListing[] | null>(null);
+  const myListingsCacheUidRef = useRef<string | null>(null);
 
   const [editing, setEditing] = useState(false);
   const [fullName, setFullName] = useState('');
@@ -96,19 +100,35 @@ export default function ProfileScreen() {
       setLoadingListings(false);
       return;
     }
-    if (!force && Date.now() - listingsFetchedAt.current < 60_000) return;
     const uid = session.user.id;
+    const cacheKey = `easyfen_my_listings_cache_${uid}`;
+
+    if (myListingsCacheUidRef.current !== uid) {
+      myListingsCacheRef.current = null;
+      myListingsCacheUidRef.current = uid;
+      const persisted = await readCache<MyListing[]>(cacheKey);
+      if (persisted) myListingsCacheRef.current = persisted;
+    }
+
+    if (!force && Date.now() - listingsFetchedAt.current < 60_000) return;
     const { data: listings, error } = await supabase
       .from('listings')
       .select('id, title, price, currency, price_unit, created_at, last_confirmed_at, is_active, is_premium, moderation_status')
       .eq('owner_id', uid);
 
     if (error) {
-      setListingsLoadError(true);
+      if (myListingsCacheRef.current) {
+        setMyListings(myListingsCacheRef.current);
+        setListingsLoadError(false);
+        setShowingSavedListings(true);
+      } else {
+        setListingsLoadError(true);
+      }
       setLoadingListings(false);
       return;
     }
     setListingsLoadError(false);
+    setShowingSavedListings(false);
 
     const combined: MyListing[] = ((listings ?? []) as any[]).map((item) => ({
       kind: 'listing' as const,
@@ -124,6 +144,8 @@ export default function ProfileScreen() {
 
     combined.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     listingsFetchedAt.current = Date.now();
+    myListingsCacheRef.current = combined;
+    writeCache(cacheKey, combined);
     setMyListings(combined);
     setLoadingListings(false);
   }, [session]);
@@ -420,6 +442,13 @@ export default function ProfileScreen() {
               </View>
               <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
             </Pressable>
+          )}
+
+          {!editing && showingSavedListings && (
+            <View style={styles.offlineBanner}>
+              <Ionicons name="cloud-offline-outline" size={16} color={colors.textMuted} />
+              <Text style={styles.offlineBannerText}>Showing saved listings — check your connection</Text>
+            </View>
           )}
 
           {!editing && (
@@ -723,6 +752,19 @@ const styles = StyleSheet.create({
   },
   pendingBadgeText: { fontSize: fontSize.xs, fontWeight: fontWeight.bold, color: colors.gold, letterSpacing: 0.4 },
   suspendedNote: { fontSize: fontSize.xs, color: colors.danger, marginTop: 4 },
+  offlineBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginBottom: spacing.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    backgroundColor: colors.background,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  offlineBannerText: { flex: 1, fontSize: fontSize.xs, color: colors.textMuted },
   listingTitle: { fontSize: fontSize.sm, fontWeight: fontWeight.bold, color: colors.textPrimary, marginTop: 2 },
   listingPrice: { fontSize: fontSize.sm, color: colors.accent, fontWeight: fontWeight.semibold, marginTop: 2 },
   editButtonRow: { padding: spacing.sm },
