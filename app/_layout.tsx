@@ -2,7 +2,6 @@ import { Component, useEffect, useState, type ReactNode } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Stack, router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { WebFooter } from '../components/WebFooter';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
@@ -68,7 +67,6 @@ export default function RootLayout() {
                         <View style={{ flex: 1, backgroundColor: colors.background }} />
                       </View>
                     )}
-                    <WebFooter />
                   </View>
                 </AlertProvider>
               </SettingsProvider>

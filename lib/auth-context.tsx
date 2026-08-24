@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from './supabase';
 
@@ -38,8 +38,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [onlineUserIds, setOnlineUserIds] = useState<Set<string>>(new Set());
 
+  // getSession() and onAuthStateChange's initial event can both fire within
+  // milliseconds of each other on startup, so loadProfile can end up
+  // in-flight more than once concurrently. A request-id guard makes sure
+  // only the most recently *started* call is allowed to set state, so a
+  // slower, now-stale response (e.g. one that lost a token-attachment race
+  // and 401'd) can never overwrite a newer good result with an empty
+  // profile. A failed fetch also no longer wipes out an already-loaded
+  // profile -- it's far more likely to be transient than the user's name
+  // having actually disappeared.
+  const profileRequestIdRef = useRef(0);
+
   async function loadProfile(userId: string) {
-    const [{ data }, { data: phone }] = await Promise.all([
+    const requestId = ++profileRequestIdRef.current;
+    const [{ data, error }, { data: phone }] = await Promise.all([
       supabase
         .from('profiles')
         .select('id, full_name, avatar_url, role, business_name, verification_tier, phone_verification_requested_at')
@@ -47,6 +59,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .single(),
       supabase.rpc('get_profile_phone', { profile_id: userId }),
     ]);
+    if (requestId !== profileRequestIdRef.current) return;
+    if (error) return;
     setProfile(data ? ({ ...data, phone: phone ?? null } as Profile) : null);
   }
 
@@ -62,6 +76,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (newSession) {
         loadProfile(newSession.user.id);
       } else {
+        profileRequestIdRef.current++; // invalidate any in-flight loadProfile so it can't repopulate after sign-out
         setProfile(null);
       }
     });

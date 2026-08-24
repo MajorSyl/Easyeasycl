@@ -2,6 +2,7 @@ import { useCallback, useRef, useState, type ReactNode } from 'react';
 import {
   ActivityIndicator,
   FlatList,
+  Platform,
   Pressable,
   StyleSheet,
   Switch,
@@ -27,6 +28,7 @@ import { sanitizeText } from '../../lib/sanitize';
 import { colors, fontSize, fontWeight, radius, spacing } from '../../constants/theme';
 import { daysSince, formatPrice, initialsFor, roleLabel, verificationBadgeLabel } from '../../lib/format';
 import { SelectField, type SelectOption } from '../../components/SelectField';
+import { WebFooter } from '../../components/WebFooter';
 import type { Profile } from '../../lib/auth-context';
 
 type ListingKind = 'listing';
@@ -576,30 +578,38 @@ export default function ProfileScreen() {
       ListFooterComponent={
         !editing ? (
           <>
-            {/* WebFooter (privacy/terms/guidelines links) only renders on
-                web — without this, native iOS/Android users would have no
-                in-app way to reach these pages at all. */}
-            <View style={styles.legalRow}>
-              <Pressable onPress={() => router.push('/privacy')} hitSlop={6}>
-                <Text style={styles.legalLink}>Privacy Policy</Text>
-              </Pressable>
-              <Text style={styles.legalSep}>·</Text>
-              <Pressable onPress={() => router.push('/terms')} hitSlop={6}>
-                <Text style={styles.legalLink}>Terms of Service</Text>
-              </Pressable>
-              <Text style={styles.legalSep}>·</Text>
-              <Pressable onPress={() => router.push('/guidelines')} hitSlop={6}>
-                <Text style={styles.legalLink}>Community Guidelines</Text>
-              </Pressable>
-              {profile?.role === 'agent' && (
-                <>
-                  <Text style={styles.legalSep}>·</Text>
-                  <Pressable onPress={() => router.push('/agent-agreement')} hitSlop={6}>
-                    <Text style={styles.legalLink}>Agent Agreement</Text>
-                  </Pressable>
-                </>
-              )}
-            </View>
+            {/* On web, WebFooter (copyright + privacy/terms/guidelines/agent
+                links) renders here, scoped to the Profile screen only — it
+                used to be mounted globally in app/_layout.tsx, which put it
+                on every screen including Home. Native has no equivalent
+                bottom-of-page footer convention, so it keeps its own
+                in-page legal-links row instead, which is the only way
+                iOS/Android users can reach these pages at all. */}
+            {Platform.OS === 'web' ? (
+              <WebFooter />
+            ) : (
+              <View style={styles.legalRow}>
+                <Pressable onPress={() => router.push('/privacy')} hitSlop={6}>
+                  <Text style={styles.legalLink}>Privacy Policy</Text>
+                </Pressable>
+                <Text style={styles.legalSep}>·</Text>
+                <Pressable onPress={() => router.push('/terms')} hitSlop={6}>
+                  <Text style={styles.legalLink}>Terms of Service</Text>
+                </Pressable>
+                <Text style={styles.legalSep}>·</Text>
+                <Pressable onPress={() => router.push('/guidelines')} hitSlop={6}>
+                  <Text style={styles.legalLink}>Community Guidelines</Text>
+                </Pressable>
+                {profile?.role === 'agent' && (
+                  <>
+                    <Text style={styles.legalSep}>·</Text>
+                    <Pressable onPress={() => router.push('/agent-agreement')} hitSlop={6}>
+                      <Text style={styles.legalLink}>Agent Agreement</Text>
+                    </Pressable>
+                  </>
+                )}
+              </View>
+            )}
 
             <Pressable style={styles.logoutButton} onPress={handleLogOut}>
               <Ionicons name="log-out-outline" size={18} color={colors.danger} />
