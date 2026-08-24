@@ -10,7 +10,10 @@ import {
   View,
 } from 'react-native';
 import { router } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../lib/auth-context';
+import { supabase } from '../lib/supabase';
+import { signInWithGoogle, isFirstSignIn } from '../lib/google-auth';
 import { friendlyErrorMessage } from '../lib/errors';
 import { colors, fontSize, fontWeight, radius, spacing } from '../constants/theme';
 import { Logo } from '../components/Logo';
@@ -31,6 +34,7 @@ export default function AuthScreen() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [googleSubmitting, setGoogleSubmitting] = useState(false);
   const mountedAt = useRef(Date.now());
 
   const canSubmit =
@@ -73,6 +77,34 @@ export default function AuthScreen() {
       return;
     }
     router.replace('/onboarding');
+  }
+
+  async function handleGoogleSignIn() {
+    if (googleSubmitting) return;
+    setGoogleSubmitting(true);
+    setError(null);
+    setNotice(null);
+
+    const errorMessage = await signInWithGoogle();
+    setGoogleSubmitting(false);
+    if (errorMessage) {
+      setError(friendlyErrorMessage(errorMessage));
+      return;
+    }
+    // On web this line never runs -- signInWithGoogle() already navigated the
+    // page away to Google. On native it resolves once the redirect is fully
+    // handled, so check whether a session actually landed (a null return
+    // also covers the user backing out of the Google screen).
+    const { data } = await supabase.auth.getSession();
+    if (!data.session) return;
+
+    if (isFirstSignIn(data.session.user)) {
+      router.replace('/onboarding');
+    } else if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/');
+    }
   }
 
   return (
@@ -156,6 +188,23 @@ export default function AuthScreen() {
         )}
       </Pressable>
 
+      <View style={styles.dividerRow}>
+        <View style={styles.dividerLine} />
+        <Text style={styles.dividerText}>or</Text>
+        <View style={styles.dividerLine} />
+      </View>
+
+      <Pressable style={styles.googleButton} disabled={googleSubmitting} onPress={handleGoogleSignIn}>
+        {googleSubmitting ? (
+          <ActivityIndicator color={colors.textPrimary} />
+        ) : (
+          <>
+            <Ionicons name="logo-google" size={18} color={colors.textPrimary} />
+            <Text style={styles.googleButtonText}>Continue with Google</Text>
+          </>
+        )}
+      </Pressable>
+
       <Pressable onPress={() => setMode(mode === 'sign_in' ? 'sign_up' : 'sign_in')}>
         <Text style={styles.switchText}>
           {mode === 'sign_in' ? "Don't have an account? " : 'Already have an account? '}
@@ -217,4 +266,20 @@ const styles = StyleSheet.create({
   submitTextDisabled: { color: colors.textMuted },
   switchText: { textAlign: 'center', color: colors.textSecondary, fontSize: fontSize.sm, marginTop: spacing.lg },
   switchTextBold: { color: colors.accent, fontWeight: fontWeight.semibold },
+  dividerRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: spacing.lg },
+  dividerLine: { flex: 1, height: 1, backgroundColor: colors.border },
+  dividerText: { fontSize: fontSize.xs, color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.4 },
+  googleButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    paddingVertical: spacing.md,
+    marginTop: spacing.lg,
+  },
+  googleButtonText: { color: colors.textPrimary, fontSize: fontSize.md, fontWeight: fontWeight.semibold },
 });
