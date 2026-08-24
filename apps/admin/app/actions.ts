@@ -100,6 +100,31 @@ export async function setRequireListingApproval(value: boolean) {
   revalidatePath('/content');
 }
 
+export async function setLaunchModeActive(value: boolean) {
+  const supabase = await createClient();
+  await requireAdmin(supabase);
+  const { error } = await supabase.from('app_settings').update({ launch_mode_active: value }).eq('id', true);
+  if (error) throw error;
+  revalidatePath('/settings');
+}
+
+export async function updateLaunchModeDetails(note: string, listingsTarget: number, agentsTarget: number) {
+  const supabase = await createClient();
+  await requireAdmin(supabase);
+  if (!Number.isFinite(listingsTarget) || listingsTarget <= 0) throw new Error('Invalid listings target');
+  if (!Number.isFinite(agentsTarget) || agentsTarget <= 0) throw new Error('Invalid agents target');
+  const { error } = await supabase
+    .from('app_settings')
+    .update({
+      launch_mode_note: note.trim(),
+      launch_mode_listings_target: Math.round(listingsTarget),
+      launch_mode_agents_target: Math.round(agentsTarget),
+    })
+    .eq('id', true);
+  if (error) throw error;
+  revalidatePath('/settings');
+}
+
 export async function dismissReport(reportId: string) {
   const supabase = await createClient();
   await requireAdmin(supabase);

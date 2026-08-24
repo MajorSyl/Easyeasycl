@@ -36,6 +36,21 @@ export function friendlyErrorMessage(error: unknown): string {
   if (text.includes('violates') && text.includes('constraint')) {
     return 'Some of the information provided isn\'t valid. Please check and try again.';
   }
+  if (text.includes('launch mode is not active')) {
+    return 'This free launch offer just ended. Refresh the page and continue with mobile money payment.';
+  }
+  if (text.includes('already boosted')) {
+    return 'This listing already has an active boost.';
+  }
+  if (text.includes('subscription already active')) {
+    return 'Your agent subscription is already active.';
+  }
+  if (text.includes('already verified')) {
+    return 'Your account is already verified.';
+  }
+  if (text.includes('already pending review')) {
+    return "You already have a payment pending review for this — no need to submit again.";
+  }
 
   return "Something went wrong. Please try again.";
 }

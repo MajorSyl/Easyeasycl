@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase-server';
 import { redirect } from 'next/navigation';
-import { setRequireListingApproval } from '../actions';
+import { setRequireListingApproval, setLaunchModeActive, updateLaunchModeDetails } from '../actions';
 
 export default async function SettingsPage() {
   const supabase = await createClient();
@@ -11,13 +11,122 @@ export default async function SettingsPage() {
     (await supabase.from('profiles').select('is_admin').eq('id', session.user.id).single()).data?.is_admin === true;
   if (!isAdmin) redirect('/login');
 
-  const { data: appSettings } = await supabase.from('app_settings').select('require_listing_approval').single();
+  const [{ data: appSettings }, { count: activeListingsCount }, { data: activeOwners }] = await Promise.all([
+    supabase
+      .from('app_settings')
+      .select('require_listing_approval, launch_mode_active, launch_mode_note, launch_mode_listings_target, launch_mode_agents_target')
+      .single(),
+    supabase.from('listings').select('id', { count: 'exact', head: true }).eq('is_active', true).eq('moderation_status', 'approved'),
+    supabase.from('listings').select('owner_id').eq('is_active', true).eq('moderation_status', 'approved'),
+  ]);
+
   const requireApproval = appSettings?.require_listing_approval ?? false;
+  const launchModeActive = appSettings?.launch_mode_active ?? true;
+  const launchModeNote = appSettings?.launch_mode_note ?? '';
+  const listingsTarget = appSettings?.launch_mode_listings_target ?? 150;
+  const agentsTarget = appSettings?.launch_mode_agents_target ?? 40;
+
+  const activeListings = activeListingsCount ?? 0;
+  const activeAgents = new Set((activeOwners ?? []).map((l) => l.owner_id)).size;
+  const listingsPct = Math.min(100, Math.round((activeListings / listingsTarget) * 100));
+  const agentsPct = Math.min(100, Math.round((activeAgents / agentsTarget) * 100));
 
   return (
     <>
       <div className="topbar"><h1>Settings</h1></div>
       <div className="content">
+        <div className="card">
+          <div className="card-header">
+            <span className="card-title">Launch mode</span>
+          </div>
+          <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <p style={{ fontSize: 13, color: '#667085', lineHeight: 1.6 }}>
+              While on, every purchase (listing boost, agent subscription, verified agent review) is free —
+              agents skip the mobile money step entirely and get the feature instantly. Each free claim still
+              writes a full payment record (SLE 0, marked as a launch promo) so nothing is lost when you switch
+              to real billing. Turning this off does not touch anything already claimed for free; it only
+              switches new purchases back to requiring real mobile money payment.
+            </p>
+            <form
+              action={async (fd: FormData) => {
+                'use server';
+                await setLaunchModeActive(fd.get('value') === 'true');
+              }}
+            >
+              <input type="hidden" name="value" value={String(!launchModeActive)} />
+              <button
+                type="submit"
+                className={`badge ${launchModeActive ? 'badge-green' : 'badge-gray'}`}
+                style={{ border: 'none', cursor: 'pointer', fontSize: 13, padding: '8px 16px' }}
+              >
+                Launch mode (free purchases): {launchModeActive ? 'ON' : 'OFF'}
+              </button>
+            </form>
+
+            <form
+              action={async (fd: FormData) => {
+                'use server';
+                await updateLaunchModeDetails(
+                  String(fd.get('note') ?? ''),
+                  Number(fd.get('listings_target')),
+                  Number(fd.get('agents_target'))
+                );
+              }}
+              style={{ display: 'flex', flexDirection: 'column', gap: 10, maxWidth: 480 }}
+            >
+              <label style={{ fontSize: 12, fontWeight: 600, color: '#344054' }}>
+                Message shown to agents on the purchase screen while launch mode is on
+                <textarea
+                  name="note"
+                  defaultValue={launchModeNote}
+                  rows={3}
+                  style={{ width: '100%', marginTop: 4, padding: 8, fontSize: 13, border: '1px solid #d0d5dd', borderRadius: 6, fontFamily: 'inherit' }}
+                />
+              </label>
+              <div style={{ display: 'flex', gap: 12 }}>
+                <label style={{ fontSize: 12, fontWeight: 600, color: '#344054', flex: 1 }}>
+                  Listings milestone target
+                  <input
+                    type="number"
+                    name="listings_target"
+                    defaultValue={listingsTarget}
+                    min={1}
+                    style={{ width: '100%', marginTop: 4, padding: 8, fontSize: 13, border: '1px solid #d0d5dd', borderRadius: 6 }}
+                  />
+                </label>
+                <label style={{ fontSize: 12, fontWeight: 600, color: '#344054', flex: 1 }}>
+                  Agents milestone target
+                  <input
+                    type="number"
+                    name="agents_target"
+                    defaultValue={agentsTarget}
+                    min={1}
+                    style={{ width: '100%', marginTop: 4, padding: 8, fontSize: 13, border: '1px solid #d0d5dd', borderRadius: 6 }}
+                  />
+                </label>
+              </div>
+              <button type="submit" className="btn btn-sm" style={{ alignSelf: 'flex-start', background: '#1d4ed8', color: '#fff', border: 'none' }}>
+                Save
+              </button>
+            </form>
+          </div>
+        </div>
+
+        <div className="card">
+          <div className="card-header">
+            <span className="card-title">Growth toward milestone</span>
+          </div>
+          <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <p style={{ fontSize: 12, color: '#667085' }}>
+              Counts every currently active, approved listing site-wide. "Agents" here means distinct owners of
+              those listings, not strictly accounts with the agent role. This is a display only — nothing
+              switches automatically when a target is hit; the launch mode toggle above is a manual decision.
+            </p>
+            <MilestoneBar label="Active listings" current={activeListings} target={listingsTarget} pct={listingsPct} />
+            <MilestoneBar label="Distinct owners with an active listing" current={activeAgents} target={agentsTarget} pct={agentsPct} />
+          </div>
+        </div>
+
         <div className="card">
           <div className="card-header">
             <span className="card-title">Listing moderation</span>
@@ -48,5 +157,19 @@ export default async function SettingsPage() {
         </div>
       </div>
     </>
+  );
+}
+
+function MilestoneBar({ label, current, target, pct }: { label: string; current: number; target: number; pct: number }) {
+  return (
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 6 }}>
+        <span style={{ fontWeight: 600, color: '#344054' }}>{label}</span>
+        <span style={{ color: '#667085' }}>{current} / {target} ({pct}%)</span>
+      </div>
+      <div style={{ height: 8, borderRadius: 4, background: '#eaecf0', overflow: 'hidden' }}>
+        <div style={{ height: '100%', width: `${pct}%`, background: pct >= 100 ? '#16a34a' : '#1d4ed8', borderRadius: 4 }} />
+      </div>
+    </div>
   );
 }

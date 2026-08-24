@@ -416,6 +416,14 @@ export default function ProfileScreen() {
           )}
 
           {!editing && (
+            <Pressable style={styles.savedRow} onPress={() => router.push('/packages')}>
+              <Ionicons name="rocket" size={18} color={colors.accent} />
+              <Text style={styles.savedRowText}>Plans & Pricing</Text>
+              <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+            </Pressable>
+          )}
+
+          {!editing && (
             <Pressable style={styles.savedRow} onPress={() => router.push('/favorites')}>
               <Ionicons name="heart" size={18} color={colors.favoriteIcon} />
               <Text style={styles.savedRowText}>Saved</Text>

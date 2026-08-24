@@ -37,8 +37,15 @@ export default function PayScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [checking, setChecking] = useState(true);
   const [existing, setExisting] = useState<ExistingStatus>({ kind: 'none' });
+  const [launchModeActive, setLaunchModeActive] = useState(false);
+  const [claimingFree, setClaimingFree] = useState(false);
 
   const product = PAYMENT_PRODUCTS[purpose];
+
+  const loadLaunchMode = useCallback(async () => {
+    const { data } = await supabase.from('app_settings').select('launch_mode_active').single();
+    setLaunchModeActive(data?.launch_mode_active ?? false);
+  }, []);
 
   const checkExisting = useCallback(async () => {
     if (!session || !product) {
@@ -109,7 +116,8 @@ export default function PayScreen() {
   useFocusEffect(
     useCallback(() => {
       checkExisting();
-    }, [checkExisting])
+      loadLaunchMode();
+    }, [checkExisting, loadLaunchMode])
   );
 
   async function pickScreenshot() {
@@ -171,6 +179,32 @@ export default function PayScreen() {
     );
   }
 
+  async function handleClaimFree() {
+    if (!session || !product || claimingFree) return;
+    if (purpose === 'listing_boost' && !listingId) return;
+
+    setClaimingFree(true);
+    const { error } = await supabase.rpc('claim_launch_promo', {
+      p_purpose: purpose,
+      p_listing_id: purpose === 'listing_boost' ? listingId : null,
+    });
+    setClaimingFree(false);
+
+    if (error) {
+      appAlert('Could not activate', friendlyErrorMessage(error));
+      // The launch offer may have just ended, or this got claimed from
+      // another tab/device — re-check so the screen reflects reality
+      // instead of staying stuck on a stale "free" state.
+      await checkExisting();
+      await loadLaunchMode();
+      return;
+    }
+
+    await refreshProfile();
+    await checkExisting();
+    appAlert('Activated!', "This is now active on your account — no payment needed during the launch period.");
+  }
+
   if (!session) {
     return (
       <View style={[styles.container, styles.centered, { paddingTop: insets.top }]}>
@@ -221,6 +255,31 @@ export default function PayScreen() {
             We've received your submission and will confirm the payment shortly.
           </Text>
         </View>
+      ) : launchModeActive ? (
+        <>
+          <View style={styles.priceCard}>
+            <View style={styles.freeLaunchBadge}>
+              <Text style={styles.freeLaunchBadgeText}>FREE DURING LAUNCH</Text>
+            </View>
+            <Text style={styles.priceStrikethrough}>SLE {product.amount.toLocaleString('en-US')}</Text>
+            <Text style={styles.priceAmount}>SLE 0</Text>
+            <Text style={styles.priceDuration}>{product.durationLabel}</Text>
+            <Text style={styles.priceDescription}>{product.description}</Text>
+          </View>
+
+          <Text style={styles.helperText}>
+            No mobile money payment needed right now — this purchase is free while launch mode is on. A record
+            is still kept so nothing changes for you once real pricing starts.
+          </Text>
+
+          <Pressable style={styles.submitButton} disabled={claimingFree} onPress={handleClaimFree}>
+            {claimingFree ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.submitButtonText}>Claim for Free</Text>
+            )}
+          </Pressable>
+        </>
       ) : (
         <>
           <View style={styles.priceCard}>
@@ -346,6 +405,16 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
   },
   priceAmount: { fontSize: fontSize.xxl, fontWeight: fontWeight.bold, color: colors.accent },
+  priceStrikethrough: { fontSize: fontSize.sm, color: colors.textMuted, textDecorationLine: 'line-through', marginTop: 2 },
+  freeLaunchBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: colors.success,
+    borderRadius: radius.sm,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    marginBottom: spacing.sm,
+  },
+  freeLaunchBadgeText: { fontSize: fontSize.xs, fontWeight: fontWeight.bold, color: '#fff', letterSpacing: 0.4 },
   priceDuration: { fontSize: fontSize.xs, fontWeight: fontWeight.semibold, color: colors.textMuted, letterSpacing: 0.4, textTransform: 'uppercase', marginTop: 2 },
   priceDescription: { fontSize: fontSize.sm, color: colors.textSecondary, marginTop: spacing.sm, lineHeight: 20 },
   sectionTitle: { fontSize: fontSize.md, fontWeight: fontWeight.bold, color: colors.textPrimary, marginBottom: spacing.sm },
