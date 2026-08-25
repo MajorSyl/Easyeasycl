@@ -24,6 +24,12 @@ import { Logo } from '../components/Logo';
 // take at least a couple seconds to type a name/email/password).
 const HONEYPOT_MIN_MS = 2000;
 
+// Only enforced at sign-up, not sign-in -- a login form should just require
+// *some* password before enabling the button and let the server decide if
+// it's correct, not retroactively lock out an existing account whose
+// password predates this minimum.
+const MIN_PASSWORD_LENGTH = 8;
+
 export default function AuthScreen() {
   const { signIn, signUp } = useAuth();
   const [mode, setMode] = useState<'sign_in' | 'sign_up'>('sign_in');
@@ -38,7 +44,10 @@ export default function AuthScreen() {
   const mountedAt = useRef(Date.now());
 
   const canSubmit =
-    email.trim().length > 3 && password.length >= 6 && (mode === 'sign_in' || fullName.trim().length > 0);
+    email.trim().length > 3 &&
+    (mode === 'sign_in'
+      ? password.length > 0
+      : password.length >= MIN_PASSWORD_LENGTH && fullName.trim().length > 0);
 
   async function handleSubmit() {
     if (!canSubmit || submitting) return;
@@ -163,7 +172,7 @@ export default function AuthScreen() {
         <Text style={styles.fieldLabel}>Password</Text>
         <TextInput
           style={styles.input}
-          placeholder="Min. 6 characters"
+          placeholder={mode === 'sign_up' ? `Min. ${MIN_PASSWORD_LENGTH} characters` : 'Password'}
           placeholderTextColor={colors.textMuted}
           value={password}
           onChangeText={setPassword}
