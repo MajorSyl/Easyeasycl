@@ -30,7 +30,7 @@ export default function AuthCallbackScreen() {
         return;
       }
 
-      router.replace(isFirstSignIn(user) ? '/onboarding' : '/');
+      router.replace(isFirstSignIn(user) ? '/select-role' : '/');
     });
   }, []);
 

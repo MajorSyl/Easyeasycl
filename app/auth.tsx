@@ -76,7 +76,7 @@ export default function AuthScreen() {
       setNotice('Account created! Check your email and tap the confirmation link, then log in here.');
       return;
     }
-    router.replace('/onboarding');
+    router.replace('/select-role');
   }
 
   async function handleGoogleSignIn() {
@@ -99,7 +99,7 @@ export default function AuthScreen() {
     if (!data.session) return;
 
     if (isFirstSignIn(data.session.user)) {
-      router.replace('/onboarding');
+      router.replace('/select-role');
     } else if (router.canGoBack()) {
       router.back();
     } else {
