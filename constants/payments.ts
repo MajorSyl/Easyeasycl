@@ -45,6 +45,17 @@ export const PAYMENT_PRODUCTS: Record<
   },
 };
 
+// Whether a purpose should show the contact-us flow instead of a normal
+// purchase, for a given viewer. Most of the time this is a static property
+// of the product itself (agent_verification), but Agency accounts get a
+// role-based override on top of the individual Agent Subscription product:
+// same purpose, same underlying config, different flow depending on who's
+// looking at it.
+export function isContactOnly(purpose: PaymentPurpose, role: string | null | undefined): boolean {
+  if (PAYMENT_PRODUCTS[purpose]?.contactOnly) return true;
+  return purpose === 'agent_subscription' && role === 'agency';
+}
+
 // Exactly two providers, matching what's actually usable in Sierra Leone.
 // The internal value `africell_money` is kept as-is (it's the payments
 // table's CHECK-constrained column value — renaming it would mean a data

@@ -30,8 +30,8 @@ export function initialsFor(name: string | null) {
 
 const roleLabels: Record<string, string> = {
   agent: 'AGENT',
-  service_provider: 'SERVICE PROVIDER',
-  hotel_owner: 'HOTEL',
+  landlord: 'LANDLORD',
+  agency: 'AGENCY',
 };
 
 export function roleLabel(role: string | undefined | null) {
@@ -61,8 +61,12 @@ const verificationLabels: Record<string, string> = {
   id_verified: 'ID Verified',
 };
 
-export function verificationBadgeLabel(tier: string | null | undefined) {
+// 'agent_verified' is the one shared tier granted through the same admin
+// review path regardless of who requested it -- the label just needs to
+// read correctly for whichever role holds it.
+export function verificationBadgeLabel(tier: string | null | undefined, role?: string | null) {
   if (!tier) return null;
+  if (tier === 'agent_verified' && role === 'landlord') return 'Verified Property Owner';
   return verificationLabels[tier] ?? null;
 }
 

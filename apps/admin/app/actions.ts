@@ -30,7 +30,7 @@ export async function logout() {
   redirect('/login');
 }
 
-const ROLES = ['user', 'agent', 'service_provider', 'hotel_owner'];
+const ROLES = ['user', 'landlord', 'agent', 'agency'];
 const FLAG_FIELDS = ['is_verified', 'is_premium', 'is_active'];
 const TABLES = ['listings', 'hotels', 'services'];
 

@@ -2,7 +2,7 @@ import { createClient } from '@/lib/supabase-server';
 import { redirect } from 'next/navigation';
 import { clearProfileFlag, setVerificationTier, updateProfileRole } from '../actions';
 
-const ROLES = ['user', 'agent', 'service_provider', 'hotel_owner'];
+const ROLES = ['user', 'landlord', 'agent', 'agency'];
 
 const VERIFICATION_LABELS: Record<string, string> = {
   none: 'None',
@@ -143,7 +143,7 @@ export default async function UsersPage() {
 
 function roleBadge(role: string) {
   if (role === 'agent') return 'badge-blue';
-  if (role === 'service_provider') return 'badge-amber';
-  if (role === 'hotel_owner') return 'badge-green';
+  if (role === 'landlord') return 'badge-amber';
+  if (role === 'agency') return 'badge-green';
   return 'badge-gray';
 }

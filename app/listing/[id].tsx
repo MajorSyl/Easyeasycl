@@ -25,7 +25,7 @@ import { FavoriteButton } from '../../components/FavoriteButton';
 import { AmenityBar, type AmenityItem } from '../../components/AmenityBar';
 import { NoPhotoPlaceholder } from '../../components/NoPhotoPlaceholder';
 import { LazyPhoto } from '../../components/LazyPhoto';
-import { categoryBadgeLabel, formatListingAge, formatPrice, initialsFor } from '../../lib/format';
+import { categoryBadgeLabel, formatListingAge, formatPrice, initialsFor, roleLabel } from '../../lib/format';
 import type { Listing, RateUnit } from '../../lib/types';
 
 const windowWidth = Dimensions.get('window').width;
@@ -272,14 +272,14 @@ export default function ListingDetailScreen() {
             </>
           )}
 
-          <Text style={styles.sectionTitle}>Agent</Text>
+          <Text style={styles.sectionTitle}>Listed By</Text>
           <Pressable style={styles.agentRow} onPress={() => router.push(`/user/${listing.owner_id}`)}>
             <View style={styles.agentAvatar}>
               <Text style={styles.agentAvatarText}>{initialsFor(listing.owner?.full_name ?? null)}</Text>
             </View>
             <View style={styles.agentBody}>
               <Text style={styles.agentName}>{listing.owner?.full_name ?? 'Easyfen User'}</Text>
-              {listing.owner?.role === 'agent' && <Text style={styles.agentRole}>AGENT</Text>}
+              {roleLabel(listing.owner?.role) && <Text style={styles.agentRole}>{roleLabel(listing.owner?.role)}</Text>}
             </View>
             <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
           </Pressable>

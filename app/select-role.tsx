@@ -11,7 +11,9 @@ import type { Profile } from '../lib/auth-context';
 
 const roleChoices: { role: Profile['role']; icon: keyof typeof Ionicons.glyphMap; title: string; subtitle: string }[] = [
   { role: 'user', icon: 'home-outline', title: 'Renter / Buyer', subtitle: 'Looking for a place or land' },
-  { role: 'agent', icon: 'business-outline', title: 'Agent / Landlord', subtitle: 'Listing properties for rent or sale' },
+  { role: 'landlord', icon: 'key-outline', title: 'Landlord', subtitle: "Renting out or selling your own property" },
+  { role: 'agent', icon: 'business-outline', title: 'Agent', subtitle: 'Listing properties for clients' },
+  { role: 'agency', icon: 'briefcase-outline', title: 'Real Estate Agency', subtitle: 'A company managing multiple properties' },
 ];
 
 export default function SelectRoleScreen() {

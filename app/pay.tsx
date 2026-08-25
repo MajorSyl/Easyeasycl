@@ -15,6 +15,7 @@ import {
   CURRENCY_CODE,
   MOBILE_MONEY_RECEIVING,
   PAYMENT_PRODUCTS,
+  isContactOnly,
   type MobileMoneyProvider,
   type PaymentPurpose,
 } from '../constants/payments';
@@ -43,6 +44,36 @@ export default function PayScreen() {
   const [claimingFree, setClaimingFree] = useState(false);
 
   const product = PAYMENT_PRODUCTS[purpose];
+  const contactOnly = isContactOnly(purpose, profile?.role);
+  // Same underlying purpose (agent_subscription), different framing when an
+  // Agency account is the one looking at it -- agent_verification's
+  // contact-only flow keeps its existing copy.
+  const isAgencyContact = purpose === 'agent_subscription' && contactOnly;
+  const contactCopy = isAgencyContact
+    ? {
+        priceLabel: 'Contact us for agency pricing',
+        sectionTitle: 'Tell us about your agency',
+        helperText:
+          "Tell us roughly how many properties or agents you're managing — an admin will follow up with agency pricing and next steps.",
+        buttonLabel: 'Request Agency Quote',
+        pendingText: 'Your request has been submitted — an admin will follow up with agency pricing.',
+        confirmationTitle: 'Request submitted',
+        confirmationBody: 'Your request has been submitted — an admin will follow up with agency pricing.',
+        notePlaceholder: "e.g. We manage 12 rental properties across Freetown with a team of 4 agents...",
+      }
+    : {
+        priceLabel: 'Contact admin for pricing',
+        sectionTitle: 'Tell us about yourself',
+        helperText:
+          "Optional — a bit about your business or how long you've been operating helps the admin review your " +
+          'request. Once approved, an admin will contact you separately to collect the fee before verification is ' +
+          'granted.',
+        buttonLabel: 'Request Verification',
+        pendingText: 'Your request has been submitted — an admin will review and contact you.',
+        confirmationTitle: 'Request submitted',
+        confirmationBody: 'Your request has been submitted — an admin will review and contact you.',
+        notePlaceholder: "e.g. I've been renting out properties in Freetown for 3 years...",
+      };
 
   const loadLaunchMode = useCallback(async () => {
     const { data } = await supabase.from('app_settings').select('launch_mode_active').single();
@@ -181,7 +212,7 @@ export default function PayScreen() {
     );
   }
 
-  async function handleRequestVerification() {
+  async function handleContactRequest() {
     if (!session || !product || submitting) return;
 
     setSubmitting(true);
@@ -200,10 +231,7 @@ export default function PayScreen() {
 
     setNote('');
     setExisting({ kind: 'pending' });
-    appAlert(
-      'Request submitted',
-      'Your request has been submitted — an admin will review and contact you.'
-    );
+    appAlert(contactCopy.confirmationTitle, contactCopy.confirmationBody);
   }
 
   async function handleClaimFree() {
@@ -278,29 +306,21 @@ export default function PayScreen() {
         <View style={styles.statusCard}>
           <Ionicons name="time-outline" size={32} color={colors.gold} />
           <Text style={styles.statusTitle}>Pending review</Text>
-          <Text style={styles.statusText}>
-            {product.contactOnly
-              ? 'Your request has been submitted — an admin will review and contact you.'
-              : "We've received your submission and will confirm the payment shortly."}
-          </Text>
+          <Text style={styles.statusText}>{contactOnly ? contactCopy.pendingText : "We've received your submission and will confirm the payment shortly."}</Text>
         </View>
-      ) : product.contactOnly ? (
+      ) : contactOnly ? (
         <>
           <View style={styles.priceCard}>
-            <Text style={styles.priceAmount}>Contact admin for pricing</Text>
+            <Text style={styles.priceAmount}>{contactCopy.priceLabel}</Text>
             <Text style={styles.priceDuration}>{product.durationLabel}</Text>
             <Text style={styles.priceDescription}>{product.description}</Text>
           </View>
 
-          <Text style={styles.sectionTitle}>Tell us about your agency</Text>
-          <Text style={styles.helperText}>
-            Optional — a bit about your agency or how long you've been operating helps the admin review your
-            request. Once approved, an admin will contact you separately to collect the fee before verification is
-            granted.
-          </Text>
+          <Text style={styles.sectionTitle}>{contactCopy.sectionTitle}</Text>
+          <Text style={styles.helperText}>{contactCopy.helperText}</Text>
           <TextInput
             style={[styles.input, styles.noteInput]}
-            placeholder="e.g. I've been renting out properties in Freetown for 3 years..."
+            placeholder={contactCopy.notePlaceholder}
             placeholderTextColor={colors.textMuted}
             value={note}
             onChangeText={setNote}
@@ -308,8 +328,8 @@ export default function PayScreen() {
             numberOfLines={4}
           />
 
-          <Pressable style={styles.submitButton} disabled={submitting} onPress={handleRequestVerification}>
-            {submitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitButtonText}>Request Verification</Text>}
+          <Pressable style={styles.submitButton} disabled={submitting} onPress={handleContactRequest}>
+            {submitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitButtonText}>{contactCopy.buttonLabel}</Text>}
           </Pressable>
           <Text style={styles.disclaimer}>
             An admin reviews requests manually — this is not an automated payment. You won't be charged anything by

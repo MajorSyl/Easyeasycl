@@ -9,7 +9,7 @@ export type Profile = {
   full_name: string | null;
   avatar_url: string | null;
   phone: string | null;
-  role: 'user' | 'agent' | 'service_provider' | 'hotel_owner';
+  role: 'user' | 'agent' | 'landlord' | 'agency';
   business_name: string | null;
   verification_tier: VerificationTier;
   phone_verification_requested_at: string | null;

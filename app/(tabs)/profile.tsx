@@ -47,8 +47,15 @@ const STALE_AFTER_DAYS = 30;
 
 const roleOptions: SelectOption<Profile['role']>[] = [
   { value: 'user', label: 'Regular User' },
+  { value: 'landlord', label: 'Landlord' },
   { value: 'agent', label: 'Agent' },
+  { value: 'agency', label: 'Real Estate Agency' },
 ];
+
+// Only these roles run a listing/rental business under a named entity --
+// 'user' and 'landlord' (a private individual renting out their own place)
+// have no business to name.
+const BUSINESS_NAME_ROLES: Profile['role'][] = ['agent', 'agency'];
 
 const kindLabels: Record<ListingKind, string> = {
   listing: 'Property',
@@ -192,16 +199,20 @@ export default function ProfileScreen() {
 
   async function saveProfile() {
     if (!session || saving) return;
-    setSaving(true);
     const cleanFullName = sanitizeText(fullName);
     const cleanBusinessName = sanitizeText(businessName);
+    if (role === 'agency' && !cleanBusinessName) {
+      appAlert('Business name required', 'Real Estate Agency accounts need a business name.');
+      return;
+    }
+    setSaving(true);
     const { error } = await supabase
       .from('profiles')
       .update({
         full_name: cleanFullName || null,
         phone: phone.trim() || null,
         role,
-        business_name: role === 'user' ? null : cleanBusinessName || null,
+        business_name: BUSINESS_NAME_ROLES.includes(role) ? cleanBusinessName || null : null,
         avatar_url: avatarUrl || null,
       })
       .eq('id', session.user.id);
@@ -322,10 +333,10 @@ export default function ProfileScreen() {
                 <Text style={styles.contactText}>{session.user.email}</Text>
                 {profile?.phone && <Text style={styles.contactText}>{profile.phone}</Text>}
 
-                {verificationBadgeLabel(profile?.verification_tier) ? (
+                {verificationBadgeLabel(profile?.verification_tier, profile?.role) ? (
                   <View style={styles.verifiedBadge}>
                     <Ionicons name="checkmark-circle" size={14} color={colors.success} />
-                    <Text style={styles.verifiedBadgeText}>{verificationBadgeLabel(profile?.verification_tier)}</Text>
+                    <Text style={styles.verifiedBadgeText}>{verificationBadgeLabel(profile?.verification_tier, profile?.role)}</Text>
                   </View>
                 ) : profile?.phone_verification_requested_at ? (
                   <Text style={styles.verificationPending}>Phone verification pending review</Text>
@@ -343,11 +354,13 @@ export default function ProfileScreen() {
                   </Pressable>
                 ) : null}
 
-                {profile?.role === 'agent' &&
+                {(profile?.role === 'agent' || profile?.role === 'landlord') &&
                   profile?.verification_tier !== 'agent_verified' &&
                   profile?.verification_tier !== 'id_verified' && (
                     <Pressable style={styles.verifyButton} onPress={() => router.push('/pay?purpose=agent_verification')}>
-                      <Text style={styles.verifyButtonText}>Become a Verified Agent</Text>
+                      <Text style={styles.verifyButtonText}>
+                        {profile?.role === 'landlord' ? 'Become a Verified Property Owner' : 'Become a Verified Agent'}
+                      </Text>
                     </Pressable>
                   )}
 
@@ -372,8 +385,8 @@ export default function ProfileScreen() {
                   />
                 </Field>
                 <SelectField label="I am a..." placeholder="Select role" value={role} options={roleOptions} onChange={setRole} />
-                {role !== 'user' && (
-                  <Field label="Business Name">
+                {BUSINESS_NAME_ROLES.includes(role) && (
+                  <Field label={role === 'agency' ? 'Business Name (required)' : 'Business Name'}>
                     <TextInput
                       style={styles.input}
                       value={businessName}
@@ -419,15 +432,17 @@ export default function ProfileScreen() {
             </Pressable>
           )}
 
-          {!editing && profile?.role === 'agent' && (
+          {!editing && (profile?.role === 'agent' || profile?.role === 'agency') && (
             <Pressable style={styles.savedRow} onPress={() => router.push('/pay?purpose=agent_subscription')}>
               <Ionicons name="star" size={18} color={colors.gold} />
               <View style={{ flex: 1 }}>
-                <Text style={styles.savedRowText}>Agent Subscription</Text>
+                <Text style={styles.savedRowText}>{profile.role === 'agency' ? 'Agency Plan' : 'Agent Subscription'}</Text>
                 <Text style={styles.savedRowSubtext}>
-                  {subscriptionUntil
-                    ? `Active until ${new Date(subscriptionUntil).toLocaleDateString('en-GB')}`
-                    : 'Keep all your listings featured'}
+                  {profile.role === 'agency'
+                    ? 'Contact us for agency pricing'
+                    : subscriptionUntil
+                      ? `Active until ${new Date(subscriptionUntil).toLocaleDateString('en-GB')}`
+                      : 'Keep all your listings featured'}
                 </Text>
               </View>
               <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
@@ -588,7 +603,7 @@ export default function ProfileScreen() {
                 <Pressable onPress={() => router.push('/guidelines')} hitSlop={6}>
                   <Text style={styles.legalLink}>Community Guidelines</Text>
                 </Pressable>
-                {profile?.role === 'agent' && (
+                {profile?.role !== 'user' && (
                   <>
                     <Text style={styles.legalSep}>·</Text>
                     <Pressable onPress={() => router.push('/agent-agreement')} hitSlop={6}>

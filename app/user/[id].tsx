@@ -177,10 +177,10 @@ export default function PublicProfileScreen() {
             <Text style={styles.name}>{profile.full_name ?? 'Easyfen User'}</Text>
             {roleLabel(profile.role) && <Text style={styles.role}>{roleLabel(profile.role)}</Text>}
             {profile.business_name && <Text style={styles.business}>{profile.business_name}</Text>}
-            {verificationBadgeLabel(profile.verification_tier) && (
+            {verificationBadgeLabel(profile.verification_tier, profile.role) && (
               <View style={styles.verifiedRow}>
                 <Ionicons name="checkmark-circle" size={14} color={colors.success} />
-                <Text style={styles.verifiedText}>{verificationBadgeLabel(profile.verification_tier)}</Text>
+                <Text style={styles.verifiedText}>{verificationBadgeLabel(profile.verification_tier, profile.role)}</Text>
               </View>
             )}
 

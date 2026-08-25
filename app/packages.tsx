@@ -4,8 +4,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '../lib/supabase';
+import { useAuth } from '../lib/auth-context';
 import { colors, fontSize, fontWeight, radius, spacing } from '../constants/theme';
-import { CURRENCY_CODE, PAYMENT_PRODUCTS, type PaymentPurpose } from '../constants/payments';
+import { CURRENCY_CODE, PAYMENT_PRODUCTS, isContactOnly, type PaymentPurpose } from '../constants/payments';
 
 // Fixed display order — cheapest single-item action first, then the
 // account-wide subscription, then the one-time verification review.
@@ -15,6 +16,7 @@ type LaunchMode = { active: boolean; note: string } | null;
 
 export default function PackagesScreen() {
   const insets = useSafeAreaInsets();
+  const { profile } = useAuth();
   const [launchMode, setLaunchMode] = useState<LaunchMode>(null);
   const [loading, setLoading] = useState(true);
 
@@ -55,7 +57,7 @@ export default function PackagesScreen() {
           ) : null}
 
           {PRODUCT_ORDER.map((key) => (
-            <ProductCard key={key} purposeKey={key} free={!!launchMode?.active} />
+            <ProductCard key={key} purposeKey={key} free={!!launchMode?.active} role={profile?.role} />
           ))}
         </>
       )}
@@ -63,8 +65,21 @@ export default function PackagesScreen() {
   );
 }
 
-function ProductCard({ purposeKey, free }: { purposeKey: PaymentPurpose; free: boolean }) {
+function ProductCard({
+  purposeKey,
+  free,
+  role,
+}: {
+  purposeKey: PaymentPurpose;
+  free: boolean;
+  role: string | null | undefined;
+}) {
   const product = PAYMENT_PRODUCTS[purposeKey];
+  const contactOnly = isContactOnly(purposeKey, role);
+  // Same underlying purpose (agent_subscription), different framing when an
+  // Agency account is the one looking at it -- everything else that's
+  // contactOnly (agent_verification) keeps the existing copy.
+  const isAgencyContact = purposeKey === 'agent_subscription' && contactOnly;
 
   function handlePress() {
     if (purposeKey === 'listing_boost') {
@@ -79,16 +94,16 @@ function ProductCard({ purposeKey, free }: { purposeKey: PaymentPurpose; free: b
   return (
     <View style={styles.card}>
       <View style={styles.cardHeaderRow}>
-        <Text style={styles.cardTitle}>{product.label}</Text>
-        {free && !product.contactOnly ? (
+        <Text style={styles.cardTitle}>{isAgencyContact ? 'Agency Plan' : product.label}</Text>
+        {free && !contactOnly ? (
           <View style={styles.freeBadge}>
             <Text style={styles.freeBadgeText}>FREE</Text>
           </View>
         ) : null}
       </View>
-      {product.contactOnly ? (
+      {contactOnly ? (
         <View style={styles.priceRow}>
-          <Text style={styles.priceAmount}>Contact admin for pricing</Text>
+          <Text style={styles.priceAmount}>{isAgencyContact ? 'Contact us for agency pricing' : 'Contact admin for pricing'}</Text>
         </View>
       ) : (
         <View style={styles.priceRow}>
@@ -106,8 +121,10 @@ function ProductCard({ purposeKey, free }: { purposeKey: PaymentPurpose; free: b
       <Text style={styles.cardDescription}>{product.description}</Text>
       <Pressable style={styles.cardButton} onPress={handlePress}>
         <Text style={styles.cardButtonText}>
-          {product.contactOnly
-            ? 'Request Verification'
+          {contactOnly
+            ? isAgencyContact
+              ? 'Request Agency Quote'
+              : 'Request Verification'
             : purposeKey === 'listing_boost'
               ? 'Choose a listing to boost'
               : free
