@@ -31,6 +31,8 @@ import type { Profile } from '../../lib/auth-context';
 
 type ListingKind = 'listing';
 
+type AvailabilityStatus = 'available' | 'rented' | 'sold';
+
 type MyListing = {
   kind: ListingKind;
   id: string;
@@ -41,6 +43,10 @@ type MyListing = {
   isActive: boolean;
   isPremium: boolean;
   moderationStatus: 'pending' | 'approved' | 'rejected';
+  availabilityStatus: AvailabilityStatus;
+  viewCount: number;
+  favoriteCount: number;
+  inquiryCount: number;
 };
 
 const STALE_AFTER_DAYS = 30;
@@ -117,10 +123,18 @@ export default function ProfileScreen() {
     }
 
     if (!force && Date.now() - listingsFetchedAt.current < 60_000) return;
-    const { data: listings, error } = await supabase
-      .from('listings')
-      .select('id, title, price, currency, price_unit, created_at, last_confirmed_at, is_active, is_premium, moderation_status')
-      .eq('owner_id', uid);
+    const [{ data: listings, error }, { data: enquiries }] = await Promise.all([
+      supabase
+        .from('listings')
+        .select(
+          'id, title, price, currency, price_unit, created_at, last_confirmed_at, is_active, is_premium, moderation_status, availability_status, view_count, favorite_count'
+        )
+        .eq('owner_id', uid),
+      // Unique-inquirer count per listing -- enquiry_receipts dedupes to
+      // one row per (listing, buyer), so this is "N people inquired", not
+      // a raw message count.
+      supabase.from('enquiry_receipts').select('listing_id').eq('agent_id', uid),
+    ]);
 
     if (error) {
       if (myListingsCacheRef.current) {
@@ -136,6 +150,11 @@ export default function ProfileScreen() {
     setListingsLoadError(false);
     setShowingSavedListings(false);
 
+    const inquiryCountByListing = new Map<string, number>();
+    for (const row of enquiries ?? []) {
+      inquiryCountByListing.set(row.listing_id, (inquiryCountByListing.get(row.listing_id) ?? 0) + 1);
+    }
+
     const combined: MyListing[] = ((listings ?? []) as any[]).map((item) => ({
       kind: 'listing' as const,
       id: item.id,
@@ -146,6 +165,10 @@ export default function ProfileScreen() {
       isActive: item.is_active,
       isPremium: item.is_premium,
       moderationStatus: item.moderation_status,
+      availabilityStatus: item.availability_status,
+      viewCount: item.view_count,
+      favoriteCount: item.favorite_count,
+      inquiryCount: inquiryCountByListing.get(item.id) ?? 0,
     }));
 
     combined.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
@@ -240,6 +263,44 @@ export default function ProfileScreen() {
     }
     listingsFetchedAt.current = 0;
     setMyListings((prev) => prev.filter((l) => l.id !== item.id));
+    notifyListingsChanged();
+  }
+
+  function confirmMarkAvailability(item: MyListing) {
+    if (item.availabilityStatus !== 'available') {
+      appAlert('Mark as available', `List "${item.title}" as available again?`, [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Mark Available', onPress: () => setAvailability(item, 'available') },
+      ]);
+      return;
+    }
+    appAlert('Update availability', `Is "${item.title}" rented or sold? This removes it from search until you mark it available again.`, [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Mark as Rented', onPress: () => setAvailability(item, 'rented') },
+      { text: 'Mark as Sold', onPress: () => setAvailability(item, 'sold') },
+    ]);
+  }
+
+  async function setAvailability(item: MyListing, status: AvailabilityStatus) {
+    const { error } = await supabase.rpc('mark_listing_availability', {
+      listing_id: item.id,
+      new_status: status,
+    });
+    if (error) {
+      appAlert('Could not update', friendlyErrorMessage(error));
+      return;
+    }
+    if (status === 'available') {
+      // Whether this re-activates the listing depends on why it was
+      // inactive, which the RPC already knows -- reload rather than
+      // duplicate that logic here.
+      listingsFetchedAt.current = 0;
+      await loadMyListings(true);
+    } else {
+      setMyListings((prev) =>
+        prev.map((l) => (l.id === item.id ? { ...l, availabilityStatus: status, isActive: false } : l))
+      );
+    }
     notifyListingsChanged();
   }
 
@@ -465,7 +526,7 @@ export default function ProfileScreen() {
         </>
       }
       renderItem={({ item }) => {
-        const stale = daysSince(item.lastConfirmedAt) >= STALE_AFTER_DAYS;
+        const stale = item.availabilityStatus === 'available' && daysSince(item.lastConfirmedAt) >= STALE_AFTER_DAYS;
         return (
           <View>
             <View style={styles.listingRow}>
@@ -478,7 +539,17 @@ export default function ProfileScreen() {
                       <Text style={styles.featuredBadgeText}>FEATURED</Text>
                     </View>
                   )}
-                  {!item.isActive && (
+                  {item.availabilityStatus === 'rented' && (
+                    <View style={styles.rentedBadge}>
+                      <Text style={styles.rentedBadgeText}>RENTED</Text>
+                    </View>
+                  )}
+                  {item.availabilityStatus === 'sold' && (
+                    <View style={styles.rentedBadge}>
+                      <Text style={styles.rentedBadgeText}>SOLD</Text>
+                    </View>
+                  )}
+                  {!item.isActive && item.availabilityStatus === 'available' && (
                     <View style={styles.suspendedBadge}>
                       <Text style={styles.suspendedBadgeText}>SUSPENDED</Text>
                     </View>
@@ -494,12 +565,33 @@ export default function ProfileScreen() {
                       <Text style={styles.suspendedBadgeText}>NOT APPROVED</Text>
                     </View>
                   )}
+                  {item.isActive &&
+                    item.availabilityStatus === 'available' &&
+                    item.moderationStatus === 'approved' && (
+                      <View style={styles.activeBadge}>
+                        <Text style={styles.activeBadgeText}>ACTIVE</Text>
+                      </View>
+                    )}
                 </View>
                 <Text style={styles.listingTitle} numberOfLines={1}>
                   {item.title}
                 </Text>
                 <Text style={styles.listingPrice}>{item.priceLabel}</Text>
-                {!item.isActive && (
+                <View style={styles.statsRow}>
+                  <View style={styles.statItem}>
+                    <Ionicons name="eye-outline" size={13} color={colors.textMuted} />
+                    <Text style={styles.statText}>{item.viewCount}</Text>
+                  </View>
+                  <View style={styles.statItem}>
+                    <Ionicons name="heart-outline" size={13} color={colors.textMuted} />
+                    <Text style={styles.statText}>{item.favoriteCount}</Text>
+                  </View>
+                  <View style={styles.statItem}>
+                    <Ionicons name="chatbubble-outline" size={13} color={colors.textMuted} />
+                    <Text style={styles.statText}>{item.inquiryCount}</Text>
+                  </View>
+                </View>
+                {!item.isActive && item.availabilityStatus === 'available' && (
                   <Text style={styles.suspendedNote}>
                     This listing was reported and suspended pending admin review.
                   </Text>
@@ -523,6 +615,21 @@ export default function ProfileScreen() {
                 accessibilityLabel={`Edit ${item.title}`}
               >
                 <Ionicons name="pencil-outline" size={18} color={colors.accent} />
+              </Pressable>
+              <Pressable
+                style={styles.editButtonRow}
+                onPress={() => confirmMarkAvailability(item)}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel={
+                  item.availabilityStatus === 'available' ? `Mark ${item.title} as rented or sold` : `Mark ${item.title} as available`
+                }
+              >
+                <Ionicons
+                  name={item.availabilityStatus === 'available' ? 'pricetag-outline' : 'refresh-outline'}
+                  size={18}
+                  color={colors.accent}
+                />
               </Pressable>
               <Pressable
                 style={styles.deleteButton}
@@ -748,6 +855,10 @@ const styles = StyleSheet.create({
   listingKind: { fontSize: fontSize.xs, fontWeight: fontWeight.bold, color: colors.textMuted, letterSpacing: 0.4 },
   suspendedBadge: { backgroundColor: colors.danger, borderRadius: radius.sm, paddingHorizontal: 6, paddingVertical: 2 },
   suspendedBadgeText: { fontSize: fontSize.xs, fontWeight: fontWeight.bold, color: '#fff', letterSpacing: 0.4 },
+  activeBadge: { backgroundColor: colors.success, borderRadius: radius.sm, paddingHorizontal: 6, paddingVertical: 2 },
+  activeBadgeText: { fontSize: fontSize.xs, fontWeight: fontWeight.bold, color: '#fff', letterSpacing: 0.4 },
+  rentedBadge: { backgroundColor: colors.textMuted, borderRadius: radius.sm, paddingHorizontal: 6, paddingVertical: 2 },
+  rentedBadgeText: { fontSize: fontSize.xs, fontWeight: fontWeight.bold, color: '#fff', letterSpacing: 0.4 },
   featuredBadge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -784,6 +895,9 @@ const styles = StyleSheet.create({
   offlineBannerText: { flex: 1, fontSize: fontSize.xs, color: colors.textMuted },
   listingTitle: { fontSize: fontSize.sm, fontWeight: fontWeight.bold, color: colors.textPrimary, marginTop: 2 },
   listingPrice: { fontSize: fontSize.sm, color: colors.accent, fontWeight: fontWeight.semibold, marginTop: 2 },
+  statsRow: { flexDirection: 'row', gap: spacing.md, marginTop: 4 },
+  statItem: { flexDirection: 'row', alignItems: 'center', gap: 3 },
+  statText: { fontSize: fontSize.xs, color: colors.textMuted },
   editButtonRow: { padding: spacing.sm },
   deleteButton: { padding: spacing.sm },
   staleBanner: {

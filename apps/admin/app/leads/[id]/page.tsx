@@ -1,7 +1,8 @@
 import { createClient } from '@/lib/supabase-server';
 import { redirect, notFound } from 'next/navigation';
 import Link from 'next/link';
-import { updateLead, LEAD_STATUSES } from '../../actions';
+import { updateLead } from '../../actions';
+import { LEAD_STATUSES } from '@/lib/lead-statuses';
 
 const STATUS_LABELS: Record<string, string> = {
   not_contacted: 'Not Contacted',

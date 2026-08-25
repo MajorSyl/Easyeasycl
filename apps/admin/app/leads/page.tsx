@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase-server';
 import { redirect } from 'next/navigation';
-import { createLead, LEAD_STATUSES } from '../actions';
+import { createLead } from '../actions';
+import { LEAD_STATUSES } from '@/lib/lead-statuses';
 import Link from 'next/link';
 
 const STATUS_LABELS: Record<string, string> = {

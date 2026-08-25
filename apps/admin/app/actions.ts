@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase-server';
 import { requireAdmin } from '@/lib/require-admin';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
+import { LEAD_STATUSES } from '@/lib/lead-statuses';
 
 export async function login(formData: FormData) {
   const email = formData.get('email') as string;
@@ -51,6 +52,20 @@ export async function setVerificationTier(userId: string, tier: string) {
   const { error } = await supabase.rpc('admin_set_verification_tier', { target_user_id: userId, tier });
   if (error) throw error;
   revalidatePath('/users');
+}
+
+export async function setUserSuspended(userId: string, suspended: boolean, reason?: string | null) {
+  const supabase = await createClient();
+  await requireAdmin(supabase);
+  const { error } = await supabase.rpc('admin_set_user_suspended', {
+    target_user_id: userId,
+    suspended,
+    reason: reason || null,
+  });
+  if (error) throw error;
+  revalidatePath('/users');
+  revalidatePath(`/users/${userId}`);
+  revalidatePath('/content');
 }
 
 export async function clearProfileFlag(userId: string) {
@@ -165,8 +180,6 @@ export async function hideReportedItem(
   revalidatePath('/reports');
   revalidatePath('/content');
 }
-
-export const LEAD_STATUSES = ['not_contacted', 'contacted', 'interested', 'onboarded', 'not_interested'] as const;
 
 export async function createLead(formData: FormData) {
   const supabase = await createClient();

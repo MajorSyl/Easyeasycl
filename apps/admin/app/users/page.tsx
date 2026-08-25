@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase-server';
 import { redirect } from 'next/navigation';
-import { clearProfileFlag, setVerificationTier, updateProfileRole } from '../actions';
+import Link from 'next/link';
+import { clearProfileFlag, setVerificationTier, updateProfileRole, setUserSuspended } from '../actions';
 
 const ROLES = ['user', 'landlord', 'agent', 'agency'];
 
@@ -11,7 +12,13 @@ const VERIFICATION_LABELS: Record<string, string> = {
   id_verified: 'ID Verified',
 };
 
-export default async function UsersPage() {
+export default async function UsersPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string; role?: string }>;
+}) {
+  const { q, role } = await searchParams;
+
   const supabase = await createClient();
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) redirect('/login');
@@ -20,14 +27,26 @@ export default async function UsersPage() {
     (await supabase.from('profiles').select('is_admin').eq('id', session.user.id).single()).data?.is_admin === true;
   if (!isAdmin) redirect('/login');
 
-  const { data: users } = await supabase
+  let query = supabase
     .from('profiles')
-    .select('id, full_name, role, business_name, is_admin, created_at, verification_tier, phone_verification_requested_at')
+    .select('id, full_name, role, business_name, is_admin, created_at, verification_tier, phone_verification_requested_at, suspended_at, suspended_reason')
     .order('created_at', { ascending: false });
+
+  if (q?.trim()) {
+    const term = q.trim();
+    query = query.or(`full_name.ilike.%${term}%,business_name.ilike.%${term}%`);
+  }
+  if (role && ROLES.includes(role)) {
+    query = query.eq('role', role);
+  }
+
+  const { data: users } = await query;
 
   const userIds = (users ?? []).map((u) => u.id);
   const { data: phones } = await supabase.rpc('get_profile_phones', { profile_ids: userIds });
-  const phoneById = new Map((phones ?? []).map((p: { id: string; phone: string | null }) => [p.id, p.phone]));
+  const phoneById = new Map<string, string | null>(
+    (phones ?? []).map((p: { id: string; phone: string | null }) => [p.id, p.phone])
+  );
 
   const { data: flags } = await supabase.rpc('admin_get_flagged_status', { profile_ids: userIds });
   const flaggedAtById = new Map(
@@ -36,6 +55,14 @@ export default async function UsersPage() {
       .map((f: { id: string; flagged_for_review_at: string | null }) => [f.id, f.flagged_for_review_at])
   );
 
+  const filterHref = (r?: string) => {
+    const qp = new URLSearchParams();
+    if (q) qp.set('q', q);
+    if (r) qp.set('role', r);
+    const qs = qp.toString();
+    return qs ? `/users?${qs}` : '/users';
+  };
+
   return (
     <>
       <div className="topbar">
@@ -43,6 +70,30 @@ export default async function UsersPage() {
       </div>
       <div className="content">
         <div className="card">
+          <div className="card-header" style={{ flexWrap: 'wrap', gap: 12 }}>
+            <form action="/users" method="get" style={{ display: 'flex', gap: 6 }}>
+              {role && <input type="hidden" name="role" value={role} />}
+              <input
+                type="text"
+                name="q"
+                defaultValue={q ?? ''}
+                placeholder="Search by name or business..."
+                className="form-select"
+                style={{ width: 220, padding: '6px 10px' }}
+              />
+              <button type="submit" className="btn btn-ghost btn-sm">Search</button>
+            </form>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              <Link href={filterHref(undefined)} className={`badge ${!role ? 'badge-blue' : 'badge-gray'}`} style={{ textDecoration: 'none' }}>
+                All roles
+              </Link>
+              {ROLES.map((r) => (
+                <Link key={r} href={filterHref(r)} className={`badge ${role === r ? 'badge-blue' : 'badge-gray'}`} style={{ textDecoration: 'none' }}>
+                  {r}
+                </Link>
+              ))}
+            </div>
+          </div>
           <div className="overflow-x">
             <table>
               <thead>
@@ -52,9 +103,10 @@ export default async function UsersPage() {
                   <th>Business</th>
                   <th>Phone</th>
                   <th>Joined</th>
-                  <th>Flags</th>
+                  <th>Admin</th>
                   <th>Reported</th>
                   <th>Verification</th>
+                  <th>Status</th>
                   <th>Change role</th>
                 </tr>
               </thead>
@@ -62,7 +114,9 @@ export default async function UsersPage() {
                 {(users ?? []).map((u) => (
                   <tr key={u.id}>
                     <td>
-                      <div style={{ fontWeight: 600 }}>{u.full_name ?? '—'}</div>
+                      <Link href={`/users/${u.id}`} style={{ fontWeight: 600, color: '#101828', textDecoration: 'none' }}>
+                        {u.full_name ?? '—'}
+                      </Link>
                       <div className="muted" style={{ fontSize: 11 }}>{u.id.slice(0, 8)}…</div>
                     </td>
                     <td>
@@ -112,6 +166,38 @@ export default async function UsersPage() {
                       </div>
                     </td>
                     <td>
+                      {u.suspended_at ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-start' }}>
+                          <span className="badge badge-red">Suspended</span>
+                          <span className="muted" style={{ fontSize: 11 }}>
+                            {new Date(u.suspended_at).toLocaleDateString('en-GB')}
+                          </span>
+                          <form action={async () => { 'use server'; await setUserSuspended(u.id, false); }}>
+                            <button type="submit" className="btn btn-sm" style={{ background: '#16a34a', color: '#fff', border: 'none' }}>
+                              Unsuspend
+                            </button>
+                          </form>
+                        </div>
+                      ) : (
+                        <form
+                          action={async (fd: FormData) => {
+                            'use server';
+                            await setUserSuspended(u.id, true, (fd.get('reason') as string) || null);
+                          }}
+                          style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-start' }}
+                        >
+                          <input
+                            type="text"
+                            name="reason"
+                            placeholder="Reason (optional)"
+                            className="form-select"
+                            style={{ width: 140 }}
+                          />
+                          <button type="submit" className="btn btn-danger btn-sm">Suspend</button>
+                        </form>
+                      )}
+                    </td>
+                    <td>
                       <form
                         action={async (fd: FormData) => {
                           'use server';
@@ -133,7 +219,7 @@ export default async function UsersPage() {
                 ))}
               </tbody>
             </table>
-            {!users?.length && <div className="empty">No users yet.</div>}
+            {!users?.length && <div className="empty">No users match.</div>}
           </div>
         </div>
       </div>
