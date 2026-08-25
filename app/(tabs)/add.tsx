@@ -175,7 +175,7 @@ export default function AddListingScreen() {
           </Field>
 
           <View style={styles.row}>
-            <Field label={`Price (SLE)`} style={styles.flex1}>
+            <Field label={`Price (NLE)`} style={styles.flex1}>
               <TextInput
                 style={styles.input}
                 placeholder="0.00"

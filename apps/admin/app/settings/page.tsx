@@ -43,7 +43,7 @@ export default async function SettingsPage() {
             <p style={{ fontSize: 13, color: '#667085', lineHeight: 1.6 }}>
               While on, every purchase (listing boost, agent subscription, verified agent review) is free —
               agents skip the mobile money step entirely and get the feature instantly. Each free claim still
-              writes a full payment record (SLE 0, marked as a launch promo) so nothing is lost when you switch
+              writes a full payment record (NLE 0, marked as a launch promo) so nothing is lost when you switch
               to real billing. Turning this off does not touch anything already claimed for free; it only
               switches new purchases back to requiring real mobile money payment.
             </p>

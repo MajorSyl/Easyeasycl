@@ -1,30 +1,46 @@
-// Starting prices for the three monetization products, chosen as reasonable
-// anchors (not validated against real willingness-to-pay yet) — see the
-// Monetization section in README.md. Adjust freely; nothing else in the
-// codebase assumes these exact values.
+// Post-launch-mode prices for the three monetization products — see the
+// Monetization section in README.md. These only take effect once launch
+// mode (app_settings.launch_mode_active) is turned off; while it's on,
+// everything is free regardless of these numbers.
 export type PaymentPurpose = 'listing_boost' | 'agent_subscription' | 'agent_verification';
+
+// The one place the Agent Subscription figure lives — ~$20 USD equivalent,
+// still a placeholder pending a confirmed exact NLE amount. Swap this one
+// number and every screen that shows the price updates with it.
+const AGENT_SUBSCRIPTION_PRICE_NLE = 450;
+
+export const CURRENCY_CODE = 'NLE'; // "New Leone" — Sierra Leone's redenominated currency
 
 export const PAYMENT_PRODUCTS: Record<
   PaymentPurpose,
-  { label: string; amount: number; durationLabel: string; description: string }
+  { label: string; amount: number; durationLabel: string; description: string; contactOnly: boolean }
 > = {
   listing_boost: {
     label: 'Feature This Listing',
-    amount: 300,
+    amount: 50,
     durationLabel: '7 days',
     description: 'Your listing appears at the top of Home and Search with a PREMIUM badge for 7 days.',
+    contactOnly: false,
   },
   agent_subscription: {
     label: 'Agent Subscription',
-    amount: 1000,
+    amount: AGENT_SUBSCRIPTION_PRICE_NLE,
     durationLabel: '30 days',
     description: 'All of your current and future listings stay featured for 30 days — no need to boost them one by one.',
+    contactOnly: false,
   },
   agent_verification: {
     label: 'Verified Agent Review',
+    // Not self-checkout anymore -- see contactOnly below. This amount is
+    // still the real fee an admin collects manually after approving a
+    // request over email; kept here as the one source of truth for that
+    // figure (referenced by app/pay.tsx if an admin does route an agent
+    // through the existing submission screen) even though it's no longer
+    // shown as a price anywhere in the normal purchase UI.
     amount: 500,
     durationLabel: 'one-time',
     description: 'An admin reviews your account. If approved, your profile and listings get a Verified Agent badge.',
+    contactOnly: true,
   },
 };
 

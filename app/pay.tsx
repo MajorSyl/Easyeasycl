@@ -12,6 +12,7 @@ import { appAlert } from '../lib/alert';
 import { uploadPaymentScreenshot } from '../lib/upload';
 import { colors, fontSize, fontWeight, radius, spacing } from '../constants/theme';
 import {
+  CURRENCY_CODE,
   MOBILE_MONEY_RECEIVING,
   PAYMENT_PRODUCTS,
   type MobileMoneyProvider,
@@ -261,8 +262,10 @@ export default function PayScreen() {
             <View style={styles.freeLaunchBadge}>
               <Text style={styles.freeLaunchBadgeText}>FREE DURING LAUNCH</Text>
             </View>
-            <Text style={styles.priceStrikethrough}>SLE {product.amount.toLocaleString('en-US')}</Text>
-            <Text style={styles.priceAmount}>SLE 0</Text>
+            <Text style={styles.priceStrikethrough}>
+              {CURRENCY_CODE} {product.amount.toLocaleString('en-US')}
+            </Text>
+            <Text style={styles.priceAmount}>{CURRENCY_CODE} 0</Text>
             <Text style={styles.priceDuration}>{product.durationLabel}</Text>
             <Text style={styles.priceDescription}>{product.description}</Text>
           </View>
@@ -283,7 +286,9 @@ export default function PayScreen() {
       ) : (
         <>
           <View style={styles.priceCard}>
-            <Text style={styles.priceAmount}>SLE {product.amount.toLocaleString('en-US')}</Text>
+            <Text style={styles.priceAmount}>
+              {CURRENCY_CODE} {product.amount.toLocaleString('en-US')}
+            </Text>
             <Text style={styles.priceDuration}>{product.durationLabel}</Text>
             <Text style={styles.priceDescription}>{product.description}</Text>
           </View>
@@ -308,7 +313,9 @@ export default function PayScreen() {
             ))}
           </View>
           <View style={styles.receivingCard}>
-            <Text style={styles.receivingLabel}>Send SLE {product.amount.toLocaleString('en-US')} to</Text>
+            <Text style={styles.receivingLabel}>
+              Send {CURRENCY_CODE} {product.amount.toLocaleString('en-US')} to
+            </Text>
             <Text style={styles.receivingNumber}>{MOBILE_MONEY_RECEIVING[provider].number}</Text>
             <Text style={styles.receivingName}>{MOBILE_MONEY_RECEIVING[provider].accountName}</Text>
           </View>

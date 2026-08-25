@@ -4,8 +4,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '../lib/supabase';
+import { useAuth } from '../lib/auth-context';
+import { requestAgentVerification } from '../lib/contact';
 import { colors, fontSize, fontWeight, radius, spacing } from '../constants/theme';
-import { PAYMENT_PRODUCTS, type PaymentPurpose } from '../constants/payments';
+import { CURRENCY_CODE, PAYMENT_PRODUCTS, type PaymentPurpose } from '../constants/payments';
 
 // Fixed display order — cheapest single-item action first, then the
 // account-wide subscription, then the one-time verification review.
@@ -15,6 +17,7 @@ type LaunchMode = { active: boolean; note: string } | null;
 
 export default function PackagesScreen() {
   const insets = useSafeAreaInsets();
+  const { profile } = useAuth();
   const [launchMode, setLaunchMode] = useState<LaunchMode>(null);
   const [loading, setLoading] = useState(true);
 
@@ -55,7 +58,7 @@ export default function PackagesScreen() {
           ) : null}
 
           {PRODUCT_ORDER.map((key) => (
-            <ProductCard key={key} purposeKey={key} free={!!launchMode?.active} />
+            <ProductCard key={key} purposeKey={key} free={!!launchMode?.active} fullName={profile?.full_name} />
           ))}
         </>
       )}
@@ -63,10 +66,22 @@ export default function PackagesScreen() {
   );
 }
 
-function ProductCard({ purposeKey, free }: { purposeKey: PaymentPurpose; free: boolean }) {
+function ProductCard({
+  purposeKey,
+  free,
+  fullName,
+}: {
+  purposeKey: PaymentPurpose;
+  free: boolean;
+  fullName: string | null | undefined;
+}) {
   const product = PAYMENT_PRODUCTS[purposeKey];
 
   function handlePress() {
+    if (product.contactOnly) {
+      requestAgentVerification(fullName);
+      return;
+    }
     if (purposeKey === 'listing_boost') {
       // A boost applies to one specific listing, so it can't be purchased
       // in the abstract from here — send the agent to pick which listing.
@@ -80,21 +95,39 @@ function ProductCard({ purposeKey, free }: { purposeKey: PaymentPurpose; free: b
     <View style={styles.card}>
       <View style={styles.cardHeaderRow}>
         <Text style={styles.cardTitle}>{product.label}</Text>
-        {free ? (
+        {free && !product.contactOnly ? (
           <View style={styles.freeBadge}>
             <Text style={styles.freeBadgeText}>FREE</Text>
           </View>
         ) : null}
       </View>
-      <View style={styles.priceRow}>
-        {free && <Text style={styles.priceStrikethrough}>SLE {product.amount.toLocaleString('en-US')}</Text>}
-        <Text style={styles.priceAmount}>{free ? 'SLE 0' : `SLE ${product.amount.toLocaleString('en-US')}`}</Text>
-        <Text style={styles.priceDuration}>/ {product.durationLabel}</Text>
-      </View>
+      {product.contactOnly ? (
+        <View style={styles.priceRow}>
+          <Text style={styles.priceAmount}>Contact for pricing</Text>
+        </View>
+      ) : (
+        <View style={styles.priceRow}>
+          {free && (
+            <Text style={styles.priceStrikethrough}>
+              {CURRENCY_CODE} {product.amount.toLocaleString('en-US')}
+            </Text>
+          )}
+          <Text style={styles.priceAmount}>
+            {free ? `${CURRENCY_CODE} 0` : `${CURRENCY_CODE} ${product.amount.toLocaleString('en-US')}`}
+          </Text>
+          <Text style={styles.priceDuration}>/ {product.durationLabel}</Text>
+        </View>
+      )}
       <Text style={styles.cardDescription}>{product.description}</Text>
       <Pressable style={styles.cardButton} onPress={handlePress}>
         <Text style={styles.cardButtonText}>
-          {purposeKey === 'listing_boost' ? 'Choose a listing to boost' : free ? 'Claim for free' : 'Get started'}
+          {product.contactOnly
+            ? 'Request Verification'
+            : purposeKey === 'listing_boost'
+              ? 'Choose a listing to boost'
+              : free
+                ? 'Claim for free'
+                : 'Get started'}
         </Text>
         <Ionicons name="chevron-forward" size={16} color={colors.accent} />
       </Pressable>
