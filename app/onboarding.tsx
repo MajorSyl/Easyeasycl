@@ -13,6 +13,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, fontSize, fontWeight, radius, spacing } from '../constants/theme';
+import { Logo } from '../components/Logo';
 import {
   ChatIllustration,
   CottonTreeIllustration,
@@ -76,6 +77,7 @@ export default function OnboardingScreen() {
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.skipRow}>
+        <Logo size={28} showWordmark={false} />
         <Pressable onPress={finish} hitSlop={8} accessibilityRole="button" accessibilityLabel="Skip onboarding">
           <Text style={styles.skip}>Skip</Text>
         </Pressable>
@@ -122,7 +124,13 @@ export default function OnboardingScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  skipRow: { alignItems: 'flex-end', paddingHorizontal: spacing.xl, paddingVertical: spacing.md },
+  skipRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.md,
+  },
   skip: { fontSize: fontSize.sm, color: colors.textMuted, fontWeight: fontWeight.semibold },
   slide: { alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.xxl, gap: spacing.xl },
   headline: {

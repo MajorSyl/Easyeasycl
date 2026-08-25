@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../lib/auth-context';
 import { colors, fontSize, radius, spacing } from '../constants/theme';
+import { Logo } from '../components/Logo';
 import type { Profile } from '../lib/auth-context';
 
 const roleChoices: { role: Profile['role']; icon: keyof typeof Ionicons.glyphMap; title: string; subtitle: string }[] = [
@@ -33,6 +34,7 @@ export default function SelectRoleScreen() {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top + spacing.xl }]}>
+      <Logo size={28} showWordmark={false} style={styles.logo} />
       <Text style={styles.title}>What brings you to Easyfen?</Text>
       <Text style={styles.subtitle}>This helps us tailor the app for you. You can change it anytime in your profile.</Text>
 
@@ -64,6 +66,7 @@ export default function SelectRoleScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background, paddingHorizontal: spacing.xl },
+  logo: { marginBottom: spacing.lg },
   title: { fontSize: fontSize.xxl, fontWeight: '700', color: colors.textPrimary },
   subtitle: { fontSize: fontSize.sm, color: colors.textSecondary, marginTop: spacing.xs, marginBottom: spacing.xl },
   choices: { gap: spacing.md },

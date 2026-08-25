@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { Animated, StyleSheet, View } from 'react-native';
+import { Animated, StyleSheet, View, useWindowDimensions } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
 import { Logo } from '../components/Logo';
@@ -14,6 +14,7 @@ const AUTO_ADVANCE_MS = 1500;
 // after a fixed delay routes on to the onboarding carousel (never seen
 // it) or straight into the app (seen it before).
 export default function SplashScreen() {
+  const { width, height } = useWindowDimensions();
   const opacity = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -27,19 +28,28 @@ export default function SplashScreen() {
     return () => clearTimeout(timer);
   }, [opacity]);
 
+  // Skyline is capped to a fixed band at the bottom of the screen so it
+  // never grows tall enough to crowd the logo above it -- the two never
+  // share vertical space, regardless of device height.
+  const skylineHeight = Math.min(height * 0.28, 260);
+
   return (
     <View style={styles.container}>
-      <View style={styles.backdrop} pointerEvents="none">
-        <SkylineIllustration width={480} height={320} />
+      <View style={styles.logoZone}>
+        <Animated.View style={{ opacity }}>
+          <Logo size={Math.min(width * 0.62, 280)} />
+        </Animated.View>
       </View>
-      <Animated.View style={{ opacity }}>
-        <Logo size={120} showWordmark={false} />
-      </Animated.View>
+
+      <View style={[styles.backdrop, { height: skylineHeight }]} pointerEvents="none">
+        <SkylineIllustration width={width} height={skylineHeight} />
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center' },
-  backdrop: { position: 'absolute', bottom: 0, left: 0, right: 0, alignItems: 'center', opacity: 0.9 },
+  container: { flex: 1, backgroundColor: colors.background },
+  logoZone: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  backdrop: { width: '100%' },
 });

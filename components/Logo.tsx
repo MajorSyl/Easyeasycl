@@ -1,103 +1,52 @@
-import { View } from 'react-native';
-import Svg, { Circle, Line, Path, Rect, Text as SvgText } from 'react-native-svg';
+import { Image, type ImageStyle } from 'expo-image';
+import type { StyleProp } from 'react-native';
 
-// Official Easyfen brand colors — keep in sync with assets/brand/*.svg if the
-// logo ever changes.
-const BLUE = '#3E6FBF';
-const GOLD = '#B8912E';
-const GLASS_DARK = '#1A1A1A';
+// Renders the real brand asset (assets/brand/*.png, exported from the
+// official logo file — see assets/brand/source/) rather than an
+// approximated vector redraw. A previous version of this component drew
+// the wordmark from react-native-svg primitives by hand; that approach is
+// retired now that we have the canonical artwork; there's no longer a
+// fallback path since these are local bundled assets (require()'d, not
+// fetched over the network), so there's no realistic runtime case where
+// the real PNG fails to load but a hand-drawn stand-in would still work.
+const WORDMARK_COLOR = require('../assets/brand/logo-wordmark.png');
+const WORDMARK_WHITE = require('../assets/brand/logo-wordmark-white.png');
+const MARK_COLOR = require('../assets/brand/mark-black.png');
+const MARK_WHITE = require('../assets/brand/mark-white.png');
 
-// The magnifying-glass mark: lens + a short 45deg handle + a subtle inset
-// shine arc for dimensionality. Stands in for the "a" in "easyfen" in the
-// wordmark, and alone (on a rounded square) as the app-icon-style mark.
-// Geometry mirrors assets/brand's render script — keep both in sync.
-function GlassMark({
-  stroke,
-  cx,
-  cy,
-  r,
-  strokeWidth,
-  shineOpacity = 0.5,
-}: {
-  stroke: string;
-  cx: number;
-  cy: number;
-  r: number;
-  strokeWidth: number;
-  shineOpacity?: number;
-}) {
-  const angle = Math.PI / 4;
-  const hx1 = cx + r * Math.cos(angle);
-  const hy1 = cy + r * Math.sin(angle);
-  const handleLen = r * 0.62;
-  const hx2 = hx1 + handleLen * Math.cos(angle);
-  const hy2 = hy1 + handleLen * Math.sin(angle);
-
-  const shineR = r * 0.62;
-  const a1 = (200 * Math.PI) / 180;
-  const a2 = (270 * Math.PI) / 180;
-  const sx1 = cx + shineR * Math.cos(a1);
-  const sy1 = cy + shineR * Math.sin(a1);
-  const sx2 = cx + shineR * Math.cos(a2);
-  const sy2 = cy + shineR * Math.sin(a2);
-
-  return (
-    <>
-      <Circle cx={cx} cy={cy} r={r} fill="none" stroke={stroke} strokeWidth={strokeWidth} />
-      <Path
-        d={`M ${sx1} ${sy1} A ${shineR} ${shineR} 0 0 1 ${sx2} ${sy2}`}
-        fill="none"
-        stroke={stroke}
-        strokeWidth={strokeWidth * 0.42}
-        strokeLinecap="round"
-        opacity={shineOpacity}
-      />
-      <Line x1={hx1} y1={hy1} x2={hx2} y2={hy2} stroke={stroke} strokeWidth={strokeWidth} strokeLinecap="round" />
-    </>
-  );
-}
+// Native aspect ratios of the source crops -- used so callers can pass a
+// single `size` (matching the old SVG-based API) and get a correctly
+// proportioned image rather than a stretched one.
+const WORDMARK_RATIO = 341 / 1069; // height / width
+const MARK_RATIO = 214 / 212;
 
 type LogoProps = {
-  /** Rendered width; height follows the wordmark's aspect ratio (or is square for icon-only). */
+  /** Rendered width; height follows the asset's real aspect ratio. */
   size?: number;
   variant?: 'color' | 'white';
-  /** false renders just the glass mark on a rounded square (app-icon style), no wordmark text. */
+  /** false renders just the glass mark, no wordmark text. */
   showWordmark?: boolean;
+  style?: StyleProp<ImageStyle>;
 };
 
-export function Logo({ size = 120, variant = 'color', showWordmark = true }: LogoProps) {
+export function Logo({ size = 120, variant = 'color', showWordmark = true, style }: LogoProps) {
   const isWhite = variant === 'white';
-
-  if (!showWordmark) {
-    return (
-      <View style={{ width: size, height: size }}>
-        <Svg width={size} height={size} viewBox="0 0 1024 1024">
-          {!isWhite && <Rect width={1024} height={1024} rx={224} fill={BLUE} />}
-          <GlassMark stroke="#FFFFFF" cx={440} cy={430} r={215} strokeWidth={78} />
-        </Svg>
-      </View>
-    );
-  }
-
-  const blueCol = isWhite ? '#FFFFFF' : BLUE;
-  const goldCol = isWhite ? '#FFFFFF' : GOLD;
-  const glassCol = isWhite ? '#FFFFFF' : GLASS_DARK;
-  const height = size * 0.3; // matches the 1000x300 wordmark viewBox ratio
+  const source = showWordmark
+    ? isWhite
+      ? WORDMARK_WHITE
+      : WORDMARK_COLOR
+    : isWhite
+      ? MARK_WHITE
+      : MARK_COLOR;
+  const ratio = showWordmark ? WORDMARK_RATIO : MARK_RATIO;
 
   return (
-    <View style={{ width: size, height }}>
-      <Svg width={size} height={height} viewBox="0 0 1000 300">
-        <SvgText x={0} y={215} fontSize={200} fontWeight="700" fill={blueCol}>
-          e
-        </SvgText>
-        <GlassMark stroke={glassCol} cx={205} cy={145} r={68} strokeWidth={30} shineOpacity={0.55} />
-        <SvgText x={335} y={215} fontSize={200} fontWeight="700" fill={blueCol}>
-          sy
-        </SvgText>
-        <SvgText x={585} y={215} fontSize={200} fontWeight="700" fill={goldCol}>
-          fen
-        </SvgText>
-      </Svg>
-    </View>
+    <Image
+      source={source}
+      style={[{ width: size, height: size * ratio }, style]}
+      contentFit="contain"
+      accessible
+      accessibilityLabel="Easyfen"
+    />
   );
 }
