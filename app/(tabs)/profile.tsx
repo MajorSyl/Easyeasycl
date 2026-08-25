@@ -623,6 +623,10 @@ export default function ProfileScreen() {
               <Ionicons name="log-out-outline" size={18} color={colors.danger} />
               <Text style={styles.logoutButtonText}>Log Out</Text>
             </Pressable>
+
+            <Pressable style={styles.deleteAccountLink} onPress={() => router.push('/delete-account')} hitSlop={8}>
+              <Text style={styles.deleteAccountLinkText}>Delete Account</Text>
+            </Pressable>
           </>
         ) : null
       }
@@ -745,7 +749,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   listingBody: { flex: 1 },
-  listingKindRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  listingKindRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 6, rowGap: 4 },
   listingKind: { fontSize: fontSize.xs, fontWeight: fontWeight.bold, color: colors.textMuted, letterSpacing: 0.4 },
   suspendedBadge: { backgroundColor: colors.danger, borderRadius: radius.sm, paddingHorizontal: 6, paddingVertical: 2 },
   suspendedBadgeText: { fontSize: fontSize.xs, fontWeight: fontWeight.bold, color: '#fff', letterSpacing: 0.4 },
@@ -828,6 +832,8 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   logoutButtonText: { color: colors.danger, fontWeight: fontWeight.bold, fontSize: fontSize.md },
+  deleteAccountLink: { alignItems: 'center', paddingVertical: spacing.md },
+  deleteAccountLinkText: { color: colors.textMuted, fontSize: fontSize.xs, textDecorationLine: 'underline' },
   legalRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',

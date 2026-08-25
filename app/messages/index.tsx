@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
@@ -22,6 +22,7 @@ type ConversationItem = {
   id: string;
   other: OwnerSummary & { id: string };
   lastMessage: string | null;
+  lastMessageIsMine: boolean;
   lastMessageAt: string;
   unreadCount: number;
 };
@@ -60,7 +61,7 @@ export default function MessagesScreen() {
     const rows = (convRows as unknown as ConversationRow[]) ?? [];
     const ids = rows.map((r) => r.id);
 
-    let latestByConversation = new Map<string, string>();
+    let latestByConversation = new Map<string, { body: string; mine: boolean }>();
     let unreadByConversation = new Map<string, number>();
 
     if (ids.length > 0) {
@@ -73,7 +74,7 @@ export default function MessagesScreen() {
 
       for (const msg of msgs ?? []) {
         if (!latestByConversation.has(msg.conversation_id)) {
-          latestByConversation.set(msg.conversation_id, msg.body);
+          latestByConversation.set(msg.conversation_id, { body: msg.body, mine: msg.sender_id === uid });
         }
         if (msg.sender_id !== uid && !msg.read_at) {
           unreadByConversation.set(msg.conversation_id, (unreadByConversation.get(msg.conversation_id) ?? 0) + 1);
@@ -84,7 +85,8 @@ export default function MessagesScreen() {
     const items: ConversationItem[] = rows.map((row) => ({
       id: row.id,
       other: row.participant_one === uid ? row.two : row.one,
-      lastMessage: latestByConversation.get(row.id) ?? null,
+      lastMessage: latestByConversation.get(row.id)?.body ?? null,
+      lastMessageIsMine: latestByConversation.get(row.id)?.mine ?? false,
       lastMessageAt: row.last_message_at,
       unreadCount: unreadByConversation.get(row.id) ?? 0,
     }));
@@ -98,6 +100,24 @@ export default function MessagesScreen() {
       load();
     }, [load])
   );
+
+  // Keeps unread counts and last-message previews live while this screen is
+  // open, instead of only refreshing on focus. No filter needed -- Realtime
+  // enforces the same RLS SELECT policy as a normal query, so this only
+  // ever delivers rows from conversations the signed-in user is part of.
+  useEffect(() => {
+    if (!session) return;
+    const channel = supabase
+      .channel(`messages-list-${session.user.id}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, () => {
+        load();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [session, load]);
 
   const filtered = search.trim()
     ? conversations.filter((c) => (c.other.full_name ?? '').toLowerCase().includes(search.trim().toLowerCase()))
@@ -153,7 +173,7 @@ export default function MessagesScreen() {
               </View>
               {roleLabel(item.other.role) && <Text style={styles.roleLabel}>{roleLabel(item.other.role)}</Text>}
               <Text style={styles.preview} numberOfLines={1}>
-                {item.lastMessage ?? 'Say hello 👋'}
+                {item.lastMessage ? `${item.lastMessageIsMine ? 'You: ' : ''}${item.lastMessage}` : 'Say hello 👋'}
               </Text>
             </View>
 

@@ -22,6 +22,13 @@ import { sanitizeText } from '../../lib/sanitize';
 import { colors, fontSize, fontWeight, radius, spacing } from '../../constants/theme';
 import { initialsFor, roleLabel } from '../../lib/format';
 import type { OwnerSummary } from '../../lib/types';
+import type { RealtimeChannel } from '@supabase/supabase-js';
+
+// How long a "typing" broadcast is trusted before treating the other
+// person as having stopped -- covers the case where their "stopped
+// typing" event never arrives (app backgrounded, connection dropped).
+const TYPING_TIMEOUT_MS = 4000;
+const TYPING_DEBOUNCE_MS = 2500;
 
 type Message = {
   id: string;
@@ -42,9 +49,14 @@ export default function ChatThreadScreen() {
   const [loadError, setLoadError] = useState(false);
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
+  const [otherTyping, setOtherTyping] = useState(false);
   const listRef = useRef<FlatList<Message>>(null);
   const inputRef = useRef<TextInput>(null);
   const keyboardHeight = useKeyboardHeight();
+  const channelRef = useRef<RealtimeChannel | null>(null);
+  const typingStopTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const otherTypingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const sendingTypingRef = useRef(false);
 
   // Some Android skins (e.g. MIUI) report a zero bottom inset even though a
   // system navigation bar overlays the app, leaving the composer buried under
@@ -116,21 +128,67 @@ export default function ChatThreadScreen() {
           setMessages((prev) => (prev.some((m) => m.id === incoming.id) ? prev : [...prev, incoming]));
           if (incoming.sender_id !== session.user.id) {
             supabase.from('messages').update({ read_at: new Date().toISOString() }).eq('id', incoming.id).then();
+          } else {
+            // A message we sent from another device/tab just landed here too.
+            setOtherTyping(false);
           }
         }
       )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'messages', filter: `conversation_id=eq.${id}` },
+        (payload) => {
+          const updated = payload.new as Message;
+          setMessages((prev) => prev.map((m) => (m.id === updated.id ? updated : m)));
+        }
+      )
+      .on('broadcast', { event: 'typing' }, (payload) => {
+        const from = (payload.payload as { userId?: string; typing?: boolean })?.userId;
+        if (!from || from === session.user.id) return;
+        setOtherTyping(!!payload.payload?.typing);
+        if (otherTypingTimeoutRef.current) clearTimeout(otherTypingTimeoutRef.current);
+        if (payload.payload?.typing) {
+          otherTypingTimeoutRef.current = setTimeout(() => setOtherTyping(false), TYPING_TIMEOUT_MS);
+        }
+      })
       .subscribe();
+
+    channelRef.current = channel;
 
     return () => {
       supabase.removeChannel(channel);
+      channelRef.current = null;
+      if (typingStopTimerRef.current) clearTimeout(typingStopTimerRef.current);
+      if (otherTypingTimeoutRef.current) clearTimeout(otherTypingTimeoutRef.current);
+      setOtherTyping(false);
     };
   }, [id, session]);
+
+  function handleDraftChange(text: string) {
+    setDraft(text);
+    if (!channelRef.current || !session) return;
+
+    if (!sendingTypingRef.current) {
+      sendingTypingRef.current = true;
+      channelRef.current.send({ type: 'broadcast', event: 'typing', payload: { userId: session.user.id, typing: true } });
+    }
+    if (typingStopTimerRef.current) clearTimeout(typingStopTimerRef.current);
+    typingStopTimerRef.current = setTimeout(() => {
+      sendingTypingRef.current = false;
+      channelRef.current?.send({ type: 'broadcast', event: 'typing', payload: { userId: session.user.id, typing: false } });
+    }, TYPING_DEBOUNCE_MS);
+  }
 
   async function handleSend() {
     const body = sanitizeText(draft);
     if (!body || !session || !id || sending) return;
     setSending(true);
     setDraft('');
+
+    if (typingStopTimerRef.current) clearTimeout(typingStopTimerRef.current);
+    sendingTypingRef.current = false;
+    channelRef.current?.send({ type: 'broadcast', event: 'typing', payload: { userId: session.user.id, typing: false } });
+
     const { error } = await supabase.from('messages').insert({
       conversation_id: id,
       sender_id: session.user.id,
@@ -195,6 +253,18 @@ export default function ChatThreadScreen() {
               <View style={[styles.bubble, mine ? styles.bubbleMine : styles.bubbleTheirs]}>
                 <Text style={mine ? styles.bubbleTextMine : styles.bubbleTextTheirs}>{item.body}</Text>
               </View>
+              <View style={[styles.bubbleMetaRow, mine ? styles.bubbleMetaRowMine : styles.bubbleMetaRowTheirs]}>
+                <Text style={styles.bubbleTimestamp}>
+                  {new Date(item.created_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+                </Text>
+                {mine && (
+                  <Ionicons
+                    name={item.read_at ? 'checkmark-done' : 'checkmark'}
+                    size={14}
+                    color={item.read_at ? colors.accent : colors.textMuted}
+                  />
+                )}
+              </View>
             </View>
           );
         }}
@@ -207,6 +277,17 @@ export default function ChatThreadScreen() {
           </View>
         }
       />
+      )}
+
+      {otherTyping && (
+        <View style={styles.typingRow}>
+          <View style={styles.typingDots}>
+            <View style={styles.typingDot} />
+            <View style={styles.typingDot} />
+            <View style={styles.typingDot} />
+          </View>
+          <Text style={styles.typingText}>{otherUser?.full_name ?? 'They'} typing...</Text>
+        </View>
       )}
 
       <View
@@ -222,7 +303,7 @@ export default function ChatThreadScreen() {
             placeholder="Type a message..."
             placeholderTextColor={colors.textMuted}
             value={draft}
-            onChangeText={setDraft}
+            onChangeText={handleDraftChange}
             multiline
             accessibilityLabel="Message text"
           />
@@ -288,6 +369,20 @@ const styles = StyleSheet.create({
   bubbleTheirs: { backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border, borderBottomLeftRadius: 4 },
   bubbleTextMine: { color: '#fff', fontSize: fontSize.sm },
   bubbleTextTheirs: { color: colors.textPrimary, fontSize: fontSize.sm },
+  bubbleMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 2 },
+  bubbleMetaRowMine: { justifyContent: 'flex-end' },
+  bubbleMetaRowTheirs: { justifyContent: 'flex-start' },
+  bubbleTimestamp: { fontSize: 10, color: colors.textMuted },
+  typingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.xs,
+  },
+  typingDots: { flexDirection: 'row', gap: 3 },
+  typingDot: { width: 5, height: 5, borderRadius: 3, backgroundColor: colors.textMuted },
+  typingText: { fontSize: fontSize.xs, color: colors.textMuted, fontStyle: 'italic' },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   emptyState: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.sm, paddingHorizontal: spacing.xl },
   emptyStateText: { color: colors.textMuted, fontSize: fontSize.sm },
