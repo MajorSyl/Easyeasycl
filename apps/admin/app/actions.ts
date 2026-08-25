@@ -165,3 +165,49 @@ export async function hideReportedItem(
   revalidatePath('/reports');
   revalidatePath('/content');
 }
+
+export const LEAD_STATUSES = ['not_contacted', 'contacted', 'interested', 'onboarded', 'not_interested'] as const;
+
+export async function createLead(formData: FormData) {
+  const supabase = await createClient();
+  await requireAdmin(supabase);
+  const name = (formData.get('name') as string)?.trim();
+  const phone = (formData.get('phone') as string)?.trim();
+  if (!name || !phone) throw new Error('Name and phone are required');
+  const businessName = (formData.get('business_name') as string)?.trim();
+  const { error } = await supabase.from('agent_leads').insert({
+    name,
+    phone,
+    business_name: businessName || null,
+  });
+  if (error) throw error;
+  revalidatePath('/leads');
+}
+
+export async function updateLead(leadId: string, formData: FormData) {
+  const supabase = await createClient();
+  await requireAdmin(supabase);
+  const name = (formData.get('name') as string)?.trim();
+  const phone = (formData.get('phone') as string)?.trim();
+  if (!name || !phone) throw new Error('Name and phone are required');
+  const status = formData.get('status') as string;
+  if (!LEAD_STATUSES.includes(status as (typeof LEAD_STATUSES)[number])) throw new Error('Invalid status');
+  const businessName = (formData.get('business_name') as string)?.trim();
+  const notes = (formData.get('notes') as string)?.trim();
+  const lastContactedDate = (formData.get('last_contacted_date') as string) || null;
+
+  const { error } = await supabase
+    .from('agent_leads')
+    .update({
+      name,
+      phone,
+      business_name: businessName || null,
+      status,
+      notes: notes || null,
+      last_contacted_date: lastContactedDate,
+    })
+    .eq('id', leadId);
+  if (error) throw error;
+  revalidatePath('/leads');
+  revalidatePath(`/leads/${leadId}`);
+}

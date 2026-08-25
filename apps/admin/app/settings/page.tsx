@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase-server';
 import { redirect } from 'next/navigation';
+import Link from 'next/link';
 import { setRequireListingApproval, setLaunchModeActive, updateLaunchModeDetails } from '../actions';
 
 export default async function SettingsPage() {
@@ -11,13 +12,15 @@ export default async function SettingsPage() {
     (await supabase.from('profiles').select('is_admin').eq('id', session.user.id).single()).data?.is_admin === true;
   if (!isAdmin) redirect('/login');
 
-  const [{ data: appSettings }, { count: activeListingsCount }, { data: activeOwners }] = await Promise.all([
+  const [{ data: appSettings }, { count: activeListingsCount }, { data: activeOwners }, { count: totalLeadsCount }, { count: onboardedLeadsCount }] = await Promise.all([
     supabase
       .from('app_settings')
       .select('require_listing_approval, launch_mode_active, launch_mode_note, launch_mode_listings_target, launch_mode_agents_target')
       .single(),
     supabase.from('listings').select('id', { count: 'exact', head: true }).eq('is_active', true).eq('moderation_status', 'approved'),
     supabase.from('listings').select('owner_id').eq('is_active', true).eq('moderation_status', 'approved'),
+    supabase.from('agent_leads').select('id', { count: 'exact', head: true }),
+    supabase.from('agent_leads').select('id', { count: 'exact', head: true }).eq('status', 'onboarded'),
   ]);
 
   const requireApproval = appSettings?.require_listing_approval ?? false;
@@ -124,6 +127,14 @@ export default async function SettingsPage() {
             </p>
             <MilestoneBar label="Active listings" current={activeListings} target={listingsTarget} pct={listingsPct} />
             <MilestoneBar label="Distinct owners with an active listing" current={activeAgents} target={agentsTarget} pct={agentsPct} />
+            <div style={{ borderTop: '1px solid #ECEEF1', paddingTop: 14, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: 13, fontWeight: 600, color: '#344054' }}>
+                Agent leads onboarded: {onboardedLeadsCount ?? 0} / {totalLeadsCount ?? 0}
+              </span>
+              <Link href="/leads" style={{ fontSize: 12, color: '#1d4ed8', textDecoration: 'none', fontWeight: 600 }}>
+                View leads →
+              </Link>
+            </div>
           </div>
         </div>
 

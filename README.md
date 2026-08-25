@@ -103,7 +103,9 @@ This has had a real hardening pass, not just a review — every claim below was 
 
 ## Admin dashboard (`apps/admin/`)
 
-Separate Next.js app for moderation: user list + role management, phone verification approval (approve/revoke, with the pending-request date shown), flagged-account review with a Clear action, content flags (`is_verified`/`is_premium`/`is_active`), a reports queue, and a payments review queue (see Monetization below). Deployed independently on Vercel. Has its own `package.json` — install and run it from inside `apps/admin/`, not the repo root.
+Separate Next.js app for moderation: user list + role management, phone verification approval (approve/revoke, with the pending-request date shown), flagged-account review with a Clear action, content flags (`is_verified`/`is_premium`/`is_active`), a reports queue, a payments review queue (see Monetization below), and an Agent Leads tracker. Deployed independently on Vercel. Has its own `package.json` — install and run it from inside `apps/admin/`, not the repo root.
+
+**Agent Leads** (`apps/admin/app/leads/`) is a lightweight outreach tracker for prospective agents/agencies who haven't signed up yet — entirely separate from `profiles` (real accounts). A quick-add form (name, phone/WhatsApp, optional business name), a filterable/sortable list with color-coded status badges (Not Contacted / Contacted / Interested / Onboarded / Not Interested), and a detail page to edit status, notes, and last-contacted date. The `agent_leads` table is admin-only end to end — RLS grants zero access to any non-admin, since there's no user-facing concept of a "lead" at all. The Settings page's "Growth toward milestone" card shows a small "onboarded / total" leads counter alongside the existing listings/agents milestone bars, linking through to the full tracker.
 
 ## Monetization
 
