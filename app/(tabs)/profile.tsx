@@ -24,7 +24,6 @@ import { appAlert } from '../../lib/alert';
 import { notifyListingsChanged } from '../../lib/listings-cache-bus';
 import { useTabBarGap } from '../../lib/use-bottom-gap';
 import { uploadAvatar } from '../../lib/upload';
-import { requestAgentVerification } from '../../lib/contact';
 import { sanitizeText } from '../../lib/sanitize';
 import { colors, fontSize, fontWeight, radius, spacing } from '../../constants/theme';
 import { daysSince, formatPrice, initialsFor, roleLabel, verificationBadgeLabel } from '../../lib/format';
@@ -350,7 +349,7 @@ export default function ProfileScreen() {
                 {profile?.role === 'agent' &&
                   profile?.verification_tier !== 'agent_verified' &&
                   profile?.verification_tier !== 'id_verified' && (
-                    <Pressable style={styles.verifyButton} onPress={() => requestAgentVerification(profile?.full_name)}>
+                    <Pressable style={styles.verifyButton} onPress={() => router.push('/pay?purpose=agent_verification')}>
                       <Text style={styles.verifyButtonText}>Become a Verified Agent</Text>
                     </Pressable>
                   )}

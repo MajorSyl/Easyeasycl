@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase-server';
 import { redirect } from 'next/navigation';
 import { reviewPayment } from '../actions';
+import { VerificationRequestRow } from './VerificationRequestRow';
 
 const PURPOSE_LABELS: Record<string, string> = {
   listing_boost: 'Listing Boost',
@@ -19,11 +20,18 @@ export default async function PaymentsPage() {
 
   const { data: payments } = await supabase
     .from('payments')
-    .select('id, purpose, related_listing_id, amount, currency, momo_provider, momo_reference, screenshot_url, status, submitted_at, user:profiles!user_id(full_name)')
+    .select('id, purpose, related_listing_id, amount, currency, momo_provider, momo_reference, screenshot_url, notes, status, submitted_at, user:profiles!user_id(full_name)')
     .order('submitted_at', { ascending: false })
     .limit(200);
 
-  const pending = (payments ?? []).filter((p) => p.status === 'pending');
+  // Verification requests never go through the mobile money submission
+  // flow and always need the payment-received/terms-met checklist before
+  // they can be approved, so pending ones get their own section instead of
+  // sitting in the generic one-click Pending review table below. Once
+  // reviewed either way, they fold back into the normal Recently reviewed
+  // table alongside boost/subscription payments.
+  const verificationPending = (payments ?? []).filter((p) => p.purpose === 'agent_verification' && p.status === 'pending');
+  const pending = (payments ?? []).filter((p) => p.status === 'pending' && p.purpose !== 'agent_verification');
   const reviewed = (payments ?? []).filter((p) => p.status !== 'pending');
 
   const listingIds = pending.map((p) => p.related_listing_id).filter(Boolean) as string[];
@@ -44,8 +52,10 @@ export default async function PaymentsPage() {
           {p.related_listing_id ? listingTitleById.get(p.related_listing_id) ?? p.related_listing_id.slice(0, 8) : '—'}
         </td>
         <td style={{ fontWeight: 600 }}>{p.currency} {Number(p.amount).toLocaleString('en-US')}</td>
-        <td className="muted">{p.momo_provider === 'orange_money' ? 'Orange Money' : 'Afrimoney'}</td>
-        <td className="muted" style={{ fontFamily: 'monospace' }}>{p.momo_reference}</td>
+        <td className="muted">
+          {p.momo_provider === 'orange_money' ? 'Orange Money' : p.momo_provider === 'africell_money' ? 'Afrimoney' : '—'}
+        </td>
+        <td className="muted" style={{ fontFamily: 'monospace' }}>{p.momo_reference ?? '—'}</td>
         <td>
           {p.screenshot_url ? (
             <a href={p.screenshot_url} target="_blank" rel="noopener noreferrer">
@@ -59,6 +69,7 @@ export default async function PaymentsPage() {
             <span className="muted" style={{ fontSize: 11 }}>None</span>
           )}
         </td>
+        <td className="muted truncate">{p.notes ?? '—'}</td>
         <td>
           {p.status === 'pending' ? (
             <span className="badge badge-amber">Pending</span>
@@ -102,9 +113,41 @@ export default async function PaymentsPage() {
   return (
     <>
       <div className="topbar">
-        <h1>Payments <span className="muted" style={{ fontSize: 14, fontWeight: 400 }}>({pending.length} pending)</span></h1>
+        <h1>
+          Payments{' '}
+          <span className="muted" style={{ fontSize: 14, fontWeight: 400 }}>
+            ({pending.length + verificationPending.length} pending)
+          </span>
+        </h1>
       </div>
       <div className="content">
+        <div className="card">
+          <div className="card-header">
+            <span className="card-title">
+              Verification Requests <span className="muted" style={{ fontSize: 12, fontWeight: 400 }}>({verificationPending.length} pending)</span>
+            </span>
+          </div>
+          <div className="overflow-x">
+            <table>
+              <thead>
+                <tr>
+                  <th>Requested by</th>
+                  <th>Amount</th>
+                  <th>Notes</th>
+                  <th>Checklist</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {verificationPending.map((p) => (
+                  <VerificationRequestRow key={p.id} payment={p} />
+                ))}
+              </tbody>
+            </table>
+            {!verificationPending.length && <div className="empty">No pending verification requests.</div>}
+          </div>
+        </div>
+
         <div className="card">
           <div className="card-header">
             <span className="card-title">Pending review</span>
@@ -120,6 +163,7 @@ export default async function PaymentsPage() {
                   <th>Provider</th>
                   <th>Reference</th>
                   <th>Screenshot</th>
+                  <th>Notes</th>
                   <th>Status</th>
                   <th>Actions</th>
                 </tr>
@@ -149,6 +193,7 @@ export default async function PaymentsPage() {
                   <th>Provider</th>
                   <th>Reference</th>
                   <th>Screenshot</th>
+                  <th>Notes</th>
                   <th>Status</th>
                 </tr>
               </thead>

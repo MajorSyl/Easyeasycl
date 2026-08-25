@@ -31,12 +31,13 @@ export const PAYMENT_PRODUCTS: Record<
   },
   agent_verification: {
     label: 'Verified Agent Review',
-    // Not self-checkout anymore -- see contactOnly below. This amount is
-    // still the real fee an admin collects manually after approving a
-    // request over email; kept here as the one source of truth for that
-    // figure (referenced by app/pay.tsx if an admin does route an agent
-    // through the existing submission screen) even though it's no longer
-    // shown as a price anywhere in the normal purchase UI.
+    // Not self-checkout anymore -- see contactOnly below. Requesting this
+    // still creates a `payments` row (via app/pay.tsx's contact-only
+    // branch) so it shows up in the admin dashboard's Verification
+    // Requests queue, but no price is shown to the agent and no mobile
+    // money step is collected in-app -- the admin negotiates/collects the
+    // fee separately before approving. This amount is kept as the
+    // reference figure for that manual collection.
     amount: 500,
     durationLabel: 'one-time',
     description: 'An admin reviews your account. If approved, your profile and listings get a Verified Agent badge.',

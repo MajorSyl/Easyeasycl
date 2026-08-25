@@ -35,6 +35,7 @@ export default function PayScreen() {
   const [reference, setReference] = useState('');
   const [screenshotUrl, setScreenshotUrl] = useState<string | null>(null);
   const [uploadingScreenshot, setUploadingScreenshot] = useState(false);
+  const [note, setNote] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [checking, setChecking] = useState(true);
   const [existing, setExisting] = useState<ExistingStatus>({ kind: 'none' });
@@ -180,6 +181,31 @@ export default function PayScreen() {
     );
   }
 
+  async function handleRequestVerification() {
+    if (!session || !product || submitting) return;
+
+    setSubmitting(true);
+    const { error } = await supabase.from('payments').insert({
+      user_id: session.user.id,
+      purpose,
+      amount: product.amount,
+      notes: note.trim() || null,
+    });
+    setSubmitting(false);
+
+    if (error) {
+      appAlert('Could not submit', friendlyErrorMessage(error));
+      return;
+    }
+
+    setNote('');
+    setExisting({ kind: 'pending' });
+    appAlert(
+      'Request submitted',
+      'Your request has been submitted — an admin will review and contact you.'
+    );
+  }
+
   async function handleClaimFree() {
     if (!session || !product || claimingFree) return;
     if (purpose === 'listing_boost' && !listingId) return;
@@ -253,9 +279,43 @@ export default function PayScreen() {
           <Ionicons name="time-outline" size={32} color={colors.gold} />
           <Text style={styles.statusTitle}>Pending review</Text>
           <Text style={styles.statusText}>
-            We've received your submission and will confirm the payment shortly.
+            {product.contactOnly
+              ? 'Your request has been submitted — an admin will review and contact you.'
+              : "We've received your submission and will confirm the payment shortly."}
           </Text>
         </View>
+      ) : product.contactOnly ? (
+        <>
+          <View style={styles.priceCard}>
+            <Text style={styles.priceAmount}>Contact admin for pricing</Text>
+            <Text style={styles.priceDuration}>{product.durationLabel}</Text>
+            <Text style={styles.priceDescription}>{product.description}</Text>
+          </View>
+
+          <Text style={styles.sectionTitle}>Tell us about your agency</Text>
+          <Text style={styles.helperText}>
+            Optional — a bit about your agency or how long you've been operating helps the admin review your
+            request. Once approved, an admin will contact you separately to collect the fee before verification is
+            granted.
+          </Text>
+          <TextInput
+            style={[styles.input, styles.noteInput]}
+            placeholder="e.g. I've been renting out properties in Freetown for 3 years..."
+            placeholderTextColor={colors.textMuted}
+            value={note}
+            onChangeText={setNote}
+            multiline
+            numberOfLines={4}
+          />
+
+          <Pressable style={styles.submitButton} disabled={submitting} onPress={handleRequestVerification}>
+            {submitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitButtonText}>Request Verification</Text>}
+          </Pressable>
+          <Text style={styles.disclaimer}>
+            An admin reviews requests manually — this is not an automated payment. You won't be charged anything by
+            submitting this request.
+          </Text>
+        </>
       ) : launchModeActive ? (
         <>
           <View style={styles.priceCard}>
@@ -460,6 +520,7 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     marginBottom: spacing.lg,
   },
+  noteInput: { minHeight: 100, textAlignVertical: 'top' },
   screenshotBox: {
     height: 140,
     borderWidth: 1.5,

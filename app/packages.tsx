@@ -4,8 +4,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '../lib/supabase';
-import { useAuth } from '../lib/auth-context';
-import { requestAgentVerification } from '../lib/contact';
 import { colors, fontSize, fontWeight, radius, spacing } from '../constants/theme';
 import { CURRENCY_CODE, PAYMENT_PRODUCTS, type PaymentPurpose } from '../constants/payments';
 
@@ -17,7 +15,6 @@ type LaunchMode = { active: boolean; note: string } | null;
 
 export default function PackagesScreen() {
   const insets = useSafeAreaInsets();
-  const { profile } = useAuth();
   const [launchMode, setLaunchMode] = useState<LaunchMode>(null);
   const [loading, setLoading] = useState(true);
 
@@ -58,7 +55,7 @@ export default function PackagesScreen() {
           ) : null}
 
           {PRODUCT_ORDER.map((key) => (
-            <ProductCard key={key} purposeKey={key} free={!!launchMode?.active} fullName={profile?.full_name} />
+            <ProductCard key={key} purposeKey={key} free={!!launchMode?.active} />
           ))}
         </>
       )}
@@ -66,22 +63,10 @@ export default function PackagesScreen() {
   );
 }
 
-function ProductCard({
-  purposeKey,
-  free,
-  fullName,
-}: {
-  purposeKey: PaymentPurpose;
-  free: boolean;
-  fullName: string | null | undefined;
-}) {
+function ProductCard({ purposeKey, free }: { purposeKey: PaymentPurpose; free: boolean }) {
   const product = PAYMENT_PRODUCTS[purposeKey];
 
   function handlePress() {
-    if (product.contactOnly) {
-      requestAgentVerification(fullName);
-      return;
-    }
     if (purposeKey === 'listing_boost') {
       // A boost applies to one specific listing, so it can't be purchased
       // in the abstract from here — send the agent to pick which listing.
@@ -103,7 +88,7 @@ function ProductCard({
       </View>
       {product.contactOnly ? (
         <View style={styles.priceRow}>
-          <Text style={styles.priceAmount}>Contact for pricing</Text>
+          <Text style={styles.priceAmount}>Contact admin for pricing</Text>
         </View>
       ) : (
         <View style={styles.priceRow}>
