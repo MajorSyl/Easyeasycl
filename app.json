@@ -38,6 +38,15 @@
           "photosPermission": "Easyfen uses your photos to add pictures to your listings.",
           "cameraPermission": "Easyfen uses your camera to take pictures for your listings."
         }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#EBF3FF"
+        }
       ]
     ],
     "extra": {

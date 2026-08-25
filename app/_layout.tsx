@@ -1,6 +1,7 @@
 import { Component, useEffect, useRef, useState, type ReactNode } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Stack, router, usePathname } from 'expo-router';
+import * as SplashScreen from 'expo-splash-screen';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
@@ -9,6 +10,12 @@ import { FavoritesProvider } from '../lib/favorites-context';
 import { AlertProvider } from '../lib/alert';
 import { SettingsProvider } from '../lib/settings';
 import { colors, fontSize, fontWeight, spacing } from '../constants/theme';
+
+// Must be called at import time, not inside a component -- doing it later
+// risks the native module auto-hiding the splash before this ever runs.
+// No-ops safely on web (there's no native splash there to hold open).
+SplashScreen.preventAutoHideAsync().catch(() => {});
+SplashScreen.setOptions({ duration: 400, fade: true });
 
 // Shows the actual error on screen instead of silently crash-looping the app,
 // so problems in release builds can be diagnosed from a screenshot.
@@ -49,6 +56,16 @@ export default function RootLayout() {
   // of those to /splash would either strip the destination or race
   // app/auth-callback.tsx's own redirect. Only the bare root path counts
   // as "no specific destination."
+  //
+  // The native splash (expo-splash-screen, app.json) is hidden right here,
+  // unconditionally, regardless of which branch below fires -- it is
+  // deliberately NOT tied to whether we redirected to /splash. That keeps
+  // it independent of the routing fix above: a deep-link / OAuth-callback
+  // cold launch never redirects to /splash, so if hiding the native splash
+  // depended on that redirect happening, it would never hide at all for
+  // those entry points and the app would look frozen on native's splash
+  // forever. Hiding it here instead means every cold-launch path reaches
+  // this same line and reveals whatever screen is about to render next.
   const pathname = usePathname();
   const [booting, setBooting] = useState(true);
   const ranOnce = useRef(false);
@@ -60,6 +77,7 @@ export default function RootLayout() {
       router.replace('/splash');
     }
     setBooting(false);
+    SplashScreen.hideAsync().catch(() => {});
   }, [pathname]);
 
   return (
