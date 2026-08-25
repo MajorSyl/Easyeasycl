@@ -5,7 +5,6 @@ import {
   Platform,
   Pressable,
   StyleSheet,
-  Switch,
   Text,
   TextInput,
   View,
@@ -17,7 +16,6 @@ import { router, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../lib/auth-context';
-import { useSettings } from '../../lib/settings';
 import { readCache, writeCache } from '../../lib/offline-cache';
 import { friendlyErrorMessage } from '../../lib/errors';
 import { appAlert } from '../../lib/alert';
@@ -60,7 +58,6 @@ export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const tabBarGap = useTabBarGap();
   const { session, profile, signOut, refreshProfile } = useAuth();
-  const { dataLiteMode, setDataLiteMode } = useSettings();
   const [myListings, setMyListings] = useState<MyListing[]>([]);
   const [loadingListings, setLoadingListings] = useState(true);
   const [listingsLoadError, setListingsLoadError] = useState(false);
@@ -397,23 +394,6 @@ export default function ProfileScreen() {
               </View>
             )}
           </View>
-
-          {!editing && (
-            <View style={styles.savedRow}>
-              <Ionicons name="cloud-download-outline" size={18} color={colors.accent} />
-              <View style={{ flex: 1 }}>
-                <Text style={styles.savedRowText}>Data Saver</Text>
-                <Text style={styles.savedRowSubtext}>Photos won't load automatically on a slow connection</Text>
-              </View>
-              <Switch
-                value={dataLiteMode}
-                onValueChange={setDataLiteMode}
-                trackColor={{ true: colors.accent, false: colors.border }}
-                thumbColor="#fff"
-                accessibilityLabel="Data Saver"
-              />
-            </View>
-          )}
 
           {!editing && (
             <Pressable style={styles.savedRow} onPress={() => router.push('/packages')}>

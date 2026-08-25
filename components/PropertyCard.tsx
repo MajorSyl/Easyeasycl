@@ -27,7 +27,6 @@ export const PropertyCard = memo(function PropertyCard({ listing }: { listing: L
             uri={listing.photos[0]}
             style={styles.image}
             contentFit="cover"
-            compact
             accessibilityLabel={`Photo of ${listing.title}`}
           />
         ) : (

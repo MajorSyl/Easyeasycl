@@ -181,7 +181,6 @@ export default function ListingDetailScreen() {
                     uri={item}
                     style={styles.photo}
                     contentFit="cover"
-                    alwaysLoad={index === 0}
                     accessibilityLabel={`Photo ${index + 1} of ${listing.photos.length} of ${listing.title}`}
                   />
                 )}
