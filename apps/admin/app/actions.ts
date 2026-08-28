@@ -31,6 +31,23 @@ export async function logout() {
   redirect('/login');
 }
 
+// This project's Supabase instance is shared with the main Easyfen app, so
+// its global Auth "Site URL" can't be pointed at the admin dashboard --
+// that would break recovery emails for regular users. Passing redirectTo
+// explicitly here overrides it just for this one request, which is why
+// this must be an absolute URL (email links can't be relative) rather than
+// reading it from the request itself.
+const ADMIN_RESET_PASSWORD_URL = 'https://easyeasycl-admin.vercel.app/reset-password';
+
+export async function requestPasswordReset(email: string) {
+  const supabase = await createClient();
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: ADMIN_RESET_PASSWORD_URL,
+  });
+  if (error) return { error: error.message };
+  return { success: true };
+}
+
 const ROLES = ['user', 'landlord', 'agent', 'agency'];
 const FLAG_FIELDS = ['is_verified', 'is_premium', 'is_active'];
 const TABLES = ['listings', 'hotels', 'services'];
