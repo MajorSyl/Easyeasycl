@@ -82,7 +82,7 @@ export async function setUserSuspended(userId: string, suspended: boolean, reaso
   if (error) throw error;
   revalidatePath('/users');
   revalidatePath(`/users/${userId}`);
-  revalidatePath('/content');
+  revalidatePath('/listings');
 }
 
 export async function clearProfileFlag(userId: string) {
@@ -111,7 +111,7 @@ export async function toggleListingFlag(
   } else {
     await supabase.from(table).update({ [field]: value }).eq('id', id);
   }
-  revalidatePath('/content');
+  revalidatePath('/listings');
 }
 
 export async function setListingModerationStatus(id: string, status: 'approved' | 'rejected') {
@@ -120,7 +120,8 @@ export async function setListingModerationStatus(id: string, status: 'approved' 
   if (status !== 'approved' && status !== 'rejected') throw new Error('Invalid status');
   const { error } = await supabase.rpc('admin_set_listing_flags', { item_id: id, moderation_status: status });
   if (error) throw error;
-  revalidatePath('/content');
+  revalidatePath('/listings');
+  revalidatePath('/');
 }
 
 export async function setRequireListingApproval(value: boolean) {
@@ -129,7 +130,7 @@ export async function setRequireListingApproval(value: boolean) {
   const { error } = await supabase.from('app_settings').update({ require_listing_approval: value }).eq('id', true);
   if (error) throw error;
   revalidatePath('/settings');
-  revalidatePath('/content');
+  revalidatePath('/listings');
 }
 
 export async function setLaunchModeActive(value: boolean) {
@@ -162,6 +163,7 @@ export async function dismissReport(reportId: string) {
   await requireAdmin(supabase);
   await supabase.from('reports').delete().eq('id', reportId);
   revalidatePath('/reports');
+  revalidatePath('/');
 }
 
 export async function reviewPayment(paymentId: string, decision: 'approve' | 'reject', reason?: string) {
@@ -175,8 +177,9 @@ export async function reviewPayment(paymentId: string, decision: 'approve' | 're
   });
   if (error) throw error;
   revalidatePath('/payments');
-  revalidatePath('/content');
+  revalidatePath('/listings');
   revalidatePath('/users');
+  revalidatePath('/');
 }
 
 export async function hideReportedItem(
@@ -195,7 +198,8 @@ export async function hideReportedItem(
   }
   await supabase.from('reports').delete().eq('id', reportId);
   revalidatePath('/reports');
-  revalidatePath('/content');
+  revalidatePath('/listings');
+  revalidatePath('/');
 }
 
 export async function createLead(formData: FormData) {
