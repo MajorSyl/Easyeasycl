@@ -28,7 +28,14 @@ type AuthContextValue = {
   signIn: (email: string, password: string) => Promise<string | null>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
+  resetPassword: (email: string) => Promise<string | null>;
 };
+
+// The site the recovery email link points at. This app's Supabase project
+// is production-only (no separate staging instance), so there's just the
+// one live domain to send people to -- from there, `app/reset-password.tsx`
+// picks up the recovery token and lets them set a new password.
+const RESET_PASSWORD_URL = 'https://easyfen.com/reset-password';
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
@@ -132,13 +139,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await supabase.auth.signOut();
   }
 
+  async function resetPassword(email: string) {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: RESET_PASSWORD_URL,
+    });
+    return error?.message ?? null;
+  }
+
   async function refreshProfile() {
     if (session) await loadProfile(session.user.id);
   }
 
   return (
     <AuthContext.Provider
-      value={{ session, profile, loading, onlineUserIds, signUp, signIn, signOut, refreshProfile }}
+      value={{ session, profile, loading, onlineUserIds, signUp, signIn, signOut, refreshProfile, resetPassword }}
     >
       {children}
     </AuthContext.Provider>

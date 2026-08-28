@@ -31,8 +31,8 @@ const HONEYPOT_MIN_MS = 2000;
 const MIN_PASSWORD_LENGTH = 8;
 
 export default function AuthScreen() {
-  const { signIn, signUp } = useAuth();
-  const [mode, setMode] = useState<'sign_in' | 'sign_up'>('sign_in');
+  const { signIn, signUp, resetPassword } = useAuth();
+  const [mode, setMode] = useState<'sign_in' | 'sign_up' | 'forgot_password'>('sign_in');
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -44,16 +44,33 @@ export default function AuthScreen() {
   const mountedAt = useRef(Date.now());
 
   const canSubmit =
-    email.trim().length > 3 &&
-    (mode === 'sign_in'
-      ? password.length > 0
-      : password.length >= MIN_PASSWORD_LENGTH && fullName.trim().length > 0);
+    mode === 'forgot_password'
+      ? email.trim().length > 3
+      : email.trim().length > 3 &&
+        (mode === 'sign_in'
+          ? password.length > 0
+          : password.length >= MIN_PASSWORD_LENGTH && fullName.trim().length > 0);
 
   async function handleSubmit() {
     if (!canSubmit || submitting) return;
     setSubmitting(true);
     setError(null);
     setNotice(null);
+
+    if (mode === 'forgot_password') {
+      const trimmedEmail = email.trim();
+      const message = await resetPassword(trimmedEmail);
+      setSubmitting(false);
+      if (message) {
+        setError(friendlyErrorMessage(message));
+        return;
+      }
+      // Same wording regardless of whether the account exists -- confirming
+      // or denying an email is registered here would leak which accounts
+      // are real to anyone probing the form.
+      setNotice(`If ${trimmedEmail} has an account, a password reset link is on its way.`);
+      return;
+    }
 
     if (mode === 'sign_in') {
       const message = await signIn(email.trim(), password);
@@ -125,11 +142,15 @@ export default function AuthScreen() {
         <Logo size={56} showWordmark={false} />
       </View>
 
-      <Text style={styles.title}>{mode === 'sign_in' ? 'Log in to Easyfen' : 'Create your account'}</Text>
+      <Text style={styles.title}>
+        {mode === 'sign_in' ? 'Log in to Easyfen' : mode === 'sign_up' ? 'Create your account' : 'Reset your password'}
+      </Text>
       <Text style={styles.subtitle}>
         {mode === 'sign_in'
           ? 'Log in to save favorites, message agents, and post listings.'
-          : 'Sign up to post listings, chat with agents, and save favorites.'}
+          : mode === 'sign_up'
+          ? 'Sign up to post listings, chat with agents, and save favorites.'
+          : "Enter your email and we'll send you a link to set a new password."}
       </Text>
 
       {mode === 'sign_up' && (
@@ -168,17 +189,25 @@ export default function AuthScreen() {
           keyboardType="email-address"
         />
       </View>
-      <View style={styles.field}>
-        <Text style={styles.fieldLabel}>Password</Text>
-        <TextInput
-          style={styles.input}
-          placeholder={mode === 'sign_up' ? `Min. ${MIN_PASSWORD_LENGTH} characters` : 'Password'}
-          placeholderTextColor={colors.textMuted}
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-        />
-      </View>
+      {mode !== 'forgot_password' && (
+        <View style={styles.field}>
+          <Text style={styles.fieldLabel}>Password</Text>
+          <TextInput
+            style={styles.input}
+            placeholder={mode === 'sign_up' ? `Min. ${MIN_PASSWORD_LENGTH} characters` : 'Password'}
+            placeholderTextColor={colors.textMuted}
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry
+          />
+        </View>
+      )}
+
+      {mode === 'sign_in' && (
+        <Pressable onPress={() => { setMode('forgot_password'); setError(null); setNotice(null); }}>
+          <Text style={styles.forgotPasswordText}>Forgot password?</Text>
+        </Pressable>
+      )}
 
       {error && <Text style={styles.error}>{error}</Text>}
       {notice && <Text style={styles.notice}>{notice}</Text>}
@@ -192,34 +221,46 @@ export default function AuthScreen() {
           <ActivityIndicator color="#fff" />
         ) : (
           <Text style={[styles.submitText, !canSubmit && styles.submitTextDisabled]}>
-            {mode === 'sign_in' ? 'Log In' : 'Sign Up'}
+            {mode === 'sign_in' ? 'Log In' : mode === 'sign_up' ? 'Sign Up' : 'Send reset link'}
           </Text>
         )}
       </Pressable>
 
-      <View style={styles.dividerRow}>
-        <View style={styles.dividerLine} />
-        <Text style={styles.dividerText}>or</Text>
-        <View style={styles.dividerLine} />
-      </View>
+      {mode === 'forgot_password' && (
+        <Pressable onPress={() => { setMode('sign_in'); setError(null); setNotice(null); }}>
+          <Text style={styles.switchText}>
+            <Text style={styles.switchTextBold}>Back to sign in</Text>
+          </Text>
+        </Pressable>
+      )}
 
-      <Pressable style={styles.googleButton} disabled={googleSubmitting} onPress={handleGoogleSignIn}>
-        {googleSubmitting ? (
-          <ActivityIndicator color={colors.textPrimary} />
-        ) : (
-          <>
-            <Ionicons name="logo-google" size={18} color={colors.textPrimary} />
-            <Text style={styles.googleButtonText}>Continue with Google</Text>
-          </>
-        )}
-      </Pressable>
+      {mode !== 'forgot_password' && (
+        <>
+          <View style={styles.dividerRow}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>or</Text>
+            <View style={styles.dividerLine} />
+          </View>
 
-      <Pressable onPress={() => setMode(mode === 'sign_in' ? 'sign_up' : 'sign_in')}>
-        <Text style={styles.switchText}>
-          {mode === 'sign_in' ? "Don't have an account? " : 'Already have an account? '}
-          <Text style={styles.switchTextBold}>{mode === 'sign_in' ? 'Sign up' : 'Log in'}</Text>
-        </Text>
-      </Pressable>
+          <Pressable style={styles.googleButton} disabled={googleSubmitting} onPress={handleGoogleSignIn}>
+            {googleSubmitting ? (
+              <ActivityIndicator color={colors.textPrimary} />
+            ) : (
+              <>
+                <Ionicons name="logo-google" size={18} color={colors.textPrimary} />
+                <Text style={styles.googleButtonText}>Continue with Google</Text>
+              </>
+            )}
+          </Pressable>
+
+          <Pressable onPress={() => setMode(mode === 'sign_in' ? 'sign_up' : 'sign_in')}>
+            <Text style={styles.switchText}>
+              {mode === 'sign_in' ? "Don't have an account? " : 'Already have an account? '}
+              <Text style={styles.switchTextBold}>{mode === 'sign_in' ? 'Sign up' : 'Log in'}</Text>
+            </Text>
+          </Pressable>
+        </>
+      )}
     </KeyboardAvoidingView>
   );
 }
@@ -260,6 +301,13 @@ const styles = StyleSheet.create({
     height: 1,
     opacity: 0,
     left: -9999,
+  },
+  forgotPasswordText: {
+    color: colors.accent,
+    fontSize: fontSize.sm,
+    fontWeight: fontWeight.semibold,
+    textAlign: 'right',
+    marginBottom: spacing.md,
   },
   error: { color: colors.danger, fontSize: fontSize.sm, marginBottom: spacing.md },
   notice: { color: colors.success, fontSize: fontSize.sm, marginBottom: spacing.md },
