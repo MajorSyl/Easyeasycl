@@ -53,7 +53,7 @@ export default function DownloadScreen() {
               <Ionicons name="logo-android" size={20} color="#fff" />
               <Text style={styles.downloadBtnText}>Download for Android</Text>
             </Pressable>
-            <Text style={styles.fileNote}>Downloads an .apk file (~40 MB). Android only, for now.</Text>
+            <Text style={styles.fileNote}>Downloads an .apk file (~105 MB). Android only, for now.</Text>
 
             <View style={styles.instructions}>
               <Text style={styles.instructionsTitle}>Installing it</Text>
