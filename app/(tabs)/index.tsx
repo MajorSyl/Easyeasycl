@@ -14,6 +14,7 @@ import { ListingCard } from '../../components/ListingCard';
 import { PropertyCard } from '../../components/PropertyCard';
 import { FilterPills, type PillOption } from '../../components/FilterPills';
 import { EdgeFade } from '../../components/EdgeFade';
+import { DownloadAppBanner } from '../../components/DownloadAppBanner';
 import { initialsFor } from '../../lib/format';
 import type { Listing, ListingCategory } from '../../lib/types';
 
@@ -279,6 +280,8 @@ export default function HomeScreen() {
                 </Pressable>
               </View>
             </View>
+
+            <DownloadAppBanner />
 
             {showingSavedData && (
               <View style={styles.offlineBanner}>

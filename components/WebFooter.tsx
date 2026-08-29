@@ -3,6 +3,7 @@ import { router } from 'expo-router';
 import { colors, fontSize, spacing } from '../constants/theme';
 
 const LINKS = [
+  { label: 'Download App', href: '/download' },
   { label: 'Privacy Policy', href: '/privacy' },
   { label: 'Terms of Service', href: '/terms' },
   { label: 'Community Guidelines', href: '/guidelines' },
