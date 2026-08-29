@@ -8,11 +8,14 @@ import { useAuth } from '../lib/auth-context';
 import { friendlyErrorMessage } from '../lib/errors';
 import { appAlert } from '../lib/alert';
 import { colors, fontSize, fontWeight, radius, spacing } from '../constants/theme';
+import { formatPrice } from '../lib/format';
+import type { ListingCurrency } from '../lib/types';
 
 type SavedSearch = {
   id: string;
   query: string | null;
   max_price: number | null;
+  currency: ListingCurrency;
   created_at: string;
 };
 
@@ -31,7 +34,7 @@ export default function SavedSearchesScreen() {
     }
     const { data, error } = await supabase
       .from('saved_searches')
-      .select('id, query, max_price, created_at')
+      .select('id, query, max_price, currency, created_at')
       .eq('user_id', session.user.id)
       .order('created_at', { ascending: false });
 
@@ -70,7 +73,7 @@ export default function SavedSearchesScreen() {
   function labelFor(item: SavedSearch) {
     const parts: string[] = [];
     if (item.query) parts.push(`"${item.query}"`);
-    if (item.max_price != null) parts.push(`under NLE ${Math.round(item.max_price).toLocaleString('en-US')}`);
+    if (item.max_price != null) parts.push(`under ${formatPrice(item.max_price, item.currency, null)}`);
     return parts.length ? parts.join(' · ') : 'All listings';
   }
 

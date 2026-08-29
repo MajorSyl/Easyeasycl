@@ -6,7 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../lib/auth-context';
 import { colors, fontSize, fontWeight, radius, spacing } from '../constants/theme';
-import { formatMessageTimestamp, initialsFor } from '../lib/format';
+import { formatMessageTimestamp, formatPrice, initialsFor } from '../lib/format';
 
 type MessageNotification = {
   kind: 'message';
@@ -30,11 +30,11 @@ type SavedSearchNotification = {
 
 type Notification = MessageNotification | SavedSearchNotification;
 
-function savedSearchLabel(search: { query: string | null; max_price: number | null } | null) {
+function savedSearchLabel(search: { query: string | null; max_price: number | null; currency: string } | null) {
   if (!search) return 'your saved search';
   const parts: string[] = [];
   if (search.query) parts.push(`"${search.query}"`);
-  if (search.max_price != null) parts.push(`under NLE ${Math.round(search.max_price).toLocaleString('en-US')}`);
+  if (search.max_price != null) parts.push(`under ${formatPrice(search.max_price, search.currency, null)}`);
   return parts.length ? parts.join(' · ') : 'your saved search';
 }
 
@@ -90,7 +90,7 @@ export default function NotificationsScreen() {
 
     const { data: matches } = await supabase
       .from('saved_search_matches')
-      .select('id, created_at, listing:listings(id, title), saved_search:saved_searches(query, max_price)')
+      .select('id, created_at, listing:listings(id, title), saved_search:saved_searches(query, max_price, currency)')
       .eq('user_id', uid)
       .is('read_at', null)
       .order('created_at', { ascending: false });

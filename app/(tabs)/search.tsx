@@ -10,6 +10,7 @@ import { useAuth } from '../../lib/auth-context';
 import { friendlyErrorMessage } from '../../lib/errors';
 import { appAlert } from '../../lib/alert';
 import { ListingCard } from '../../components/ListingCard';
+import { CurrencyFilterToggle, type CurrencyFilter } from '../../components/CurrencyFilterToggle';
 import type { Listing } from '../../lib/types';
 
 type SearchResult = { kind: 'listing'; id: string; sortPrice: number; createdAt: string; data: Listing };
@@ -22,6 +23,12 @@ const sortLabels: Record<SortMode, string> = {
   price_desc: 'Price: High to Low',
 };
 
+// Sorting or filtering by a raw price number only means something within a
+// single currency -- $50 sorting as "less than" NLe 5,000 is meaningless
+// without an exchange rate. Price-based sort only shows up once a specific
+// currency is selected; picking "All" falls back to Newest.
+const priceSortModes: SortMode[] = ['price_asc', 'price_desc'];
+
 function escapeForFilter(text: string) {
   return text.replace(/[,()%]/g, '');
 }
@@ -32,6 +39,7 @@ export default function SearchScreen() {
   const { session } = useAuth();
   const [query, setQuery] = useState('');
   const [budget, setBudget] = useState('');
+  const [currencyFilter, setCurrencyFilter] = useState<CurrencyFilter>('ALL');
   const [sortMode, setSortMode] = useState<SortMode>('newest');
   const [sortMenuOpen, setSortMenuOpen] = useState(false);
   const [results, setResults] = useState<SearchResult[]>([]);
@@ -41,16 +49,26 @@ export default function SearchScreen() {
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      runSearch(query, budget, sortMode);
+      runSearch(query, budget, currencyFilter, sortMode);
     }, 300);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query, budget, sortMode]);
+  }, [query, budget, currencyFilter, sortMode]);
 
-  async function runSearch(text: string, budgetText: string, sort: SortMode) {
+  // Switching to "All" drops both the budget and any price-based sort --
+  // neither means anything once results can span more than one currency.
+  function handleCurrencyChange(next: CurrencyFilter) {
+    setCurrencyFilter(next);
+    if (next === 'ALL') {
+      setBudget('');
+      if (priceSortModes.includes(sortMode)) setSortMode('newest');
+    }
+  }
+
+  async function runSearch(text: string, budgetText: string, currency: CurrencyFilter, sort: SortMode) {
     setLoading(true);
     const term = escapeForFilter(text.trim());
-    const maxPrice = budgetText.trim() ? Number(budgetText) : null;
+    const maxPrice = currency !== 'ALL' && budgetText.trim() ? Number(budgetText) : null;
 
     let listingsQuery = supabase
       .from('listings')
@@ -59,6 +77,9 @@ export default function SearchScreen() {
 
     if (term) {
       listingsQuery = listingsQuery.or(`title.ilike.%${term}%,location.ilike.%${term}%`);
+    }
+    if (currency !== 'ALL') {
+      listingsQuery = listingsQuery.eq('currency', currency);
     }
     if (maxPrice && !Number.isNaN(maxPrice)) {
       listingsQuery = listingsQuery.lte('price', maxPrice);
@@ -106,11 +127,16 @@ export default function SearchScreen() {
       return;
     }
     setSavingSearch(true);
-    const maxPrice = budget.trim() ? Number(budget) : null;
+    const maxPrice = currencyFilter !== 'ALL' && budget.trim() ? Number(budget) : null;
     const { error } = await supabase.from('saved_searches').insert({
       user_id: session.user.id,
       query: query.trim() || null,
       max_price: maxPrice && !Number.isNaN(maxPrice) ? maxPrice : null,
+      // Only actually consulted by the matching trigger when max_price is
+      // also set (see notify_saved_search_matches) -- harmless default
+      // otherwise, since a query-only saved search matches on keyword alone
+      // regardless of a listing's currency.
+      currency: currencyFilter === 'ALL' ? 'NLE' : currencyFilter,
     });
     setSavingSearch(false);
     if (error) {
@@ -145,17 +171,21 @@ export default function SearchScreen() {
           )}
         </View>
 
+        <CurrencyFilterToggle value={currencyFilter} onChange={handleCurrencyChange} />
+
         <View style={styles.filterRow}>
-          <View style={styles.budgetField}>
-            <Text style={styles.budgetPrefix}>NLE</Text>
+          <View style={[styles.budgetField, currencyFilter === 'ALL' && styles.budgetFieldDisabled]}>
+            <Text style={styles.budgetPrefix}>{currencyFilter === 'USD' ? '$' : 'NLe'}</Text>
             <TextInput
               style={styles.budgetInput}
-              placeholder="Budget"
+              placeholder={currencyFilter === 'ALL' ? 'Pick a currency to set a budget' : 'Budget'}
               placeholderTextColor={colors.textMuted}
               value={budget}
               onChangeText={setBudget}
               keyboardType="decimal-pad"
+              editable={currencyFilter !== 'ALL'}
               accessibilityLabel="Maximum budget"
+              accessibilityHint={currencyFilter === 'ALL' ? 'Select a currency above first' : undefined}
             />
           </View>
           <Pressable
@@ -221,7 +251,9 @@ export default function SearchScreen() {
           accessibilityLabel="Close sort menu"
         >
           <View style={styles.sheet} accessibilityRole="menu">
-            {(Object.keys(sortLabels) as SortMode[]).map((mode) => (
+            {(Object.keys(sortLabels) as SortMode[])
+              .filter((mode) => currencyFilter !== 'ALL' || !priceSortModes.includes(mode))
+              .map((mode) => (
               <Pressable
                 key={mode}
                 style={styles.option}
@@ -272,6 +304,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
+  budgetFieldDisabled: { opacity: 0.5 },
   budgetPrefix: { fontSize: fontSize.sm, color: colors.textMuted, fontWeight: fontWeight.semibold },
   budgetInput: { flex: 1, fontSize: fontSize.sm, color: colors.textPrimary, paddingVertical: 12 },
   sortButton: {
