@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase-server';
 import { redirect, notFound } from 'next/navigation';
 import Link from 'next/link';
 import { setUserSuspended, setVerificationTier } from '../../actions';
+import { formatListingPrice } from '@/lib/format';
 
 const VERIFICATION_LABELS: Record<string, string> = {
   none: 'None',
@@ -143,7 +144,7 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
                 {(listings ?? []).map((l) => (
                   <tr key={l.id}>
                     <td className="truncate" style={{ fontWeight: 600 }}>{l.title}{l.is_premium && ' ⭐'}</td>
-                    <td className="muted">{l.currency} {Number(l.price).toLocaleString('en-US')}</td>
+                    <td className="muted">{formatListingPrice(l.price, l.currency)}</td>
                     <td>
                       {l.moderation_status === 'pending' ? (
                         <span className="badge badge-amber">Pending</span>

@@ -18,9 +18,22 @@ const rateUnitAbbreviation: Record<Exclude<RateUnit, null>, string> = {
   night: 'night',
 };
 
+// USD gets a plain "$" prefix (no space, the universal convention); NLE
+// gets "NLe" -- the standard abbreviation for the Leone, distinct from the
+// bare "NLE" stored in the database (currency is a fixed enum value there,
+// this is just how it reads to a person). Falls back to the raw stored
+// code for anything unrecognized, so a data issue degrades to "odd label"
+// rather than a wrong symbol.
+const currencyDisplay: Record<string, { symbol: string; spaced: boolean }> = {
+  USD: { symbol: '$', spaced: false },
+  NLE: { symbol: 'NLe', spaced: true },
+};
+
 export function formatPrice(price: number, currency: string, unit: RateUnit) {
   const amount = Math.round(price).toLocaleString('en-US');
-  return unit ? `${currency} ${amount} / ${rateUnitAbbreviation[unit]}` : `${currency} ${amount}`;
+  const display = currencyDisplay[currency] ?? { symbol: currency, spaced: true };
+  const amountWithSymbol = `${display.symbol}${display.spaced ? ' ' : ''}${amount}`;
+  return unit ? `${amountWithSymbol} / ${rateUnitAbbreviation[unit]}` : amountWithSymbol;
 }
 
 export function initialsFor(name: string | null) {

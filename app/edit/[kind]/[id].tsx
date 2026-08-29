@@ -22,7 +22,8 @@ import { sanitizeText } from '../../../lib/sanitize';
 import { colors, fontSize, radius, spacing } from '../../../constants/theme';
 import { PhotoPicker } from '../../../components/PhotoPicker';
 import { SelectField, type SelectOption } from '../../../components/SelectField';
-import type { ListingCategory } from '../../../lib/types';
+import { CurrencyToggle } from '../../../components/CurrencyToggle';
+import type { ListingCategory, ListingCurrency } from '../../../lib/types';
 
 type Kind = 'listing' | 'hotel' | 'service';
 
@@ -46,6 +47,7 @@ export default function EditListingScreen() {
   const [loading, setLoading] = useState(true);
   const [title, setTitle] = useState('');
   const [price, setPrice] = useState('');
+  const [currency, setCurrency] = useState<ListingCurrency>('NLE');
   const [location, setLocation] = useState('');
   const [description, setDescription] = useState('');
   const [bedrooms, setBedrooms] = useState('');
@@ -76,6 +78,7 @@ export default function EditListingScreen() {
         }
         setTitle(data.title ?? data.name ?? data.business_name ?? '');
         setPrice(String(data.price ?? data.rate ?? ''));
+        if (kind === 'listing' && (data.currency === 'NLE' || data.currency === 'USD')) setCurrency(data.currency);
         setLocation(data.location ?? '');
         setDescription(data.description ?? '');
         setBedrooms(data.bedrooms != null ? String(data.bedrooms) : '');
@@ -113,6 +116,7 @@ export default function EditListingScreen() {
           description: cleanDescription || null,
           category: category ?? undefined,
           price: priceValue,
+          currency,
           price_unit: category === 'daily_hourly' ? rateUnit : null,
           location: cleanLocation,
           bedrooms: bedrooms.trim() ? Number(bedrooms) : null,
@@ -207,15 +211,33 @@ export default function EditListingScreen() {
           </Field>
 
           <View style={styles.row}>
-            <Field label="Price (NLE)" style={styles.flex1}>
-              <TextInput
-                style={styles.input}
-                value={price}
-                onChangeText={setPrice}
-                keyboardType="decimal-pad"
-                placeholderTextColor={colors.textMuted}
-              />
-            </Field>
+            {kind === 'listing' ? (
+              <View style={styles.flex1}>
+                <Text style={styles.fieldLabel}>Price</Text>
+                <View style={styles.priceRow}>
+                  <TextInput
+                    style={[styles.input, styles.priceInput]}
+                    value={price}
+                    onChangeText={setPrice}
+                    keyboardType="decimal-pad"
+                    placeholderTextColor={colors.textMuted}
+                  />
+                  <View style={styles.currencyToggleWrap}>
+                    <CurrencyToggle value={currency} onChange={setCurrency} />
+                  </View>
+                </View>
+              </View>
+            ) : (
+              <Field label="Price (NLE)" style={styles.flex1}>
+                <TextInput
+                  style={styles.input}
+                  value={price}
+                  onChangeText={setPrice}
+                  keyboardType="decimal-pad"
+                  placeholderTextColor={colors.textMuted}
+                />
+              </Field>
+            )}
             <Field label="Location" style={styles.flex1}>
               <TextInput style={styles.input} value={location} onChangeText={setLocation} placeholderTextColor={colors.textMuted} />
             </Field>
@@ -330,6 +352,9 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
   },
   textArea: { minHeight: 90 },
+  priceRow: { flexDirection: 'row', gap: spacing.sm, alignItems: 'flex-start' },
+  priceInput: { flex: 1 },
+  currencyToggleWrap: { width: 84 },
   saveButton: { backgroundColor: colors.accent, borderRadius: radius.md, paddingVertical: spacing.md, alignItems: 'center' },
   saveButtonDisabled: { backgroundColor: colors.border },
   saveButtonText: { color: '#fff', fontSize: fontSize.md, fontWeight: '700' },

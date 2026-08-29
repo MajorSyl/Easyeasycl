@@ -187,6 +187,7 @@ export default async function OverviewPage() {
       title: l.title,
       category: l.category,
       price: l.price,
+      currency: l.currency,
       photos: l.photos,
       created_at: l.created_at,
       neighborhood: matchNeighborhood(l.location),

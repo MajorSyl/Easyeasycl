@@ -1,5 +1,6 @@
 export type ListingCategory = 'for_rent' | 'for_sale' | 'land' | 'daily_hourly';
 export type RateUnit = 'hour' | 'day' | 'month' | 'night' | null;
+export type ListingCurrency = 'NLE' | 'USD';
 
 export type OwnerSummary = {
   full_name: string | null;
@@ -14,7 +15,7 @@ export type Listing = {
   description?: string | null;
   category: ListingCategory;
   price: number;
-  currency: string;
+  currency: ListingCurrency;
   price_unit: RateUnit;
   location: string;
   bedrooms?: number | null;

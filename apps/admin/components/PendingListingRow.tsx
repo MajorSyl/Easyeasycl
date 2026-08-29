@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react';
 import { setListingModerationStatus } from '../app/actions';
 import { initialsOf, avatarColor } from '../lib/avatar';
-import { relativeTime, formatNLE } from '../lib/format';
+import { relativeTime, formatListingPrice } from '../lib/format';
 import { IconPin, IconCheck, IconX, IconExternalLink } from './icons';
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -18,6 +18,7 @@ export type PendingListing = {
   title: string;
   category: string;
   price: number;
+  currency: string;
   photos: string[] | null;
   created_at: string;
   neighborhood: string | null;
@@ -58,7 +59,7 @@ export function PendingListingRow({ listing }: { listing: PendingListing }) {
       </div>
 
       <div style={{ marginLeft: 'auto', textAlign: 'right', flexShrink: 0 }}>
-        <div style={{ fontWeight: 700, fontSize: 13 }}>{formatNLE(listing.price)}</div>
+        <div style={{ fontWeight: 700, fontSize: 13 }}>{formatListingPrice(listing.price, listing.currency)}</div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-end', marginTop: 4 }}>
           <span className="badge badge-blue">{CATEGORY_LABELS[listing.category] ?? listing.category}</span>
           <span className="muted" style={{ fontSize: 11 }}>{relativeTime(listing.created_at)}</span>

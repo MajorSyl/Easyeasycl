@@ -17,6 +17,22 @@ export function relativeTime(iso: string): string {
   return `${months}mo ago`;
 }
 
+// Payments (boosts, subscriptions, verification fees) are always
+// NLE-denominated platform charges regardless of what currency any given
+// listing is priced in -- see constants/payments.ts in the main app. Keep
+// this one hardcoded rather than routing it through formatListingPrice
+// below, which is a different concept (a landlord's own listing price,
+// USD or NLE) that shouldn't be conflated with platform fees.
 export function formatNLE(amount: number): string {
   return `NLE ${Number(amount).toLocaleString('en-US')}`;
+}
+
+// Mirrors lib/format.ts's formatPrice in the main app -- USD gets a plain
+// "$" prefix, NLE displays as "NLe" (the standard abbreviation), distinct
+// from the bare "NLE" the database actually stores.
+export function formatListingPrice(amount: number, currency: string): string {
+  const rounded = Number(amount).toLocaleString('en-US');
+  if (currency === 'USD') return `$${rounded}`;
+  if (currency === 'NLE') return `NLe ${rounded}`;
+  return `${currency} ${rounded}`;
 }

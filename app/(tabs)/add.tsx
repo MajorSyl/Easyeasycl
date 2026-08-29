@@ -22,7 +22,8 @@ import { useTabBarGap } from '../../lib/use-bottom-gap';
 import { colors, fontSize, fontWeight, radius, spacing } from '../../constants/theme';
 import { PhotoPicker } from '../../components/PhotoPicker';
 import { SelectField, type SelectOption } from '../../components/SelectField';
-import type { ListingCategory } from '../../lib/types';
+import { CurrencyToggle } from '../../components/CurrencyToggle';
+import type { ListingCategory, ListingCurrency } from '../../lib/types';
 
 const categoryOptions: SelectOption<ListingCategory>[] = [
   { value: 'for_rent', label: 'For Rent' },
@@ -44,6 +45,7 @@ export default function AddListingScreen() {
   const [photos, setPhotos] = useState<string[]>([]);
   const [title, setTitle] = useState('');
   const [price, setPrice] = useState('');
+  const [currency, setCurrency] = useState<ListingCurrency>('NLE');
   const [location, setLocation] = useState('');
   const [description, setDescription] = useState('');
   const [bedrooms, setBedrooms] = useState('');
@@ -76,6 +78,7 @@ export default function AddListingScreen() {
     setPhotos([]);
     setTitle('');
     setPrice('');
+    setCurrency('NLE');
     setLocation('');
     setDescription('');
     setBedrooms('');
@@ -100,6 +103,7 @@ export default function AddListingScreen() {
         description: cleanDescription,
         category: category!,
         price: priceValue,
+        currency,
         price_unit: category === 'daily_hourly' ? rateUnit : null,
         location: cleanLocation,
         bedrooms: bedrooms.trim() ? Number(bedrooms) : null,
@@ -175,16 +179,22 @@ export default function AddListingScreen() {
           </Field>
 
           <View style={styles.row}>
-            <Field label={`Price (NLE)`} style={styles.flex1}>
-              <TextInput
-                style={styles.input}
-                placeholder="0.00"
-                placeholderTextColor={colors.textMuted}
-                value={price}
-                onChangeText={setPrice}
-                keyboardType="decimal-pad"
-              />
-            </Field>
+            <View style={styles.flex1}>
+              <Text style={styles.fieldLabel}>Price</Text>
+              <View style={styles.priceRow}>
+                <TextInput
+                  style={[styles.input, styles.priceInput]}
+                  placeholder="0.00"
+                  placeholderTextColor={colors.textMuted}
+                  value={price}
+                  onChangeText={setPrice}
+                  keyboardType="decimal-pad"
+                />
+                <View style={styles.currencyToggleWrap}>
+                  <CurrencyToggle value={currency} onChange={setCurrency} />
+                </View>
+              </View>
+            </View>
             <Field label="Neighborhood" style={styles.flex1}>
               <TextInput
                 style={styles.input}
@@ -327,6 +337,9 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
   },
   textArea: { minHeight: 90 },
+  priceRow: { flexDirection: 'row', gap: spacing.sm, alignItems: 'flex-start' },
+  priceInput: { flex: 1 },
+  currencyToggleWrap: { width: 84 },
   publishButton: {
     backgroundColor: colors.accent,
     borderRadius: radius.md,
