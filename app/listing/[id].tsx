@@ -261,7 +261,7 @@ export default function ListingDetailScreen() {
 
           <Text style={styles.sectionTitle}>Pricing</Text>
           <View style={styles.pricingCard}>
-            <Text style={styles.pricingLabel}>{listing.price_unit ? priceUnitLabel[listing.price_unit] : 'Pay Now'}</Text>
+            <Text style={styles.pricingLabel}>{listing.price_unit ? priceUnitLabel[listing.price_unit] : 'Asking Price'}</Text>
             <Text style={styles.pricingAmount}>{formatPrice(listing.price, listing.currency, null)}</Text>
           </View>
 
@@ -356,16 +356,21 @@ const styles = StyleSheet.create({
   listingAge: { fontSize: fontSize.xs, color: colors.textMuted, marginTop: 4 },
   sectionTitle: { fontSize: fontSize.md, fontWeight: fontWeight.bold, color: colors.textPrimary, marginTop: spacing.xl, marginBottom: spacing.sm },
   pricingCard: {
+    // Deliberately neutral, not colors.accent -- this is a static price
+    // display, not a payment action. Easyfen doesn't process property
+    // transactions, so this card must never read as a "Pay Now" button;
+    // that styling is reserved for the app's own monetization flows
+    // (listing boosts, agent subscriptions) in app/pay.tsx.
     backgroundColor: colors.card,
-    borderWidth: 1.5,
-    borderColor: colors.accent,
+    borderWidth: 1,
+    borderColor: colors.border,
     borderRadius: radius.lg,
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.lg,
     ...shadow.card,
   },
   pricingLabel: { fontSize: fontSize.xs, fontWeight: fontWeight.semibold, color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.4 },
-  pricingAmount: { fontSize: fontSize.xxl, fontWeight: fontWeight.bold, color: colors.accent, marginTop: 2 },
+  pricingAmount: { fontSize: fontSize.xxl, fontWeight: fontWeight.bold, color: colors.textPrimary, marginTop: 2 },
   description: { fontSize: fontSize.sm, color: colors.textSecondary, lineHeight: 22 },
   agentRow: {
     flexDirection: 'row',
