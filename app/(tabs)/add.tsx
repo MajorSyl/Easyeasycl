@@ -19,7 +19,8 @@ import { appAlert } from '../../lib/alert';
 import { notifyListingsChanged } from '../../lib/listings-cache-bus';
 import { sanitizeText } from '../../lib/sanitize';
 import { useTabBarGap } from '../../lib/use-bottom-gap';
-import { colors, fontSize, fontWeight, radius, spacing } from '../../constants/theme';
+import { colors, fontSize, radius, spacing } from '../../constants/theme';
+import { type } from '../../constants/typography';
 import { PhotoPicker } from '../../components/PhotoPicker';
 import { SelectField, type SelectOption } from '../../components/SelectField';
 import { CurrencyToggle } from '../../components/CurrencyToggle';
@@ -288,13 +289,17 @@ function Field({ label, children, style }: { label: string; children: ReactNode;
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   centered: { alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.xl },
-  loggedOutTitle: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: colors.textPrimary, marginBottom: spacing.xs },
-  loggedOutSubtitle: { fontSize: fontSize.sm, color: colors.textSecondary, textAlign: 'center', marginBottom: spacing.lg },
+  loggedOutTitle: { ...type.screenTitle, fontSize: fontSize.xl, color: colors.textPrimary, marginBottom: spacing.xs },
+  loggedOutSubtitle: { ...type.body, fontSize: fontSize.sm, color: colors.textSecondary, textAlign: 'center', marginBottom: spacing.lg },
   loginButton: { backgroundColor: colors.accent, borderRadius: radius.md, paddingHorizontal: spacing.xl, paddingVertical: spacing.md },
-  loginButtonText: { color: '#fff', fontSize: fontSize.md, fontWeight: fontWeight.semibold },
+  loginButtonText: { ...type.button, fontSize: fontSize.md, color: '#fff' },
   scrollContent: { padding: spacing.lg, paddingBottom: spacing.xxl },
-  heading: { fontSize: fontSize.xxl, fontWeight: fontWeight.bold, color: colors.textPrimary },
-  subheading: { fontSize: fontSize.sm, color: colors.textSecondary, marginTop: 2, marginBottom: spacing.lg },
+  // Screen-level heading -- Poppins, like every other section/page title in
+  // the app -- but this form stays in the flattened/functional tier (no
+  // elevation, no bold-surface treatment): the card below is bordered, not
+  // shadowed, and nothing here competes with the listing grid's cards.
+  heading: { ...type.sectionTitle, fontSize: fontSize.xxl, color: colors.textPrimary },
+  subheading: { ...type.body, fontSize: fontSize.sm, color: colors.textSecondary, marginTop: 2, marginBottom: spacing.lg },
   card: {
     backgroundColor: colors.card,
     borderRadius: radius.lg,
@@ -313,20 +318,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  stepBadgeText: { fontSize: fontSize.xs, fontWeight: fontWeight.bold, color: colors.accent },
-  sectionTitle: { fontSize: fontSize.md, fontWeight: fontWeight.bold, color: colors.textPrimary },
+  stepBadgeText: { ...type.labelStrong, color: colors.accent },
+  sectionTitle: { ...type.screenTitle, fontSize: fontSize.md, color: colors.textPrimary },
   row: { flexDirection: 'row', gap: spacing.md },
   flex1: { flex: 1 },
   field: {},
+  // Uppercase + letter-spacing kept as-is here -- this is a pre-existing
+  // form-field-label convention distinct from the badge "AI-app tell" this
+  // pass isn't re-litigating; only the font family changes.
   fieldLabel: {
-    fontSize: fontSize.xs,
-    fontWeight: fontWeight.semibold,
+    ...type.labelStrong,
     color: colors.textMuted,
     letterSpacing: 0.4,
     marginBottom: 6,
     textTransform: 'uppercase',
   },
   input: {
+    ...type.body,
     backgroundColor: colors.background,
     borderWidth: 1,
     borderColor: colors.border,
@@ -347,8 +355,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   publishButtonDisabled: { backgroundColor: colors.border },
-  publishButtonText: { color: '#fff', fontSize: fontSize.md, fontWeight: fontWeight.bold },
+  publishButtonText: { ...type.button, fontSize: fontSize.md, color: '#fff' },
   publishButtonTextDisabled: { color: colors.textMuted },
-  terms: { textAlign: 'center', fontSize: fontSize.xs, color: colors.textMuted, marginTop: spacing.sm },
-  termsLink: { color: colors.accent, fontWeight: fontWeight.semibold, textDecorationLine: 'underline' },
+  terms: { ...type.secondary, textAlign: 'center', fontSize: fontSize.xs, color: colors.textMuted, marginTop: spacing.sm },
+  termsLink: { color: colors.accent, textDecorationLine: 'underline' },
 });

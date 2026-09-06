@@ -1,6 +1,7 @@
 import { StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, fontSize, fontWeight, radius, shadow, spacing } from '../constants/theme';
+import { colors, radius, shadow, spacing } from '../constants/theme';
+import { type } from '../constants/typography';
 
 export type AmenityItem = { icon: keyof typeof Ionicons.glyphMap; label: string };
 
@@ -30,5 +31,5 @@ const styles = StyleSheet.create({
     ...shadow.card,
   },
   item: { flex: 1, alignItems: 'center', gap: 4 },
-  label: { fontSize: 10, fontWeight: fontWeight.medium, color: colors.textMuted },
+  label: { ...type.label, fontSize: 10, color: colors.textMuted },
 });

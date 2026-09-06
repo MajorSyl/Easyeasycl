@@ -6,6 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { uploadListingPhoto } from '../lib/upload';
 import { appAlert } from '../lib/alert';
 import { colors, fontSize, radius, spacing } from '../constants/theme';
+import { type } from '../constants/typography';
 
 const MAX_PHOTOS = 10;
 
@@ -146,8 +147,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 6,
   },
-  emptyBoxTitle: { fontSize: fontSize.sm, color: colors.textSecondary, fontWeight: '600' },
-  emptyBoxCaption: { fontSize: 10, color: colors.textMuted, fontWeight: '600', letterSpacing: 0.5 },
+  emptyBoxTitle: { ...type.bodyMedium, fontSize: fontSize.sm, color: colors.textSecondary },
+  emptyBoxCaption: { ...type.labelStrong, fontSize: 10, color: colors.textMuted, letterSpacing: 0.5 },
   thumbRow: { gap: spacing.sm },
   thumbWrap: { width: 72, height: 72, borderRadius: radius.sm, overflow: 'hidden' },
   thumb: { width: '100%', height: '100%' },

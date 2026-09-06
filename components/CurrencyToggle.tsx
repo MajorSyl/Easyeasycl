@@ -1,5 +1,6 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { colors, fontSize, fontWeight, radius } from '../constants/theme';
+import { colors, radius } from '../constants/theme';
+import { type } from '../constants/typography';
 import type { ListingCurrency } from '../lib/types';
 
 const OPTIONS: { value: ListingCurrency; label: string }[] = [
@@ -55,6 +56,6 @@ const styles = StyleSheet.create({
     borderRadius: radius.md - 3,
   },
   segmentActive: { backgroundColor: colors.accent },
-  label: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: colors.textMuted },
+  label: { ...type.labelStrong, fontSize: 13, color: colors.textMuted },
   labelActive: { color: '#fff' },
 });

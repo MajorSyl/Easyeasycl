@@ -19,7 +19,8 @@ import { appAlert } from '../../lib/alert';
 import { shareText } from '../../lib/share';
 import { useBottomGap } from '../../lib/use-bottom-gap';
 import { getOrCreateConversation } from '../../lib/conversations';
-import { colors, fontSize, fontWeight, radius, shadow, spacing } from '../../constants/theme';
+import { colors, fontSize, radius, shadow, spacing } from '../../constants/theme';
+import { fontFamily, type } from '../../constants/typography';
 import { Badge } from '../../components/Badge';
 import { FavoriteButton } from '../../components/FavoriteButton';
 import { AmenityBar, type AmenityItem } from '../../components/AmenityBar';
@@ -308,8 +309,8 @@ export default function ListingDetailScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   centered: { alignItems: 'center', justifyContent: 'center' },
-  notFound: { fontSize: fontSize.md, color: colors.textSecondary, marginBottom: spacing.sm },
-  backLink: { fontSize: fontSize.md, color: colors.accent, fontWeight: fontWeight.semibold },
+  notFound: { ...type.body, fontSize: fontSize.md, color: colors.textSecondary, marginBottom: spacing.sm },
+  backLink: { ...type.button, fontSize: fontSize.md, color: colors.accent },
   heroCard: {
     marginHorizontal: HERO_MARGIN,
     borderRadius: radius.xxl,
@@ -349,12 +350,15 @@ const styles = StyleSheet.create({
   body: { padding: spacing.lg },
   badgeRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   verifiedRow: { flexDirection: 'row', alignItems: 'center', gap: 3 },
-  verifiedText: { fontSize: fontSize.xs, color: colors.success, fontWeight: fontWeight.semibold },
-  title: { fontSize: fontSize.lg, fontWeight: fontWeight.semibold, color: colors.textPrimary, marginTop: spacing.sm },
+  verifiedText: { ...type.labelStrong, color: colors.success },
+  // This is the page's headline, not a grid card -- Poppins, like every
+  // other title/section-header role, not the Inter cardTitle role used in
+  // the listing grid.
+  title: { ...type.screenTitle, color: colors.textPrimary, marginTop: spacing.sm },
   locationRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 },
-  location: { fontSize: fontSize.sm, color: colors.textMuted },
-  listingAge: { fontSize: fontSize.xs, color: colors.textMuted, marginTop: 4 },
-  sectionTitle: { fontSize: fontSize.md, fontWeight: fontWeight.bold, color: colors.textPrimary, marginTop: spacing.xl, marginBottom: spacing.sm },
+  location: { ...type.secondary, fontSize: fontSize.sm, color: colors.textMuted },
+  listingAge: { ...type.secondary, fontSize: fontSize.xs, color: colors.textMuted, marginTop: 4 },
+  sectionTitle: { ...type.screenTitle, fontSize: fontSize.md, color: colors.textPrimary, marginTop: spacing.xl, marginBottom: spacing.sm },
   pricingCard: {
     // Deliberately neutral, not colors.accent -- this is a static price
     // display, not a payment action. Easyfen doesn't process property
@@ -369,9 +373,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     ...shadow.card,
   },
-  pricingLabel: { fontSize: fontSize.xs, fontWeight: fontWeight.semibold, color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.4 },
-  pricingAmount: { fontSize: fontSize.xxl, fontWeight: fontWeight.bold, color: colors.textPrimary, marginTop: 2 },
-  description: { fontSize: fontSize.sm, color: colors.textSecondary, lineHeight: 22 },
+  // Uppercase + letter-spacing kept as-is -- matches the field-label
+  // convention used on the forms; only the font family changes.
+  pricingLabel: { ...type.labelStrong, color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.4 },
+  // The single most important number on this screen -- Poppins Bold, same
+  // priceLarge role a grid card's price would use if it were this size.
+  pricingAmount: { ...type.priceLarge, fontSize: fontSize.xxl, lineHeight: 32, color: colors.textPrimary, marginTop: 2 },
+  description: { ...type.body, fontSize: fontSize.sm, color: colors.textSecondary, lineHeight: 22 },
   agentRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -390,10 +398,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  agentAvatarText: { fontSize: fontSize.md, fontWeight: fontWeight.bold, color: colors.accent },
+  agentAvatarText: { fontFamily: fontFamily.headlineSemibold, fontSize: fontSize.md, color: colors.accent },
   agentBody: { flex: 1 },
-  agentName: { fontSize: fontSize.md, fontWeight: fontWeight.semibold, color: colors.textPrimary },
-  agentRole: { fontSize: fontSize.xs, fontWeight: fontWeight.bold, color: colors.accent, letterSpacing: 0.4 },
+  agentName: { ...type.bodyMedium, fontSize: fontSize.md, color: colors.textPrimary },
+  agentRole: { ...type.labelStrong, color: colors.accent, letterSpacing: 0.4 },
   footer: {
     position: 'absolute',
     left: 0,
@@ -426,5 +434,5 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
     paddingVertical: spacing.md,
   },
-  messageButtonText: { color: '#fff', fontSize: fontSize.md, fontWeight: fontWeight.bold },
+  messageButtonText: { ...type.button, fontSize: fontSize.md, color: '#fff' },
 });

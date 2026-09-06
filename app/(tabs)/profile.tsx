@@ -23,7 +23,8 @@ import { notifyListingsChanged } from '../../lib/listings-cache-bus';
 import { useTabBarGap } from '../../lib/use-bottom-gap';
 import { uploadAvatar } from '../../lib/upload';
 import { sanitizeText } from '../../lib/sanitize';
-import { colors, fontSize, fontWeight, radius, spacing } from '../../constants/theme';
+import { colors, fontSize, radius, spacing } from '../../constants/theme';
+import { fontFamily, type } from '../../constants/typography';
 import { daysSince, formatPrice, initialsFor, roleLabel, verificationBadgeLabel } from '../../lib/format';
 import { SelectField, type SelectOption } from '../../components/SelectField';
 import { WebFooter } from '../../components/WebFooter';
@@ -748,9 +749,9 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   centered: { alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.xl },
-  loggedOutTitle: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: colors.textPrimary, marginBottom: spacing.lg },
+  loggedOutTitle: { ...type.screenTitle, fontSize: fontSize.lg, color: colors.textPrimary, marginBottom: spacing.lg },
   loginButton: { backgroundColor: colors.accent, borderRadius: radius.md, paddingHorizontal: spacing.xl, paddingVertical: spacing.md },
-  loginButtonText: { color: '#fff', fontSize: fontSize.md, fontWeight: fontWeight.semibold },
+  loginButtonText: { ...type.button, fontSize: fontSize.md, color: '#fff' },
   scrollContent: { padding: spacing.lg, paddingBottom: spacing.xxl },
   headerCard: {
     backgroundColor: colors.card,
@@ -772,7 +773,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   avatarImage: { width: 72, height: 72 },
-  avatarText: { fontSize: fontSize.xxl, fontWeight: fontWeight.bold, color: colors.accent },
+  avatarText: { fontFamily: fontFamily.headlineBold, fontSize: fontSize.xxl, color: colors.accent },
   avatarEditOverlay: {
     position: 'absolute',
     bottom: 0,
@@ -783,27 +784,29 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  name: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: colors.textPrimary },
-  roleBadge: { fontSize: fontSize.xs, fontWeight: fontWeight.bold, color: colors.accent, letterSpacing: 0.4, marginTop: 4 },
-  businessName: { fontSize: fontSize.sm, color: colors.textSecondary, marginTop: 2 },
-  contactText: { fontSize: fontSize.sm, color: colors.textMuted, marginTop: 2 },
+  name: { ...type.sectionTitle, fontSize: fontSize.xl, color: colors.textPrimary },
+  roleBadge: { ...type.labelStrong, color: colors.accent, letterSpacing: 0.4, marginTop: 4 },
+  businessName: { ...type.body, fontSize: fontSize.sm, color: colors.textSecondary, marginTop: 2 },
+  contactText: { ...type.body, fontSize: fontSize.sm, color: colors.textMuted, marginTop: 2 },
   verifiedBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: spacing.sm },
-  verifiedBadgeText: { fontSize: fontSize.xs, fontWeight: fontWeight.bold, color: colors.success },
-  verificationPending: { fontSize: fontSize.xs, color: colors.textMuted, marginTop: spacing.sm, fontStyle: 'italic' },
+  verifiedBadgeText: { ...type.labelStrong, color: colors.success },
+  verificationPending: { ...type.secondary, fontSize: fontSize.xs, color: colors.textMuted, marginTop: spacing.sm, fontStyle: 'italic' },
   verifyButton: { marginTop: spacing.sm },
-  verifyButtonText: { fontSize: fontSize.xs, fontWeight: fontWeight.bold, color: colors.accent },
+  verifyButtonText: { ...type.labelStrong, color: colors.accent },
   editButton: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: spacing.md },
-  editButtonText: { fontSize: fontSize.sm, color: colors.accent, fontWeight: fontWeight.semibold },
+  editButtonText: { ...type.button, fontSize: fontSize.sm, color: colors.accent },
   editForm: { width: '100%', gap: spacing.md },
+  // Uppercase + letter-spacing kept as-is -- matches the field-label
+  // convention used on the Add Listing form; only the font family changes.
   fieldLabel: {
-    fontSize: fontSize.xs,
-    fontWeight: fontWeight.semibold,
+    ...type.labelStrong,
     color: colors.textMuted,
     letterSpacing: 0.4,
     marginBottom: 6,
     textTransform: 'uppercase',
   },
   input: {
+    ...type.body,
     backgroundColor: colors.background,
     borderWidth: 1,
     borderColor: colors.border,
@@ -822,9 +825,9 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
     alignItems: 'center',
   },
-  cancelButtonText: { color: colors.textSecondary, fontWeight: fontWeight.semibold },
+  cancelButtonText: { ...type.button, fontSize: fontSize.sm, color: colors.textSecondary },
   saveButton: { flex: 1, borderRadius: radius.md, backgroundColor: colors.accent, paddingVertical: spacing.md, alignItems: 'center' },
-  saveButtonText: { color: '#fff', fontWeight: fontWeight.bold },
+  saveButtonText: { ...type.button, fontSize: fontSize.sm, color: '#fff' },
   savedRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -836,10 +839,10 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     marginBottom: spacing.lg,
   },
-  savedRowText: { flex: 1, fontSize: fontSize.md, fontWeight: fontWeight.semibold, color: colors.textPrimary },
-  savedRowSubtext: { fontSize: fontSize.xs, color: colors.textMuted, marginTop: 2 },
+  savedRowText: { ...type.bodyMedium, flex: 1, fontSize: fontSize.md, color: colors.textPrimary },
+  savedRowSubtext: { ...type.secondary, fontSize: fontSize.xs, color: colors.textMuted, marginTop: 2 },
   sectionHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.sm },
-  sectionTitle: { fontSize: fontSize.md, fontWeight: fontWeight.bold, color: colors.textPrimary },
+  sectionTitle: { ...type.screenTitle, fontSize: fontSize.md, color: colors.textPrimary },
   listingRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -852,13 +855,15 @@ const styles = StyleSheet.create({
   },
   listingBody: { flex: 1 },
   listingKindRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 6, rowGap: 4 },
-  listingKind: { fontSize: fontSize.xs, fontWeight: fontWeight.bold, color: colors.textMuted, letterSpacing: 0.4 },
+  // Status-badge uppercase + letter-spacing kept as-is across this whole
+  // group -- only the font family changes.
+  listingKind: { ...type.labelStrong, color: colors.textMuted, letterSpacing: 0.4 },
   suspendedBadge: { backgroundColor: colors.danger, borderRadius: radius.sm, paddingHorizontal: 6, paddingVertical: 2 },
-  suspendedBadgeText: { fontSize: fontSize.xs, fontWeight: fontWeight.bold, color: '#fff', letterSpacing: 0.4 },
+  suspendedBadgeText: { ...type.labelStrong, color: '#fff', letterSpacing: 0.4 },
   activeBadge: { backgroundColor: colors.success, borderRadius: radius.sm, paddingHorizontal: 6, paddingVertical: 2 },
-  activeBadgeText: { fontSize: fontSize.xs, fontWeight: fontWeight.bold, color: '#fff', letterSpacing: 0.4 },
+  activeBadgeText: { ...type.labelStrong, color: '#fff', letterSpacing: 0.4 },
   rentedBadge: { backgroundColor: colors.textMuted, borderRadius: radius.sm, paddingHorizontal: 6, paddingVertical: 2 },
-  rentedBadgeText: { fontSize: fontSize.xs, fontWeight: fontWeight.bold, color: '#fff', letterSpacing: 0.4 },
+  rentedBadgeText: { ...type.labelStrong, color: '#fff', letterSpacing: 0.4 },
   featuredBadge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -868,7 +873,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
     paddingVertical: 2,
   },
-  featuredBadgeText: { fontSize: fontSize.xs, fontWeight: fontWeight.bold, color: '#fff', letterSpacing: 0.4 },
+  featuredBadgeText: { ...type.labelStrong, color: '#fff', letterSpacing: 0.4 },
   pendingBadge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -878,8 +883,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
     paddingVertical: 2,
   },
-  pendingBadgeText: { fontSize: fontSize.xs, fontWeight: fontWeight.bold, color: colors.gold, letterSpacing: 0.4 },
-  suspendedNote: { fontSize: fontSize.xs, color: colors.danger, marginTop: 4 },
+  pendingBadgeText: { ...type.labelStrong, color: colors.gold, letterSpacing: 0.4 },
+  suspendedNote: { ...type.secondary, fontSize: fontSize.xs, color: colors.danger, marginTop: 4 },
   offlineBanner: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -892,12 +897,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
-  offlineBannerText: { flex: 1, fontSize: fontSize.xs, color: colors.textMuted },
-  listingTitle: { fontSize: fontSize.sm, fontWeight: fontWeight.bold, color: colors.textPrimary, marginTop: 2 },
-  listingPrice: { fontSize: fontSize.sm, color: colors.accent, fontWeight: fontWeight.semibold, marginTop: 2 },
+  offlineBannerText: { ...type.secondary, fontSize: fontSize.xs, color: colors.textMuted },
+  listingTitle: { ...type.cardTitle, color: colors.textPrimary, marginTop: 2 },
+  listingPrice: { ...type.priceMedium, fontSize: fontSize.sm, lineHeight: 18, color: colors.accent, marginTop: 2 },
   statsRow: { flexDirection: 'row', gap: spacing.md, marginTop: 4 },
   statItem: { flexDirection: 'row', alignItems: 'center', gap: 3 },
-  statText: { fontSize: fontSize.xs, color: colors.textMuted },
+  statText: { ...type.label, color: colors.textMuted },
   editButtonRow: { padding: spacing.sm },
   deleteButton: { padding: spacing.sm },
   staleBanner: {
@@ -911,9 +916,9 @@ const styles = StyleSheet.create({
     marginTop: -spacing.xs,
     marginBottom: spacing.sm,
   },
-  staleBannerText: { flex: 1, fontSize: fontSize.xs, color: colors.textSecondary },
+  staleBannerText: { ...type.secondary, flex: 1, fontSize: fontSize.xs, color: colors.textSecondary },
   staleBannerButton: { paddingHorizontal: spacing.sm, paddingVertical: 4 },
-  staleBannerButtonText: { fontSize: fontSize.xs, fontWeight: fontWeight.bold, color: colors.accent },
+  staleBannerButtonText: { ...type.labelStrong, color: colors.accent },
   boostBanner: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -925,10 +930,10 @@ const styles = StyleSheet.create({
     marginTop: -spacing.xs,
     marginBottom: spacing.sm,
   },
-  boostBannerText: { flex: 1, fontSize: fontSize.xs, color: colors.textSecondary },
-  boostBannerButtonText: { fontSize: fontSize.xs, fontWeight: fontWeight.bold, color: colors.gold },
+  boostBannerText: { ...type.secondary, flex: 1, fontSize: fontSize.xs, color: colors.textSecondary },
+  boostBannerButtonText: { ...type.labelStrong, color: colors.gold },
   emptyState: { paddingVertical: spacing.xl, alignItems: 'center', gap: spacing.sm },
-  emptyStateText: { color: colors.textMuted, fontSize: fontSize.sm },
+  emptyStateText: { ...type.body, color: colors.textMuted, fontSize: fontSize.sm },
   logoutButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -940,9 +945,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
-  logoutButtonText: { color: colors.danger, fontWeight: fontWeight.bold, fontSize: fontSize.md },
+  logoutButtonText: { ...type.button, color: colors.danger, fontSize: fontSize.md },
   deleteAccountLink: { alignItems: 'center', paddingVertical: spacing.md },
-  deleteAccountLinkText: { color: colors.textMuted, fontSize: fontSize.xs, textDecorationLine: 'underline' },
+  deleteAccountLinkText: { ...type.secondary, color: colors.textMuted, fontSize: fontSize.xs, textDecorationLine: 'underline' },
   legalRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -952,6 +957,6 @@ const styles = StyleSheet.create({
     marginTop: spacing.xl,
     paddingHorizontal: spacing.md,
   },
-  legalLink: { fontSize: fontSize.xs, color: colors.textSecondary, textDecorationLine: 'underline' },
-  legalSep: { fontSize: fontSize.xs, color: colors.textMuted },
+  legalLink: { ...type.secondary, color: colors.textSecondary, fontSize: fontSize.xs, textDecorationLine: 'underline' },
+  legalSep: { ...type.secondary, color: colors.textMuted, fontSize: fontSize.xs },
 });
