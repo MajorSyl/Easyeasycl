@@ -7,6 +7,7 @@ import { FavoriteButton } from './FavoriteButton';
 import { NoPhotoPlaceholder } from './NoPhotoPlaceholder';
 import { LazyPhoto } from './LazyPhoto';
 import { colors, fontSize, fontWeight, radius, shadow, spacing } from '../constants/theme';
+import { type } from '../constants/typography';
 import { categoryBadgeLabel, formatListingAge, formatPrice, initialsFor } from '../lib/format';
 import type { Listing } from '../lib/types';
 
@@ -35,7 +36,7 @@ export const ListingCard = memo(function ListingCard({ listing }: { listing: Lis
         <View style={styles.topRow}>
           <View style={styles.badgeRow}>
             <Badge label={categoryBadgeLabel(listing.category)} variant="dark" />
-            {listing.is_premium && <Badge label="PREMIUM" variant="premium" />}
+            {listing.is_premium && <Badge label="Premium" variant="premium" />}
           </View>
           <FavoriteButton itemType="listing" itemId={listing.id} />
         </View>
@@ -96,12 +97,16 @@ export const ListingCard = memo(function ListingCard({ listing }: { listing: Lis
 });
 
 const styles = StyleSheet.create({
+  // The grid card is the app's boldest surface -- it gets the deeper
+  // elevation reserved for the one thing on this screen that should look
+  // crafted. Structural chrome elsewhere (search bar, filter rail) stays
+  // flat so this doesn't get lost among a dozen equally-shadowed rows.
   card: {
     flex: 1,
     backgroundColor: colors.card,
     borderRadius: radius.lg,
     overflow: 'hidden',
-    ...shadow.card,
+    ...shadow.raised,
   },
   imageWrap: { aspectRatio: 1.3, backgroundColor: colors.border },
   image: { width: '100%', height: '100%' },
@@ -133,19 +138,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
     paddingVertical: 2,
   },
-  statText: { color: '#fff', fontSize: 10, fontWeight: fontWeight.semibold },
+  statText: { ...type.label, color: '#fff' },
   body: { padding: spacing.md },
-  price: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: colors.accent },
+  price: { ...type.priceMedium, color: colors.accent },
   title: {
-    fontSize: fontSize.sm,
-    lineHeight: 18,
-    fontWeight: fontWeight.semibold,
+    ...type.cardTitle,
     color: colors.textPrimary,
-    marginTop: 2,
+    marginTop: 3,
   },
   locationRow: { flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 4 },
-  location: { fontSize: fontSize.xs, color: colors.textMuted, flexShrink: 1 },
-  age: { fontSize: fontSize.xs, color: colors.textMuted, flexShrink: 1 },
+  location: { ...type.secondary, fontSize: fontSize.xs, color: colors.textMuted, flexShrink: 1 },
+  age: { ...type.secondary, fontSize: fontSize.xs, color: colors.textMuted, flexShrink: 1 },
   footerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -154,7 +157,7 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
   },
   agentRow: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 6, marginVertical: -6 },
-  agentName: { fontSize: fontSize.xs, fontWeight: fontWeight.medium, color: colors.textSecondary, maxWidth: 70 },
+  agentName: { ...type.label, color: colors.textSecondary, maxWidth: 70 },
   avatar: {
     width: 20,
     height: 20,

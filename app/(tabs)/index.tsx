@@ -9,6 +9,7 @@ import { useAuth } from '../../lib/auth-context';
 import { subscribeListingsChanged } from '../../lib/listings-cache-bus';
 import { readCache, writeCache } from '../../lib/offline-cache';
 import { colors, fontSize, fontWeight, radius, shadow, spacing } from '../../constants/theme';
+import { type } from '../../constants/typography';
 import { useTabBarGap } from '../../lib/use-bottom-gap';
 import { ListingCard } from '../../components/ListingCard';
 import { PropertyCard } from '../../components/PropertyCard';
@@ -323,10 +324,9 @@ export default function HomeScreen() {
                 <Ionicons name="megaphone-outline" size={20} color="#fff" />
               </View>
               <View style={styles.sellBannerBody}>
-                <Text style={styles.sellBannerTitle}>List Your Property</Text>
-                <Text style={styles.sellBannerSubtitle}>Reach renters and buyers across Sierra Leone</Text>
+                <Text style={styles.sellBannerTitle}>List your property</Text>
+                <Text style={styles.sellBannerSubtitle}>It's free, and renters see it today</Text>
               </View>
-              <Ionicons name="chevron-forward" size={18} color="#fff" />
             </Pressable>
 
             {freshListings.length > 0 && (
@@ -388,8 +388,8 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.lg,
   },
   greetingBlock: { flex: 1 },
-  greeting: { fontSize: fontSize.sm, color: colors.textMuted },
-  headline: { fontSize: fontSize.xxl, fontWeight: fontWeight.bold, color: colors.textPrimary, marginTop: 4, lineHeight: 32 },
+  greeting: { ...type.body, fontSize: fontSize.sm, color: colors.textMuted },
+  headline: { ...type.display, color: colors.textPrimary, marginTop: 4 },
   headerIcons: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   iconButton: {
     width: 36,
@@ -436,19 +436,22 @@ const styles = StyleSheet.create({
   },
   avatarImage: { width: '100%', height: '100%' },
   avatarText: { fontSize: fontSize.sm, fontWeight: fontWeight.bold, color: colors.accent },
+  // Flat, bordered chrome -- no shadow -- so this reads as structural
+  // navigation, not a competing "card" next to the listing grid below.
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
     backgroundColor: colors.card,
     borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.border,
     paddingHorizontal: spacing.lg,
     paddingVertical: 14,
     marginHorizontal: spacing.lg,
     marginBottom: spacing.md,
-    ...shadow.card,
   },
-  searchPlaceholder: { color: colors.textMuted, fontSize: fontSize.sm },
+  searchPlaceholder: { ...type.body, fontSize: fontSize.sm, color: colors.textMuted },
   offlineBanner: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -486,8 +489,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   sellBannerBody: { flex: 1 },
-  sellBannerTitle: { fontSize: fontSize.md, fontWeight: fontWeight.bold, color: '#fff' },
-  sellBannerSubtitle: { fontSize: fontSize.xs, color: 'rgba(255,255,255,0.92)', marginTop: 2 },
+  sellBannerTitle: { ...type.cardTitle, fontSize: fontSize.md, color: '#fff' },
+  sellBannerSubtitle: { ...type.secondary, color: 'rgba(255,255,255,0.92)', marginTop: 2 },
   neighborhoodRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -499,7 +502,8 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
     backgroundColor: colors.card,
     borderRadius: radius.lg,
-    ...shadow.card,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   neighborhoodIcon: {
     width: 30,
@@ -509,12 +513,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  neighborhoodRowText: { flex: 1, fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: colors.textPrimary },
+  neighborhoodRowText: { ...type.bodyMedium, fontSize: fontSize.sm, color: colors.textPrimary },
   pillsWrap: { paddingBottom: spacing.md },
   section: { paddingHorizontal: spacing.lg, marginTop: spacing.sm, marginBottom: spacing.md },
-  sectionTitle: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: colors.textPrimary },
+  sectionTitle: { ...type.sectionTitle, fontSize: fontSize.lg, color: colors.textPrimary },
   recommendedHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.sm },
-  viewAll: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: colors.accent },
+  viewAll: { ...type.button, fontSize: fontSize.sm, color: colors.accent },
   // No fixed height here — a card's text can grow taller under large
   // system font sizes (Dynamic Type), and a hard-clipped height would
   // truncate or overlap that content instead of just growing the row.

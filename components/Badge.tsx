@@ -1,12 +1,20 @@
 import { StyleSheet, Text, View } from 'react-native';
-import { colors, fontSize, radius, spacing } from '../constants/theme';
+import { colors, radius, spacing } from '../constants/theme';
+import { type } from '../constants/typography';
 
 type BadgeVariant = 'dark' | 'premium';
 
+// Uppercase + letter-spacing is a deliberate, singular choice for the
+// category chip ("RENT" / "SALE") -- it borrows the convention of real
+// estate yard-sign lettering, so it reads as intentional rather than the
+// generic "every label gets tracked-out caps" tell. The premium badge is a
+// trust signal, not signage, so it stays normal case.
 export function Badge({ label, variant }: { label: string; variant: BadgeVariant }) {
   return (
     <View style={[styles.base, variant === 'dark' ? styles.dark : styles.premium]}>
-      <Text style={[styles.text, variant === 'dark' ? styles.darkText : styles.premiumText]}>{label}</Text>
+      <Text style={[variant === 'dark' ? styles.darkText : styles.premiumText, variant === 'dark' ? styles.darkLabel : styles.premiumLabel]}>
+        {label}
+      </Text>
     </View>
   );
 }
@@ -19,11 +27,8 @@ const styles = StyleSheet.create({
   },
   dark: { backgroundColor: colors.badgeDarkBg },
   premium: { backgroundColor: colors.premiumBg },
-  text: {
-    fontSize: fontSize.xs,
-    fontWeight: '700',
-    letterSpacing: 0.3,
-  },
+  darkLabel: { ...type.eyebrow },
+  premiumLabel: { ...type.labelStrong },
   darkText: { color: colors.badgeDarkText },
   premiumText: { color: colors.premiumText },
 });

@@ -3,6 +3,7 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Stack, router, usePathname } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
+import { useFonts } from 'expo-font';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
@@ -10,6 +11,7 @@ import { AuthProvider } from '../lib/auth-context';
 import { FavoritesProvider } from '../lib/favorites-context';
 import { AlertProvider } from '../lib/alert';
 import { colors, fontSize, fontWeight, spacing } from '../constants/theme';
+import { fontsToLoad } from '../constants/typography';
 
 // Data Saver was removed entirely (it's no longer a setting anywhere in the
 // app) -- this clears the one AsyncStorage/localStorage key it used to
@@ -76,16 +78,21 @@ export default function RootLayout() {
   const pathname = usePathname();
   const [booting, setBooting] = useState(true);
   const ranOnce = useRef(false);
+  // Errors (a font failing to fetch) still resolve this to a settled state --
+  // falling back to the system font is far better than holding the splash
+  // screen forever.
+  const [fontsLoaded, fontError] = useFonts(fontsToLoad);
 
   useEffect(() => {
     if (ranOnce.current) return;
+    if (!fontsLoaded && !fontError) return;
     ranOnce.current = true;
     if (pathname === '/') {
       router.replace('/splash');
     }
     setBooting(false);
     SplashScreen.hideAsync().catch(() => {});
-  }, [pathname]);
+  }, [pathname, fontsLoaded, fontError]);
 
   return (
     <RootErrorBoundary>

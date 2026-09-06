@@ -6,7 +6,8 @@ import { Badge } from './Badge';
 import { FavoriteButton } from './FavoriteButton';
 import { NoPhotoPlaceholder } from './NoPhotoPlaceholder';
 import { LazyPhoto } from './LazyPhoto';
-import { colors, fontSize, fontWeight, radius, shadow, spacing } from '../constants/theme';
+import { colors, fontSize, radius, shadow, spacing } from '../constants/theme';
+import { type } from '../constants/typography';
 import { categoryBadgeLabel, formatListingAge, formatPrice } from '../lib/format';
 import type { Listing } from '../lib/types';
 
@@ -39,7 +40,7 @@ export const PropertyCard = memo(function PropertyCard({ listing }: { listing: L
       <View style={styles.body}>
         <View style={styles.badgeRow}>
           <Badge label={categoryBadgeLabel(listing.category)} variant="dark" />
-          {listing.is_premium && <Badge label="PREMIUM" variant="premium" />}
+          {listing.is_premium && <Badge label="Premium" variant="premium" />}
         </View>
         <Text style={styles.title} numberOfLines={1} ellipsizeMode="tail">
           {listing.title}
@@ -82,11 +83,11 @@ const styles = StyleSheet.create({
   imagePlaceholder: { alignItems: 'center', justifyContent: 'center' },
   body: { flex: 1, padding: spacing.md, justifyContent: 'center', gap: 4 },
   badgeRow: { flexDirection: 'row', gap: 6, marginBottom: 2 },
-  title: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: colors.textPrimary },
+  title: { ...type.cardTitle, color: colors.textPrimary },
   locationRow: { flexDirection: 'row', alignItems: 'center', gap: 3 },
-  location: { fontSize: fontSize.xs, color: colors.textMuted, flexShrink: 1 },
+  location: { ...type.secondary, fontSize: fontSize.xs, color: colors.textMuted, flexShrink: 1 },
   footerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 },
-  price: { fontSize: fontSize.sm, fontWeight: fontWeight.bold, color: colors.accent },
-  age: { fontSize: 10, color: colors.textMuted },
+  price: { ...type.priceMedium, fontSize: fontSize.lg, lineHeight: 22, color: colors.accent },
+  age: { ...type.label, color: colors.textMuted },
   favoriteWrap: { position: 'absolute', top: spacing.sm, right: spacing.sm },
 });

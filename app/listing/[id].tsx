@@ -241,7 +241,7 @@ export default function ListingDetailScreen() {
         <View style={styles.body}>
           <View style={styles.badgeRow}>
             <Badge label={categoryBadgeLabel(listing.category)} variant="dark" />
-            {listing.is_premium && <Badge label="PREMIUM" variant="premium" />}
+            {listing.is_premium && <Badge label="Premium" variant="premium" />}
             {listing.is_verified && (
               <View style={styles.verifiedRow}>
                 <Ionicons name="checkmark-circle" size={14} color={colors.success} />
