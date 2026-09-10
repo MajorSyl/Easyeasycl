@@ -1,10 +1,14 @@
-import { Platform, StyleSheet } from 'react-native';
+import { StyleSheet } from 'react-native';
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../../constants/theme';
 import { fontFamily } from '../../constants/typography';
+import { TAB_BAR_CONTENT_HEIGHT } from '../../lib/use-bottom-gap';
 
 export default function TabsLayout() {
+  const insets = useSafeAreaInsets();
+
   return (
     <Tabs
       screenOptions={{
@@ -26,28 +30,33 @@ export default function TabsLayout() {
           shadowOpacity: 0.08,
           shadowRadius: 8,
           elevation: 8,
-          // React Navigation sizes the tab bar around the device's safe-area
-          // inset by default. On a real mobile browser that inset can come
-          // back oversized (there's no actual notch/gesture-bar for a
-          // website to clear -- the browser's own chrome already sits
-          // outside the page), which showed up as a large dead gap of blank
-          // space below the bar. Web gets a fixed height instead of relying
-          // on that calculation; native iOS/Android keep the automatic
-          // safe-area-aware sizing, which is correct there.
+          // React Navigation's own default (Apple's 49pt content height, on
+          // top of the safe-area inset) is sized for its stock 10px label --
+          // this app uses an 11px label, and once you also add an explicit
+          // lineHeight (below), that 49px content row genuinely doesn't have
+          // room for a fixed 28px icon *plus* the label without visibly
+          // clipping it. This was previously "fixed" for web only with a
+          // literal height, which (a) didn't help native/the installed app
+          // at all, and (b) would have been actively wrong on a device with
+          // a bottom safe-area inset (home indicator / gesture bar), since a
+          // literal height replaces the library's height calculation
+          // entirely -- set as a bare number it leaves no room for the
+          // inset, and the bar would sit under it again (the exact bug
+          // "Fix bottom nav overlap app-wide" fixed earlier).
           //
-          // IMPORTANT: don't add vertical padding here on top of this fixed
-          // height. Each tab item already reserves a fixed 28px for its icon
-          // plus its own 5px top/bottom padding (~38px total) before the
-          // label gets whatever's left -- extra padding on the bar itself
-          // eats directly into that remainder and squeezes the label's line
-          // box short enough to clip descenders (the previous fix here --
-          // height:64 + paddingTop/Bottom:8 -- left only 9px for an 11px
-          // label, which is what caused that). 58px leaves the label ~20px,
-          // comfortably clear of the icon and any descenders. If this height
-          // ever changes, keep lib/use-bottom-gap.ts's TAB_BAR_HEIGHT in
-          // sync and re-measure the label's rendered box (not just eyeball
-          // it) before shipping.
-          ...(Platform.OS === 'web' && { height: 58 }),
+          // So: give every platform the same, larger content height, with
+          // the device's actual bottom inset added on top of it (mirroring
+          // what the library does internally with its own 49px constant) --
+          // that's what setting a numeric `height` here without also
+          // shrinking the inset out of it here achieves, since React
+          // Navigation still applies `paddingBottom: insets.bottom` inside
+          // this exact height on its own.
+          //
+          // TAB_BAR_CONTENT_HEIGHT (lib/use-bottom-gap.ts) is that shared
+          // constant -- keep it in sync with this, and re-measure the
+          // label's actual rendered box (not just eyeball it) if either
+          // this height or the label's fontSize/lineHeight ever changes.
+          height: TAB_BAR_CONTENT_HEIGHT + insets.bottom,
         },
         tabBarLabelStyle: {
           fontSize: 11,
