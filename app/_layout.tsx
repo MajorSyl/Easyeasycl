@@ -1,8 +1,9 @@
 import { Component, useEffect, useRef, useState, type ReactNode } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Stack, router, usePathname } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
+import * as Updates from 'expo-updates';
 import { useFonts } from 'expo-font';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -25,6 +26,38 @@ AsyncStorage.removeItem('easyfen_data_lite_mode').catch(() => {});
 // No-ops safely on web (there's no native splash there to hold open).
 SplashScreen.preventAutoHideAsync().catch(() => {});
 SplashScreen.setOptions({ duration: 400, fade: true });
+
+// expo-updates' own default behavior only *applies* a downloaded update on
+// the *next* cold launch after the one that found it -- from a user's
+// perspective that reads as "it never updates," since force-quitting and
+// reopening once isn't something most people think to do. This checks for
+// and applies a pending update immediately instead, so the newest bundle
+// is live the same time a user opens the app after a new release, not two
+// launches later. No-ops safely on web (there's no update channel there --
+// Vercel just serves the latest build) and in a dev client (no update
+// server configured), and never blocks the UI: a failed check (offline,
+// timeout) just leaves the app running on whatever bundle it already has.
+function useApplyPendingUpdate() {
+  useEffect(() => {
+    if (Platform.OS === 'web' || __DEV__) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const result = await Updates.checkForUpdateAsync();
+        if (cancelled || !result.isAvailable) return;
+        await Updates.fetchUpdateAsync();
+        if (cancelled) return;
+        await Updates.reloadAsync();
+      } catch {
+        // Offline, or the update check/fetch failed -- fine, just keep
+        // running on the currently embedded/cached bundle.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+}
 
 // Shows the actual error on screen instead of silently crash-looping the app,
 // so problems in release builds can be diagnosed from a screenshot.
@@ -82,6 +115,7 @@ export default function RootLayout() {
   // falling back to the system font is far better than holding the splash
   // screen forever.
   const [fontsLoaded, fontError] = useFonts(fontsToLoad);
+  useApplyPendingUpdate();
 
   useEffect(() => {
     if (ranOnce.current) return;
