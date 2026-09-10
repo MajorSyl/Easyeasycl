@@ -683,6 +683,12 @@ export default function ProfileScreen() {
             <Text style={styles.emptyStateText}>
               {listingsLoadError ? "Couldn't load your listings. Try again shortly." : "You haven't posted anything yet"}
             </Text>
+            {!listingsLoadError && (
+              <Pressable style={styles.emptyStateCta} onPress={() => router.push('/add')}>
+                <Ionicons name="add" size={18} color="#fff" />
+                <Text style={styles.emptyStateCtaText}>Create your first listing</Text>
+              </Pressable>
+            )}
           </View>
         ) : null
       }
@@ -935,8 +941,21 @@ const styles = StyleSheet.create({
   },
   boostBannerText: { ...type.secondary, flex: 1, fontSize: fontSize.xs, color: colors.textSecondary },
   boostBannerButtonText: { ...type.labelStrong, color: colors.gold },
-  emptyState: { paddingVertical: spacing.xl, alignItems: 'center', gap: spacing.sm },
-  emptyStateText: { ...type.body, color: colors.textMuted, fontSize: fontSize.sm },
+  // Tighter than before (was paddingVertical: xl with no CTA) -- the empty
+  // state now has a useful action to fill the space instead of just sitting
+  // in a big block of blue page background.
+  emptyState: { paddingVertical: spacing.lg, alignItems: 'center', gap: spacing.md },
+  emptyStateText: { ...type.body, color: colors.textMuted, fontSize: fontSize.sm, textAlign: 'center' },
+  emptyStateCta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    backgroundColor: colors.accent,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+  },
+  emptyStateCtaText: { ...type.button, fontSize: fontSize.sm, color: '#fff' },
   logoutButton: {
     flexDirection: 'row',
     alignItems: 'center',
