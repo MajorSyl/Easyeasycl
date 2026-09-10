@@ -11,8 +11,11 @@ export function useBottomGap() {
 
 // Default React Navigation bottom tab bar content height (excludes the
 // safe-area inset, which the tab bar adds on top of this and which
-// useBottomGap already accounts for separately).
-export const TAB_BAR_HEIGHT = 56;
+// useBottomGap already accounts for separately). Web overrides the tab
+// bar to a fixed 64px (see app/(tabs)/_layout.tsx) instead of relying on
+// the native default, so this must track that literal or scroll content
+// on web ends up a few pixels too close to the bar.
+export const TAB_BAR_HEIGHT = Platform.OS === 'web' ? 64 : 56;
 
 // Extra bottom padding for scrollable content on any of the four bottom-tab
 // screens (Home/Search/Add Listing/Profile), so the last row of content

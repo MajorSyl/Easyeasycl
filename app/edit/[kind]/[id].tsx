@@ -341,8 +341,11 @@ const styles = StyleSheet.create({
     marginBottom: 6,
     textTransform: 'uppercase',
   },
+  // Plain white/card, not the page's blue background -- a form field the
+  // user is actively typing into needs to read as its own clearly-bounded
+  // surface, not a same-toned patch of page.
   input: {
-    backgroundColor: colors.background,
+    backgroundColor: colors.card,
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: radius.md,
