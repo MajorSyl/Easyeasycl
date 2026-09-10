@@ -21,10 +21,14 @@ import { sanitizeText } from '../../lib/sanitize';
 import { useTabBarGap } from '../../lib/use-bottom-gap';
 import { colors, fontSize, radius, spacing } from '../../constants/theme';
 import { type } from '../../constants/typography';
+import { formatPrice } from '../../lib/format';
 import { PhotoPicker } from '../../components/PhotoPicker';
 import { SelectField, type SelectOption } from '../../components/SelectField';
-import { CurrencyToggle } from '../../components/CurrencyToggle';
+import { CurrencySegmentedControl } from '../../components/CurrencySegmentedControl';
+import { StepProgress } from '../../components/StepProgress';
 import type { ListingCategory, ListingCurrency } from '../../lib/types';
+
+const FORM_STEPS = ['Photos', 'Details', 'Review', 'Publish'];
 
 const categoryOptions: SelectOption<ListingCategory>[] = [
   { value: 'for_rent', label: 'For Rent' },
@@ -74,6 +78,24 @@ export default function AddListingScreen() {
     location.trim().length > 0 &&
     description.trim().length > 0 &&
     category !== null;
+
+  // Reflects real progress through the form (it's still one continuous
+  // scroll, not a paginated wizard) so the indicator means something
+  // rather than just decorating the top of the screen.
+  const hasStartedDetails =
+    title.trim().length > 0 ||
+    price.trim().length > 0 ||
+    location.trim().length > 0 ||
+    description.trim().length > 0 ||
+    bedrooms.trim().length > 0 ||
+    category !== null;
+  const currentStep = submitting ? 3 : requiredFieldsFilled ? 2 : photos.length > 0 || hasStartedDetails ? 1 : 0;
+
+  const priceNumber = Number(price);
+  const pricePreview =
+    price.trim().length > 0 && !Number.isNaN(priceNumber) && priceNumber > 0
+      ? formatPrice(priceNumber, currency, null)
+      : null;
 
   function resetForm() {
     setPhotos([]);
@@ -151,6 +173,8 @@ export default function AddListingScreen() {
         <Text style={styles.heading}>Create Listing</Text>
         <Text style={styles.subheading}>Get your property in front of thousands.</Text>
 
+        <StepProgress steps={FORM_STEPS} currentIndex={currentStep} />
+
         <View style={styles.card}>
           <View style={styles.sectionHeader}>
             <View style={styles.stepBadge}>
@@ -179,22 +203,24 @@ export default function AddListingScreen() {
             />
           </Field>
 
+          <View style={styles.currencyField}>
+            <Text style={styles.fieldLabel}>Currency</Text>
+            <CurrencySegmentedControl value={currency} onChange={setCurrency} />
+            <Text style={styles.currencyHelper}>Select currency, then enter your price.</Text>
+          </View>
+
           <View style={styles.row}>
             <View style={styles.flex1}>
               <Text style={styles.fieldLabel}>Price</Text>
-              <View style={styles.priceRow}>
-                <TextInput
-                  style={[styles.input, styles.priceInput]}
-                  placeholder="0.00"
-                  placeholderTextColor={colors.textMuted}
-                  value={price}
-                  onChangeText={setPrice}
-                  keyboardType="decimal-pad"
-                />
-                <View style={styles.currencyToggleWrap}>
-                  <CurrencyToggle value={currency} onChange={setCurrency} />
-                </View>
-              </View>
+              <TextInput
+                style={styles.input}
+                placeholder="0.00"
+                placeholderTextColor={colors.textMuted}
+                value={price}
+                onChangeText={setPrice}
+                keyboardType="decimal-pad"
+              />
+              {pricePreview && <Text style={styles.pricePreview}>{pricePreview}</Text>}
             </View>
             <Field label="Neighborhood" style={styles.flex1}>
               <TextInput
@@ -345,15 +371,9 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
   },
   textArea: { minHeight: 90 },
-  priceRow: { flexDirection: 'row', gap: spacing.sm, alignItems: 'flex-start' },
-  // minWidth: 0 overrides the flex item default of min-width: auto, which
-  // on web sizes a TextInput to its content instead of letting it shrink --
-  // without it, the input claims the row's full width and pushes the
-  // currency toggle out of the visible layout entirely. flexShrink: 0 on
-  // the toggle is the other half: it keeps its fixed width rather than
-  // being squeezed toward zero once the input is properly flexible.
-  priceInput: { flex: 1, minWidth: 0 },
-  currencyToggleWrap: { width: 84, flexShrink: 0 },
+  currencyField: { marginBottom: 2 },
+  currencyHelper: { ...type.secondary, fontSize: fontSize.xs, color: colors.textMuted, marginTop: 6 },
+  pricePreview: { ...type.secondary, fontSize: fontSize.xs, color: colors.accentStrong, marginTop: 6 },
   publishButton: {
     backgroundColor: colors.accent,
     borderRadius: radius.md,
@@ -364,5 +384,7 @@ const styles = StyleSheet.create({
   publishButtonText: { ...type.button, fontSize: fontSize.md, color: '#fff' },
   publishButtonTextDisabled: { color: colors.textMuted },
   terms: { ...type.secondary, textAlign: 'center', fontSize: fontSize.xs, color: colors.textMuted, marginTop: spacing.sm },
-  termsLink: { color: colors.accent, textDecorationLine: 'underline' },
+  // accentStrong, not accent -- this link sits directly on `background`,
+  // where plain accent only clears 4.33:1 (fails AA's 4.5:1 text floor).
+  termsLink: { color: colors.accentStrong, textDecorationLine: 'underline' },
 });

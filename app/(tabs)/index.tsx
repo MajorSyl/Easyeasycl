@@ -518,7 +518,9 @@ const styles = StyleSheet.create({
   section: { paddingHorizontal: spacing.lg, marginTop: spacing.sm, marginBottom: spacing.md },
   sectionTitle: { ...type.sectionTitle, fontSize: fontSize.lg, color: colors.textPrimary },
   recommendedHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.sm },
-  viewAll: { ...type.button, fontSize: fontSize.sm, color: colors.accent },
+  // accentStrong, not accent -- this link sits directly on `background`,
+  // where plain accent only clears 4.33:1 (fails AA's 4.5:1 text floor).
+  viewAll: { ...type.button, fontSize: fontSize.sm, color: colors.accentStrong },
   // No fixed height here — a card's text can grow taller under large
   // system font sizes (Dynamic Type), and a hard-clipped height would
   // truncate or overlap that content instead of just growing the row.

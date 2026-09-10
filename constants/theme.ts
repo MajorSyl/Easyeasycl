@@ -1,29 +1,39 @@
-// Design tokens. Warm coastal palette -- sand and clay neutrals (not cold
-// blue-tinted gray) under the real brand blue and a gold that's earned, not
-// decorative. Every pair below is matched against WCAG AA (4.5:1 for text,
+// Design tokens. Soft blue page background (#E8F0FC) with white cards on
+// top -- the sand/clay neutrals below were tuned for an earlier warm
+// palette and stay in place for text/border roles, but `background` is
+// blue per request. Every pair is matched against WCAG AA (4.5:1 for text,
 // 3:1 for large text / UI components) by actual contrast math, not by eye --
 // see the `contrast` comments for the pairs that matter. Re-run the check
 // before changing any of these.
 export const colors = {
-  background: '#FAF6EF',
+  background: '#E8F0FC',
   card: '#FFFDF9',
   border: '#E8DFCB',
 
-  // contrast: 14.8:1 on card, 13.9:1 on background
+  // contrast: 14.8:1 on card, 13.1:1 on background
   textPrimary: '#2B2620',
-  // contrast: 7.4:1 on card, 7.0:1 on background
+  // contrast: 7.4:1 on card, 6.6:1 on background
   textSecondary: '#5C5346',
-  // contrast: 5.23:1 on card, 4.93:1 on background -- the AA floor for
+  // contrast: 5.23:1 on card, 4.63:1 on background -- the AA floor for
   // normal text is 4.5:1, so this is as light as textMuted can go here.
   textMuted: '#746A5B',
 
   // Brand blue (matches the marketing site, PWA icon, and admin dashboard --
   // the in-app accent used to drift from this, which read as off-brand).
-  // contrast: 4.89:1 as text-on-card, 4.96:1 as white-on-fill (buttons).
+  // contrast: 4.89:1 as text-on-card, 4.96:1 as white-on-fill (buttons), but
+  // only 4.33:1 as bare text directly on `background` (fails the 4.5:1 AA
+  // floor now that background is blue) -- use accentStrong for link-style
+  // text that isn't sitting on a card.
   accent: '#3E6FBF',
+  // NOTE: now very close in tone to `background` (1.04:1) -- fine as a
+  // badge/icon-circle fill sitting on a white `card`, but don't rely on it
+  // for definition against the bare page background; pair it with a
+  // border or a card wrapper there.
   accentSoft: '#E4ECF8',
-  // Pressed/deep-emphasis state. contrast: 7.91-8.04:1 both directions -- a
-  // real step up from accent, not just a slightly-darker twin.
+  // Pressed/deep-emphasis state, and the safe choice for accent-colored
+  // text sitting directly on `background`. contrast: 7.91-8.04:1 both
+  // directions against card/white -- a real step up from accent, not just
+  // a slightly-darker twin.
   accentStrong: '#2A4F8F',
 
   // Brand gold -- premium/verified/trust signals only, never body text (it

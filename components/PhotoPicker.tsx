@@ -100,7 +100,11 @@ export function PhotoPicker({
   }
 
   return (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.thumbRow}>
+    <View>
+      <Text style={styles.countText}>
+        {photos.length} of {MAX_PHOTOS} photos added
+      </Text>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.thumbRow}>
       {photos.map((url, index) => (
         <View key={url} style={styles.thumbWrap}>
           <Image
@@ -132,11 +136,13 @@ export function PhotoPicker({
           {uploading ? <ActivityIndicator color={colors.accent} /> : <Ionicons name="add" size={24} color={colors.textMuted} />}
         </Pressable>
       )}
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  countText: { ...type.secondary, fontSize: fontSize.xs, color: colors.textSecondary, marginBottom: spacing.sm },
   emptyBox: {
     borderWidth: 1.5,
     borderColor: colors.border,
