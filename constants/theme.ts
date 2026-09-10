@@ -1,14 +1,16 @@
 // Design tokens. Soft blue page background (#E8F0FC) with white cards on
-// top -- the sand/clay neutrals below were tuned for an earlier warm
-// palette and stay in place for text/border roles, but `background` is
-// blue per request. Every pair is matched against WCAG AA (4.5:1 for text,
-// 3:1 for large text / UI components) by actual contrast math, not by eye --
-// see the `contrast` comments for the pairs that matter. Re-run the check
-// before changing any of these.
+// top. `border` is a cool neutral gray -- it used to be a warm clay tone
+// left over from an earlier sand-toned palette, which read as muddy
+// brown/tan once the background went blue, especially anywhere it's used
+// as a fill (an inactive toggle segment, a disabled button) rather than
+// just a hairline. Every pair below is matched against WCAG AA (4.5:1 for
+// text, 3:1 for large text / UI components) by actual contrast math, not
+// by eye -- see the `contrast` comments for the pairs that matter. Re-run
+// the check before changing any of these.
 export const colors = {
   background: '#E8F0FC',
   card: '#FFFDF9',
-  border: '#E8DFCB',
+  border: '#DCE3EC',
 
   // contrast: 14.8:1 on card, 13.1:1 on background
   textPrimary: '#2B2620',

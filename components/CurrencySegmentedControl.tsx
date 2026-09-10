@@ -67,7 +67,7 @@ const styles = StyleSheet.create({
   check: { marginRight: 6 },
   label: { ...type.button, fontSize: 14 },
   labelActive: { color: '#fff' },
-  // textSecondary, not textMuted -- textMuted only clears 4.0:1 against
-  // this fill (fails the 4.5:1 AA floor); textSecondary clears 5.7:1.
+  // textSecondary, not textMuted -- textMuted only clears 4.1:1 against
+  // this fill (fails the 4.5:1 AA floor); textSecondary clears 5.8:1.
   labelInactive: { color: colors.textSecondary },
 });
