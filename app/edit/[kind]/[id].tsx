@@ -353,8 +353,13 @@ const styles = StyleSheet.create({
   },
   textArea: { minHeight: 90 },
   priceRow: { flexDirection: 'row', gap: spacing.sm, alignItems: 'flex-start' },
-  priceInput: { flex: 1 },
-  currencyToggleWrap: { width: 84 },
+  // minWidth: 0 overrides the flex item default of min-width: auto -- on
+  // web that sizes a TextInput to its content instead of letting it shrink,
+  // so without it the input claims the row's full width and pushes the
+  // currency toggle out of the visible layout. flexShrink: 0 on the toggle
+  // keeps its fixed width rather than being squeezed toward zero.
+  priceInput: { flex: 1, minWidth: 0 },
+  currencyToggleWrap: { width: 84, flexShrink: 0 },
   saveButton: { backgroundColor: colors.accent, borderRadius: radius.md, paddingVertical: spacing.md, alignItems: 'center' },
   saveButtonDisabled: { backgroundColor: colors.border },
   saveButtonText: { color: '#fff', fontSize: fontSize.md, fontWeight: '700' },
