@@ -1,39 +1,43 @@
-// Design tokens. Soft blue page background (#E8F0FC) with white cards on
-// top. `border` is a cool neutral gray -- it used to be a warm clay tone
-// left over from an earlier sand-toned palette, which read as muddy
-// brown/tan once the background went blue, especially anywhere it's used
-// as a fill (an inactive toggle segment, a disabled button) rather than
-// just a hairline. Every pair below is matched against WCAG AA (4.5:1 for
-// text, 3:1 for large text / UI components) by actual contrast math, not
-// by eye -- see the `contrast` comments for the pairs that matter. Re-run
-// the check before changing any of these.
+// Design tokens. Airbnb-style "quiet UI": a near-white page background with
+// white cards on top -- blue is reserved for the brand accent (primary
+// buttons, selected/active states, icons, links, badges), never used as
+// decorative background fill, so it doesn't compete with listing photos.
+// `border` is a cool neutral gray -- it used to be a warm clay tone left
+// over from an earlier sand-toned palette, which read as muddy brown/tan,
+// especially anywhere it's used as a fill (an inactive toggle segment, a
+// disabled button) rather than just a hairline. Every pair below is matched
+// against WCAG AA (4.5:1 for text, 3:1 for large text / UI components) by
+// actual contrast math, not by eye -- see the `contrast` comments for the
+// pairs that matter. Re-run the check before changing any of these.
 export const colors = {
-  background: '#E8F0FC',
-  card: '#FFFDF9',
+  background: '#FAFAFA',
+  card: '#FFFFFF',
   border: '#DCE3EC',
 
-  // contrast: 14.8:1 on card, 13.1:1 on background
+  // contrast: 15.0:1 on card, 14.4:1 on background
   textPrimary: '#2B2620',
-  // contrast: 7.4:1 on card, 6.6:1 on background
+  // contrast: 7.6:1 on card, 7.2:1 on background
   textSecondary: '#5C5346',
-  // contrast: 5.23:1 on card, 4.63:1 on background -- the AA floor for
+  // contrast: 5.3:1 on card, 5.1:1 on background -- the AA floor for
   // normal text is 4.5:1, so this is as light as textMuted can go here.
   textMuted: '#746A5B',
 
   // Brand blue (matches the marketing site, PWA icon, and admin dashboard --
   // the in-app accent used to drift from this, which read as off-brand).
-  // contrast: 4.89:1 as text-on-card, 4.96:1 as white-on-fill (buttons), but
-  // only 4.33:1 as bare text directly on `background` (fails the 4.5:1 AA
-  // floor now that background is blue) -- use accentStrong for link-style
-  // text that isn't sitting on a card.
+  // Reserved strictly for primary actions, selected/active states, and small
+  // accents (icons, badges, links) -- never a page/card background fill.
+  // contrast: 4.96:1 as text-on-card, 4.96:1 as white-on-fill (buttons), and
+  // 4.75:1 as bare text directly on `background` -- accentStrong remains the
+  // safer choice for link-style text that needs more margin above the AA
+  // floor.
   accent: '#3E6FBF',
-  // NOTE: now very close in tone to `background` (1.04:1) -- fine as a
-  // badge/icon-circle fill sitting on a white `card`, but don't rely on it
-  // for definition against the bare page background; pair it with a
-  // border or a card wrapper there.
+  // A light accent tint for small fills only (an icon circle, a badge) --
+  // never a section or page background. contrast vs `background`: 1.14:1,
+  // so pair it with a border or a card wrapper if it needs to read as
+  // distinct from the bare page background rather than just tinted.
   accentSoft: '#E4ECF8',
   // Pressed/deep-emphasis state, and the safe choice for accent-colored
-  // text sitting directly on `background`. contrast: 7.91-8.04:1 both
+  // text sitting directly on `background`. contrast: 7.7-8.0:1 both
   // directions against card/white -- a real step up from accent, not just
   // a slightly-darker twin.
   accentStrong: '#2A4F8F',
@@ -56,7 +60,7 @@ export const colors = {
   online: '#22C55E',
   // Anywhere online-ness needs to render as actual text, use this instead --
   // the bright green above is under 2.3:1 as text and fails AA.
-  // contrast: 5.34:1 on card, 5.04:1 on background
+  // contrast: 5.4:1 on card, 5.2:1 on background
   success: '#0F7A3D',
 
   favorite: '#FFFFFF',
@@ -64,7 +68,7 @@ export const colors = {
 
   star: '#3E6FBF',
 
-  // contrast: 5.67:1 on card, 5.35:1 on background
+  // contrast: 5.8:1 on card, 5.5:1 on background
   danger: '#C22A20',
 } as const;
 
