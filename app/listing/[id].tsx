@@ -78,7 +78,7 @@ export default function ListingDetailScreen() {
   async function handleShare() {
     if (!listing) return;
     await shareText(
-      `${listing.title}\n${formatPrice(listing.price, listing.currency, listing.price_unit)} · ${listing.location}\n\nFound on Easyfen`
+      `${listing.title}\n${formatPrice(listing.price, listing.currency, listing.price_unit)} · ${listing.location}, ${listing.city}\n\nFound on Easyfen`
     );
   }
 
@@ -241,7 +241,7 @@ export default function ListingDetailScreen() {
 
           <Text style={styles.title}>{listing.title}</Text>
           <Text style={styles.summaryLine}>
-            {categoryLabel(listing.category)} · {listing.location}
+            {categoryLabel(listing.category)} · {listing.location}, {listing.city}
           </Text>
           {listing.bedrooms != null && (
             <Text style={styles.statsLine}>
@@ -303,7 +303,9 @@ export default function ListingDetailScreen() {
             <View style={styles.locationIcon}>
               <Ionicons name="location" size={16} color={colors.accent} />
             </View>
-            <Text style={styles.locationCardText}>{listing.location}</Text>
+            <Text style={styles.locationCardText}>
+              {listing.location}, {listing.city}, {listing.district}
+            </Text>
           </View>
 
           {session?.user.id !== listing.owner_id && (

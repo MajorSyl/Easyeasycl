@@ -19,7 +19,11 @@ export type Listing = {
   price: number;
   currency: ListingCurrency;
   price_unit: RateUnit;
+  district: string;
+  city: string;
   location: string;
+  latitude?: number | null;
+  longitude?: number | null;
   bedrooms?: number | null;
   photos: string[];
   is_premium: boolean;

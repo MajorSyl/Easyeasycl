@@ -24,8 +24,10 @@ import { type } from '../../constants/typography';
 import { formatPrice } from '../../lib/format';
 import { PhotoPicker } from '../../components/PhotoPicker';
 import { SelectField, type SelectOption } from '../../components/SelectField';
+import { LocationFields } from '../../components/LocationFields';
 import { CurrencySegmentedControl } from '../../components/CurrencySegmentedControl';
 import { StepProgress } from '../../components/StepProgress';
+import { coordsForCity } from '../../constants/locations';
 import type { ListingCategory, ListingCurrency } from '../../lib/types';
 
 const FORM_STEPS = ['Photos', 'Details', 'Review', 'Publish'];
@@ -51,6 +53,8 @@ export default function AddListingScreen() {
   const [title, setTitle] = useState('');
   const [price, setPrice] = useState('');
   const [currency, setCurrency] = useState<ListingCurrency>('NLE');
+  const [district, setDistrict] = useState('');
+  const [city, setCity] = useState('');
   const [location, setLocation] = useState('');
   const [description, setDescription] = useState('');
   const [bedrooms, setBedrooms] = useState('');
@@ -75,6 +79,8 @@ export default function AddListingScreen() {
     price.trim().length > 0 &&
     !Number.isNaN(Number(price)) &&
     Number(price) > 0 &&
+    district.trim().length > 0 &&
+    city.trim().length > 0 &&
     location.trim().length > 0 &&
     description.trim().length > 0 &&
     category !== null;
@@ -85,6 +91,8 @@ export default function AddListingScreen() {
   const hasStartedDetails =
     title.trim().length > 0 ||
     price.trim().length > 0 ||
+    district.trim().length > 0 ||
+    city.trim().length > 0 ||
     location.trim().length > 0 ||
     description.trim().length > 0 ||
     bedrooms.trim().length > 0 ||
@@ -102,6 +110,8 @@ export default function AddListingScreen() {
     setTitle('');
     setPrice('');
     setCurrency('NLE');
+    setDistrict('');
+    setCity('');
     setLocation('');
     setDescription('');
     setBedrooms('');
@@ -117,6 +127,11 @@ export default function AddListingScreen() {
     const cleanTitle = sanitizeText(title);
     const cleanDescription = sanitizeText(description);
     const cleanLocation = sanitizeText(location);
+    const cleanCity = sanitizeText(city);
+    // No geocoding service is wired into this app -- fall back to the
+    // city's approximate town-centroid so the listing still has *some*
+    // coordinate to sort by in "Near Me" until it's ever set precisely.
+    const cityCoords = coordsForCity(cleanCity);
 
     const { data, error } = await supabase
       .from('listings')
@@ -128,7 +143,11 @@ export default function AddListingScreen() {
         price: priceValue,
         currency,
         price_unit: category === 'daily_hourly' ? rateUnit : null,
+        district,
+        city: cleanCity,
         location: cleanLocation,
+        latitude: cityCoords?.lat ?? null,
+        longitude: cityCoords?.lng ?? null,
         bedrooms: bedrooms.trim() ? Number(bedrooms) : null,
         photos,
       })
@@ -209,29 +228,26 @@ export default function AddListingScreen() {
             <Text style={styles.currencyHelper}>Select currency, then enter your price.</Text>
           </View>
 
-          <View style={styles.row}>
-            <View style={styles.flex1}>
-              <Text style={styles.fieldLabel}>Price</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="0.00"
-                placeholderTextColor={colors.textMuted}
-                value={price}
-                onChangeText={setPrice}
-                keyboardType="decimal-pad"
-              />
-              {pricePreview && <Text style={styles.pricePreview}>{pricePreview}</Text>}
-            </View>
-            <Field label="Neighborhood" style={styles.flex1}>
-              <TextInput
-                style={styles.input}
-                placeholder="e.g. Goderich"
-                placeholderTextColor={colors.textMuted}
-                value={location}
-                onChangeText={setLocation}
-              />
-            </Field>
-          </View>
+          <Field label="Price">
+            <TextInput
+              style={styles.input}
+              placeholder="0.00"
+              placeholderTextColor={colors.textMuted}
+              value={price}
+              onChangeText={setPrice}
+              keyboardType="decimal-pad"
+            />
+            {pricePreview && <Text style={styles.pricePreview}>{pricePreview}</Text>}
+          </Field>
+
+          <LocationFields
+            district={district}
+            city={city}
+            location={location}
+            onDistrictChange={setDistrict}
+            onCityChange={setCity}
+            onLocationChange={setLocation}
+          />
 
           <View style={styles.row}>
             <View style={styles.flex1}>

@@ -22,7 +22,9 @@ import { sanitizeText } from '../../../lib/sanitize';
 import { colors, fontSize, radius, spacing } from '../../../constants/theme';
 import { PhotoPicker } from '../../../components/PhotoPicker';
 import { SelectField, type SelectOption } from '../../../components/SelectField';
+import { LocationFields } from '../../../components/LocationFields';
 import { CurrencyToggle } from '../../../components/CurrencyToggle';
+import { coordsForCity } from '../../../constants/locations';
 import type { ListingCategory, ListingCurrency } from '../../../lib/types';
 
 type Kind = 'listing' | 'hotel' | 'service';
@@ -48,6 +50,8 @@ export default function EditListingScreen() {
   const [title, setTitle] = useState('');
   const [price, setPrice] = useState('');
   const [currency, setCurrency] = useState<ListingCurrency>('NLE');
+  const [district, setDistrict] = useState('');
+  const [city, setCity] = useState('');
   const [location, setLocation] = useState('');
   const [description, setDescription] = useState('');
   const [bedrooms, setBedrooms] = useState('');
@@ -79,6 +83,10 @@ export default function EditListingScreen() {
         setTitle(data.title ?? data.name ?? data.business_name ?? '');
         setPrice(String(data.price ?? data.rate ?? ''));
         if (kind === 'listing' && (data.currency === 'NLE' || data.currency === 'USD')) setCurrency(data.currency);
+        if (kind === 'listing') {
+          setDistrict(data.district ?? '');
+          setCity(data.city ?? '');
+        }
         setLocation(data.location ?? '');
         setDescription(data.description ?? '');
         setBedrooms(data.bedrooms != null ? String(data.bedrooms) : '');
@@ -96,7 +104,8 @@ export default function EditListingScreen() {
     price.trim().length > 0 &&
     !Number.isNaN(Number(price)) &&
     Number(price) > 0 &&
-    location.trim().length > 0;
+    location.trim().length > 0 &&
+    (kind !== 'listing' || (district.trim().length > 0 && city.trim().length > 0));
 
   async function handleSave() {
     if (!canSave || saving || !session || !id) return;
@@ -109,6 +118,8 @@ export default function EditListingScreen() {
     let error;
 
     if (kind === 'listing') {
+      const cleanCity = sanitizeText(city);
+      const cityCoords = coordsForCity(cleanCity);
       ({ error } = await supabase
         .from('listings')
         .update({
@@ -118,7 +129,11 @@ export default function EditListingScreen() {
           price: priceValue,
           currency,
           price_unit: category === 'daily_hourly' ? rateUnit : null,
+          district,
+          city: cleanCity,
           location: cleanLocation,
+          latitude: cityCoords?.lat ?? null,
+          longitude: cityCoords?.lng ?? null,
           bedrooms: bedrooms.trim() ? Number(bedrooms) : null,
           photos,
         })
@@ -238,10 +253,23 @@ export default function EditListingScreen() {
                 />
               </Field>
             )}
-            <Field label="Location" style={styles.flex1}>
-              <TextInput style={styles.input} value={location} onChangeText={setLocation} placeholderTextColor={colors.textMuted} />
-            </Field>
+            {kind !== 'listing' && (
+              <Field label="Location" style={styles.flex1}>
+                <TextInput style={styles.input} value={location} onChangeText={setLocation} placeholderTextColor={colors.textMuted} />
+              </Field>
+            )}
           </View>
+
+          {kind === 'listing' && (
+            <LocationFields
+              district={district}
+              city={city}
+              location={location}
+              onDistrictChange={setDistrict}
+              onCityChange={setCity}
+              onLocationChange={setLocation}
+            />
+          )}
 
           {kind === 'listing' && (
             <View style={styles.row}>

@@ -21,7 +21,7 @@ export type PendingListing = {
   currency: string;
   photos: string[] | null;
   created_at: string;
-  neighborhood: string | null;
+  city: string | null;
   ownerName: string | null;
   ownerRole: string;
 };
@@ -49,9 +49,9 @@ export function PendingListingRow({ listing }: { listing: PendingListing }) {
           {listing.ownerName ?? 'Unknown'} · {listing.ownerRole}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 3, fontSize: 11, color: '#667085' }}>
-          {listing.neighborhood && (
+          {listing.city && (
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
-              <IconPin size={11} /> {listing.neighborhood}
+              <IconPin size={11} /> {listing.city}
             </span>
           )}
           <span>{(listing.photos ?? []).length} photos</span>

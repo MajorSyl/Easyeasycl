@@ -22,7 +22,15 @@ const NEW_WITHIN_DAYS = 7;
 // stacked below directly on the page background. Our blue stands in for
 // Airbnb's pink/red on the badge and the favorited heart; everything else
 // (spacing, corner radius, hierarchy) mirrors it closely.
-export const ListingCard = memo(function ListingCard({ listing }: { listing: Listing }) {
+export const ListingCard = memo(function ListingCard({
+  listing,
+  distanceLabel,
+}: {
+  listing: Listing;
+  // Set only when the card is rendered inside a "Near Me" sorted list --
+  // omitted entirely elsewhere rather than showing a meaningless distance.
+  distanceLabel?: string;
+}) {
   const badge = listing.is_premium
     ? { label: 'Featured', variant: 'premium' as const }
     : listing.is_verified
@@ -36,7 +44,7 @@ export const ListingCard = memo(function ListingCard({ listing }: { listing: Lis
       style={styles.card}
       onPress={() => router.push(`/listing/${listing.id}`)}
       accessibilityRole="button"
-      accessibilityLabel={`${listing.title}, ${formatPrice(listing.price, listing.currency, listing.price_unit)}, ${listing.location}`}
+      accessibilityLabel={`${listing.title}, ${formatPrice(listing.price, listing.currency, listing.price_unit)}, ${listing.location}, ${listing.city}`}
     >
       <View style={styles.imageWrap}>
         {listing.photos[0] ? (
@@ -70,9 +78,17 @@ export const ListingCard = memo(function ListingCard({ listing }: { listing: Lis
         <View style={styles.locationRow}>
           <Ionicons name="location-outline" size={12} color={colors.textMuted} />
           <Text style={styles.location} numberOfLines={1}>
-            {listing.location}
+            {listing.location}, {listing.city}
           </Text>
         </View>
+        {distanceLabel && (
+          <View style={styles.locationRow}>
+            <Ionicons name="navigate-outline" size={12} color={colors.textMuted} />
+            <Text style={styles.location} numberOfLines={1}>
+              {distanceLabel}
+            </Text>
+          </View>
+        )}
       </View>
     </Pressable>
   );

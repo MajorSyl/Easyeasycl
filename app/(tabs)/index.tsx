@@ -67,7 +67,7 @@ export default function HomeScreen() {
       }
       let query = supabase
         .from('listings')
-        .select('id, title, price, currency, price_unit, location, category, photos, view_count, is_premium, is_verified, owner_id, created_at, last_confirmed_at, owner:profiles(full_name, avatar_url, role)')
+        .select('id, title, price, currency, price_unit, district, city, location, latitude, longitude, category, photos, view_count, is_premium, is_verified, owner_id, created_at, last_confirmed_at, owner:profiles(full_name, avatar_url, role)')
         .eq('is_active', true)
         .order('created_at', { ascending: false });
       if (categoryFilter !== 'all') query = query.eq('category', categoryFilter);
@@ -280,17 +280,17 @@ export default function HomeScreen() {
             style={styles.searchBar}
             onPress={() => router.push('/search')}
             accessibilityRole="search"
-            accessibilityLabel="Search properties, land, and neighborhoods"
+            accessibilityLabel="Search properties, land, cities, and districts across Sierra Leone"
           >
             <Ionicons name="search" size={18} color={colors.textMuted} />
-            <Text style={styles.searchPlaceholder}>Search your location</Text>
+            <Text style={styles.searchPlaceholder}>Search Freetown, Bo, Makeni...</Text>
           </Pressable>
 
           <Pressable style={styles.neighborhoodRow} onPress={() => router.push('/neighborhoods')}>
             <View style={styles.neighborhoodIcon}>
               <Ionicons name="location-outline" size={16} color={colors.accent} />
             </View>
-            <Text style={styles.neighborhoodRowText}>Browse by Neighborhood</Text>
+            <Text style={styles.neighborhoodRowText}>Browse by Location</Text>
             <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
           </Pressable>
 

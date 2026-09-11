@@ -5,7 +5,6 @@ import { AreaChart } from '@/components/AreaChart';
 import { PendingListingRow, type PendingListing } from '@/components/PendingListingRow';
 import { PaymentQueueRow, type QueuedPayment } from '@/components/PaymentQueueRow';
 import { IconHome, IconUsers, IconCard, IconUserCheck, IconSearch, IconBell, IconPin } from '@/components/icons';
-import { matchNeighborhood } from '@/lib/neighborhoods';
 import { initialsOf } from '@/lib/avatar';
 import { relativeTime } from '@/lib/format';
 
@@ -48,7 +47,7 @@ export default async function OverviewPage() {
     supabase.from('profiles').select('id, full_name, created_at'),
     supabase
       .from('listings')
-      .select('id, title, category, location, price, currency, is_active, moderation_status, availability_status, photos, created_at, owner_id, owner:profiles(full_name, role)')
+      .select('id, title, category, district, city, location, price, currency, is_active, moderation_status, availability_status, photos, created_at, owner_id, owner:profiles(full_name, role)')
       .order('created_at', { ascending: false }),
     supabase.from('reports').select('item_id').eq('item_type', 'listing'),
     supabase
@@ -134,24 +133,23 @@ export default async function OverviewPage() {
     },
   ];
 
-  // Freetown Neighborhoods: bucketed by substring-matching each listing's
-  // free-text location field, the same technique the mobile app's
-  // neighborhood browsing uses -- there's no dedicated neighborhood column.
-  const neighborhoodCounts = new Map<string, { count: number; newThisWeek: number }>();
+  // Top Cities: now a real column (nationwide expansion) rather than a
+  // Freetown-only substring match against free-text location.
+  const cityCounts = new Map<string, { count: number; newThisWeek: number }>();
   for (const l of activeApproved) {
-    const n = matchNeighborhood(l.location);
-    if (!n) continue;
-    const entry = neighborhoodCounts.get(n) ?? { count: 0, newThisWeek: 0 };
+    const c = l.city;
+    if (!c) continue;
+    const entry = cityCounts.get(c) ?? { count: 0, newThisWeek: 0 };
     entry.count += 1;
     if (new Date(l.created_at) >= weekAgo) entry.newThisWeek += 1;
-    neighborhoodCounts.set(n, entry);
+    cityCounts.set(c, entry);
   }
-  const neighborhoods = [...neighborhoodCounts.entries()]
+  const topCities = [...cityCounts.entries()]
     .map(([name, v]) => ({ name, ...v }))
     .sort((a, b) => b.count - a.count)
     .slice(0, 8);
-  const maxNeighborhoodCount = Math.max(1, ...neighborhoods.map((n) => n.count));
-  const neighborhoodColors = ['#3E6FBF', '#0EA5A5', '#C99A00', '#7C5CFC', '#E4483F', '#0891B2'];
+  const maxCityCount = Math.max(1, ...topCities.map((n) => n.count));
+  const cityColors = ['#3E6FBF', '#0EA5A5', '#C99A00', '#7C5CFC', '#E4483F', '#0891B2'];
 
   // Platform growth: cumulative totals by month, Jan through the current
   // month of this year. Each point counts everything created on or before
@@ -190,7 +188,7 @@ export default async function OverviewPage() {
       currency: l.currency,
       photos: l.photos,
       created_at: l.created_at,
-      neighborhood: matchNeighborhood(l.location),
+      city: l.city ?? null,
       ownerName: owner?.full_name ?? null,
       ownerRole: owner?.role ?? 'user',
     };
@@ -239,7 +237,7 @@ export default async function OverviewPage() {
         <div>
           <div className="overview-title">Dashboard Overview</div>
           <div className="overview-subtitle">
-            Freetown, Sierra Leone — {now.toLocaleDateString('en-GB', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+            Sierra Leone — {now.toLocaleDateString('en-GB', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
           </div>
         </div>
         <div className="overview-topbar-right">
@@ -365,12 +363,12 @@ export default async function OverviewPage() {
           <div className="card">
             <div className="card-header">
               <div>
-                <span className="card-title" style={{ display: 'flex', alignItems: 'center', gap: 6 }}><IconPin size={14} /> Freetown Neighborhoods</span>
-                <div className="muted" style={{ fontSize: 12, marginTop: 2 }}>{activeApproved.length} active listings across all areas</div>
+                <span className="card-title" style={{ display: 'flex', alignItems: 'center', gap: 6 }}><IconPin size={14} /> Top Cities</span>
+                <div className="muted" style={{ fontSize: 12, marginTop: 2 }}>{activeApproved.length} active listings across Sierra Leone</div>
               </div>
             </div>
             <div style={{ padding: '8px 20px 18px' }}>
-              {neighborhoods.map((n, i) => (
+              {topCities.map((n, i) => (
                 <div className="neighborhood-row" key={n.name}>
                   <div className="neighborhood-row-head">
                     <span style={{ fontWeight: 600, color: '#101828' }}>{n.name}</span>
@@ -380,11 +378,11 @@ export default async function OverviewPage() {
                     </span>
                   </div>
                   <div className="neighborhood-bar-track">
-                    <div className="neighborhood-bar-fill" style={{ width: `${(n.count / maxNeighborhoodCount) * 100}%`, background: neighborhoodColors[i % neighborhoodColors.length] }} />
+                    <div className="neighborhood-bar-fill" style={{ width: `${(n.count / maxCityCount) * 100}%`, background: cityColors[i % cityColors.length] }} />
                   </div>
                 </div>
               ))}
-              {!neighborhoods.length && <div className="muted" style={{ fontSize: 12, padding: '12px 0' }}>No active listings with a recognized neighborhood yet.</div>}
+              {!topCities.length && <div className="muted" style={{ fontSize: 12, padding: '12px 0' }}>No active listings with a city set yet.</div>}
             </div>
           </div>
         </div>
