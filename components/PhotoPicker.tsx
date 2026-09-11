@@ -60,14 +60,26 @@ export function PhotoPicker({
     if (result.canceled || result.assets.length === 0) return;
     setUploading(true);
     try {
-      const uploaded: string[] = [];
-      for (const asset of result.assets) {
-        const url = await uploadListingPhoto(asset.uri, userId);
-        uploaded.push(url);
+      // Settle each upload independently -- a single flaky network blip in a
+      // 10-photo batch used to throw out of a sequential for-loop and
+      // discard every photo that had already uploaded successfully before
+      // it. Now a partial failure keeps whatever succeeded and only asks
+      // the user to retry the ones that didn't.
+      const settled = await Promise.allSettled(result.assets.map((asset) => uploadListingPhoto(asset.uri, userId)));
+      const uploaded = settled
+        .filter((r): r is PromiseFulfilledResult<string> => r.status === 'fulfilled')
+        .map((r) => r.value);
+      const failedCount = settled.length - uploaded.length;
+
+      if (uploaded.length > 0) onChange([...photos, ...uploaded]);
+      if (failedCount > 0) {
+        appAlert(
+          'Upload failed',
+          uploaded.length > 0
+            ? `${uploaded.length} of ${settled.length} photos uploaded. ${failedCount} could not be uploaded — please try adding ${failedCount === 1 ? 'it' : 'them'} again.`
+            : 'One or more photos could not be uploaded. Please try again.',
+        );
       }
-      onChange([...photos, ...uploaded]);
-    } catch {
-      appAlert('Upload failed', 'One or more photos could not be uploaded. Please try again.');
     } finally {
       setUploading(false);
     }
