@@ -12,7 +12,7 @@ import { Logo } from '../components/Logo';
 const APK_DOWNLOAD_URL = 'https://github.com/MajorSyl/Easyeasycl/releases/download/android-latest/easyfen.apk';
 
 // Brand mark blue, not constants/theme.ts's UI accent -- same deliberate
-// choice as DownloadAppBanner.tsx, see its comment for why.
+// choice as components/AppInstallPrompt.tsx, see its comment for why.
 const BRAND_BLUE = '#3E6FBF';
 
 export default function DownloadScreen() {

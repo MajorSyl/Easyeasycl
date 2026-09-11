@@ -251,6 +251,18 @@ export default function ListingDetailScreen() {
           {listing.last_confirmed_at && (
             <Text style={styles.listingAge}>{formatListingAge(listing.last_confirmed_at)}</Text>
           )}
+          {/* Understated, not the visual focus -- a small trust signal near
+              the other stats, not a headline number. Omitted entirely (not
+              a "0 people viewed" placeholder) when there's nothing to show. */}
+          {listing.view_count > 0 && (
+            <View style={styles.viewCountRow}>
+              <Ionicons name="eye-outline" size={13} color={colors.textMuted} />
+              <Text style={styles.viewCountText}>
+                {listing.view_count.toLocaleString()} {listing.view_count === 1 ? 'person' : 'people'} viewed this
+                property
+              </Text>
+            </View>
+          )}
 
           <View style={styles.divider} />
 
@@ -394,6 +406,8 @@ const styles = StyleSheet.create({
   summaryLine: { ...type.body, fontSize: fontSize.sm, color: colors.textSecondary, marginTop: spacing.xs },
   statsLine: { ...type.body, fontSize: fontSize.sm, color: colors.textSecondary, marginTop: 2 },
   listingAge: { ...type.secondary, fontSize: fontSize.xs, color: colors.textMuted, marginTop: 4 },
+  viewCountRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 6 },
+  viewCountText: { ...type.secondary, fontSize: fontSize.xs, color: colors.textMuted },
   divider: { height: 1, backgroundColor: colors.border, marginVertical: spacing.lg },
   sectionTitle: { ...type.screenTitle, fontSize: fontSize.md, color: colors.textPrimary, marginBottom: spacing.sm },
   agentRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },

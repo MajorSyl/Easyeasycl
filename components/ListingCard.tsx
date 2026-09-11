@@ -73,16 +73,6 @@ export const ListingCard = memo(function ListingCard({ listing }: { listing: Lis
             {listing.location}
           </Text>
         </View>
-
-        {/* Omitted entirely (not a "0 views" placeholder) until a listing
-            actually has views -- an empty stats row reads worse than no
-            row at all. */}
-        {listing.view_count > 0 && (
-          <View style={styles.statsRow}>
-            <Ionicons name="eye-outline" size={12} color={colors.textMuted} />
-            <Text style={styles.statsText}>{listing.view_count.toLocaleString()} views</Text>
-          </View>
-        )}
       </View>
     </Pressable>
   );
@@ -110,6 +100,4 @@ const styles = StyleSheet.create({
   title: { ...type.body, fontSize: fontSize.sm, color: colors.textSecondary, marginTop: 2 },
   locationRow: { flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 2 },
   location: { ...type.secondary, fontSize: fontSize.xs, color: colors.textMuted, flexShrink: 1 },
-  statsRow: { flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 3 },
-  statsText: { ...type.secondary, fontSize: fontSize.xs, color: colors.textMuted },
 });

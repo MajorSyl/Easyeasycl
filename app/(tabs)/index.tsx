@@ -14,7 +14,7 @@ import { useTabBarGap } from '../../lib/use-bottom-gap';
 import { ListingCard } from '../../components/ListingCard';
 import { FilterPills, type PillOption } from '../../components/FilterPills';
 import { EdgeFade } from '../../components/EdgeFade';
-import { DownloadAppBanner } from '../../components/DownloadAppBanner';
+import { AppInstallPrompt } from '../../components/AppInstallPrompt';
 import { initialsFor } from '../../lib/format';
 import type { Listing, ListingCategory } from '../../lib/types';
 
@@ -209,6 +209,7 @@ export default function HomeScreen() {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
+      <AppInstallPrompt />
       <ScrollView
         contentContainerStyle={[styles.listContent, { paddingBottom: tabBarGap + spacing.lg }]}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
@@ -267,8 +268,6 @@ export default function HomeScreen() {
               </Pressable>
             </View>
           </View>
-
-          <DownloadAppBanner />
 
           {showingSavedData && (
             <View style={styles.offlineBanner}>
