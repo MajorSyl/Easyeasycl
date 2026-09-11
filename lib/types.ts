@@ -6,6 +6,8 @@ export type OwnerSummary = {
   full_name: string | null;
   avatar_url: string | null;
   role: string;
+  created_at?: string;
+  verification_tier?: string | null;
 };
 
 export type Listing = {

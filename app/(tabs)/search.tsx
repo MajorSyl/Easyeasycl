@@ -72,7 +72,7 @@ export default function SearchScreen() {
 
     let listingsQuery = supabase
       .from('listings')
-      .select('id, title, price, currency, price_unit, location, category, photos, view_count, is_premium, owner_id, created_at, last_confirmed_at, owner:profiles(full_name, avatar_url, role)')
+      .select('id, title, price, currency, price_unit, location, category, photos, view_count, is_premium, is_verified, owner_id, created_at, last_confirmed_at, owner:profiles(full_name, avatar_url, role)')
       .eq('is_active', true);
 
     if (term) {

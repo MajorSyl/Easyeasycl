@@ -11,6 +11,20 @@ export function categoryBadgeLabel(category: ListingCategory) {
   return categoryBadgeLabels[category];
 }
 
+const categoryLabels: Record<ListingCategory, string> = {
+  for_rent: 'For Rent',
+  for_sale: 'For Sale',
+  land: 'Land',
+  daily_hourly: 'Daily/Hourly',
+};
+
+// Full-word form of categoryBadgeLabel, for prose contexts (the listing
+// detail summary line) where the yard-sign-style "RENT"/"SALE" abbreviation
+// used on card badges would read as clipped rather than intentional.
+export function categoryLabel(category: ListingCategory) {
+  return categoryLabels[category];
+}
+
 const rateUnitAbbreviation: Record<Exclude<RateUnit, null>, string> = {
   hour: 'hr',
   day: 'day',
@@ -81,6 +95,18 @@ export function verificationBadgeLabel(tier: string | null | undefined, role?: s
   if (!tier) return null;
   if (tier === 'agent_verified' && role === 'landlord') return 'Verified Property Owner';
   return verificationLabels[tier] ?? null;
+}
+
+// "Agent since <Month Year>" -- the account's real creation date, not a
+// fabricated tenure stat. Falls back to a plain "On Easyfen since ..." for
+// the first year, since "Agent for 3 months" reads oddly that early on.
+export function agentTenureLabel(isoDate: string) {
+  const created = new Date(isoDate);
+  const months = Math.floor(daysSince(isoDate) / 30);
+  const monthYear = created.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  if (months < 12) return `On Easyfen since ${monthYear}`;
+  const years = Math.floor(months / 12);
+  return `${years} year${years === 1 ? '' : 's'} on Easyfen`;
 }
 
 export function formatMessageTimestamp(isoDate: string) {

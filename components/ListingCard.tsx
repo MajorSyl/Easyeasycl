@@ -6,12 +6,31 @@ import { Badge } from './Badge';
 import { FavoriteButton } from './FavoriteButton';
 import { NoPhotoPlaceholder } from './NoPhotoPlaceholder';
 import { LazyPhoto } from './LazyPhoto';
-import { colors, fontSize, fontWeight, radius, shadow, spacing } from '../constants/theme';
+import { colors, fontSize, radius, spacing } from '../constants/theme';
 import { type } from '../constants/typography';
-import { categoryBadgeLabel, formatListingAge, formatPrice, initialsFor } from '../lib/format';
+import { daysSince, formatPrice } from '../lib/format';
 import type { Listing } from '../lib/types';
 
+const NEW_WITHIN_DAYS = 7;
+
+// The one card design used everywhere a listing appears -- horizontal
+// "New Listings"/"Recommended" rows, the Search results list, neighborhood
+// grids, favorites, an agent's profile. Airbnb's listing-card pattern:
+// a full-bleed rounded photo (no card border/shadow around the whole
+// thing -- the image itself is the only "chrome"), a heart overlaid
+// top-right, one status badge top-left, then price -> title -> location
+// stacked below directly on the page background. Our blue stands in for
+// Airbnb's pink/red on the badge and the favorited heart; everything else
+// (spacing, corner radius, hierarchy) mirrors it closely.
 export const ListingCard = memo(function ListingCard({ listing }: { listing: Listing }) {
+  const badge = listing.is_premium
+    ? { label: 'Featured', variant: 'premium' as const }
+    : listing.is_verified
+      ? { label: 'Verified', variant: 'brand' as const }
+      : daysSince(listing.created_at) <= NEW_WITHIN_DAYS
+        ? { label: 'New', variant: 'brand' as const }
+        : null;
+
   return (
     <Pressable
       style={styles.card}
@@ -33,32 +52,19 @@ export const ListingCard = memo(function ListingCard({ listing }: { listing: Lis
           </View>
         )}
 
-        <View style={styles.topRow}>
-          <View style={styles.badgeRow}>
-            <Badge label={categoryBadgeLabel(listing.category)} variant="dark" />
-            {listing.is_premium && <Badge label="Premium" variant="premium" />}
+        {badge && (
+          <View style={styles.badgeSlot}>
+            <Badge label={badge.label} variant={badge.variant} />
           </View>
+        )}
+        <View style={styles.favoriteSlot}>
           <FavoriteButton itemType="listing" itemId={listing.id} />
-        </View>
-
-        <View style={styles.bottomRow}>
-          <View style={styles.statPill} accessibilityLabel={`${listing.view_count} views`}>
-            <Ionicons name="eye-outline" size={12} color="#fff" />
-            <Text style={styles.statText}>{listing.view_count}</Text>
-          </View>
-          <View
-            style={styles.statPill}
-            accessibilityLabel={`${listing.photos.length} photo${listing.photos.length === 1 ? '' : 's'}`}
-          >
-            <Ionicons name="camera-outline" size={12} color="#fff" />
-            <Text style={styles.statText}>{listing.photos.length}</Text>
-          </View>
         </View>
       </View>
 
       <View style={styles.body}>
         <Text style={styles.price}>{formatPrice(listing.price, listing.currency, listing.price_unit)}</Text>
-        <Text style={styles.title} numberOfLines={2} ellipsizeMode="tail">
+        <Text style={styles.title} numberOfLines={1} ellipsizeMode="tail">
           {listing.title}
         </Text>
         <View style={styles.locationRow}>
@@ -68,103 +74,42 @@ export const ListingCard = memo(function ListingCard({ listing }: { listing: Lis
           </Text>
         </View>
 
-        <View style={styles.footerRow}>
-          {listing.last_confirmed_at ? (
-            <Text style={styles.age} numberOfLines={1}>
-              {formatListingAge(listing.last_confirmed_at)}
-            </Text>
-          ) : (
-            <View />
-          )}
-          <Pressable
-            style={styles.agentRow}
-            onPress={() => router.push(`/user/${listing.owner_id}`)}
-            hitSlop={6}
-            accessibilityRole="button"
-            accessibilityLabel={`View ${listing.owner?.full_name ?? 'agent'}'s profile`}
-          >
-            <View style={styles.avatar}>
-              <Text style={styles.avatarText}>{initialsFor(listing.owner?.full_name ?? null)}</Text>
-            </View>
-            <Text style={styles.agentName} numberOfLines={1}>
-              {listing.owner?.full_name ?? 'Unknown'}
-            </Text>
-          </Pressable>
-        </View>
+        {/* Omitted entirely (not a "0 views" placeholder) until a listing
+            actually has views -- an empty stats row reads worse than no
+            row at all. */}
+        {listing.view_count > 0 && (
+          <View style={styles.statsRow}>
+            <Ionicons name="eye-outline" size={12} color={colors.textMuted} />
+            <Text style={styles.statsText}>{listing.view_count.toLocaleString()} views</Text>
+          </View>
+        )}
       </View>
     </Pressable>
   );
 });
 
 const styles = StyleSheet.create({
-  // The grid card is the app's boldest surface -- it gets the deeper
-  // elevation reserved for the one thing on this screen that should look
-  // crafted. Structural chrome elsewhere (search bar, filter rail) stays
-  // flat so this doesn't get lost among a dozen equally-shadowed rows.
-  card: {
-    flex: 1,
-    backgroundColor: colors.card,
+  card: { flex: 1 },
+  imageWrap: {
+    aspectRatio: 1,
     borderRadius: radius.lg,
     overflow: 'hidden',
-    ...shadow.raised,
+    backgroundColor: colors.border,
   },
-  imageWrap: { aspectRatio: 1.3, backgroundColor: colors.border },
   image: { width: '100%', height: '100%' },
   imagePlaceholder: { alignItems: 'center', justifyContent: 'center' },
-  topRow: {
-    position: 'absolute',
-    top: spacing.sm,
-    left: spacing.sm,
-    right: spacing.sm,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-  },
-  badgeRow: { flexDirection: 'row', gap: 6 },
-  bottomRow: {
-    position: 'absolute',
-    bottom: spacing.sm,
-    left: spacing.sm,
-    right: spacing.sm,
-    flexDirection: 'row',
-    gap: 6,
-  },
-  statPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-    backgroundColor: 'rgba(0,0,0,0.55)',
-    borderRadius: radius.pill,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-  },
-  statText: { ...type.label, color: '#fff' },
-  body: { padding: spacing.md },
-  price: { ...type.priceMedium, color: colors.accent },
-  title: {
-    ...type.cardTitle,
-    color: colors.textPrimary,
-    marginTop: 3,
-  },
-  locationRow: { flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 4 },
+  badgeSlot: { position: 'absolute', top: spacing.sm, left: spacing.sm },
+  favoriteSlot: { position: 'absolute', top: spacing.sm, right: spacing.sm },
+  body: { paddingTop: spacing.sm },
+  // Plain dark ink, not colors.accent -- Airbnb's price is the boldest
+  // thing on the card by weight/size alone, not by color; blue stays
+  // reserved for the badge, the heart, and actionable elements.
+  price: { ...type.priceMedium, color: colors.textPrimary },
+  // Regular weight, secondary ink -- deliberately quieter than the price
+  // above it, matching Airbnb's hierarchy (bold price, plain title line).
+  title: { ...type.body, fontSize: fontSize.sm, color: colors.textSecondary, marginTop: 2 },
+  locationRow: { flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 2 },
   location: { ...type.secondary, fontSize: fontSize.xs, color: colors.textMuted, flexShrink: 1 },
-  age: { ...type.secondary, fontSize: fontSize.xs, color: colors.textMuted, flexShrink: 1 },
-  footerRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: spacing.sm,
-    gap: spacing.xs,
-  },
-  agentRow: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 6, marginVertical: -6 },
-  agentName: { ...type.label, color: colors.textSecondary, maxWidth: 70 },
-  avatar: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: colors.accentSoft,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarText: { fontSize: 10, fontWeight: fontWeight.bold, color: colors.accent },
+  statsRow: { flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 3 },
+  statsText: { ...type.secondary, fontSize: fontSize.xs, color: colors.textMuted },
 });

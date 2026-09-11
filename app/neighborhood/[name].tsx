@@ -21,7 +21,7 @@ export default function NeighborhoodListingsScreen() {
     const { data, error } = await supabase
       .from('listings')
       .select(
-        'id, title, price, currency, price_unit, location, category, photos, view_count, is_premium, owner_id, created_at, last_confirmed_at, owner:profiles(full_name, avatar_url, role)'
+        'id, title, price, currency, price_unit, location, category, photos, view_count, is_premium, is_verified, owner_id, created_at, last_confirmed_at, owner:profiles(full_name, avatar_url, role)'
       )
       .eq('is_active', true)
       .ilike('location', `%${name}%`)
