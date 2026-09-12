@@ -172,13 +172,17 @@ export default function AddListingScreen() {
     );
   }
 
-  // Only Title and Price are required -- everything else (Location,
-  // Property Type, Bedrooms, Amenities, Description, even Photos) can be
-  // added later by editing the listing. The goal is getting a listing live
-  // in well under two minutes; richness is a post-publish nudge, not a
-  // pre-publish gate.
+  // Title, Price, and at least one Photo are required -- a listing with no
+  // photo is close to unpostable for a buyer, so unlike Location, Property
+  // Type, Bedrooms, Amenities, and Description (which stay behind "Add more
+  // details" and can be added later), Photos is not optional. Everything
+  // else can still be added after publishing.
   const requiredFieldsFilled =
-    title.trim().length > 0 && price.trim().length > 0 && !Number.isNaN(parsePriceInput(price)) && parsePriceInput(price) > 0;
+    title.trim().length > 0 &&
+    price.trim().length > 0 &&
+    !Number.isNaN(parsePriceInput(price)) &&
+    parsePriceInput(price) > 0 &&
+    photos.length > 0;
 
   const priceNumber = parsePriceInput(price);
   const pricePreview =
@@ -325,7 +329,8 @@ export default function AddListingScreen() {
         <Text style={styles.subheading}>List your property in under two minutes.</Text>
 
         <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Photos (optional)</Text>
+          <Text style={styles.sectionTitle}>Photos</Text>
+          <Text style={styles.photosHint}>Add at least 1 photo — listings with photos get far more views.</Text>
           <PhotoPicker photos={photos} onChange={setPhotos} userId={session.user.id} />
         </View>
 
@@ -519,6 +524,7 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   sectionTitle: { ...type.screenTitle, fontSize: fontSize.md, color: colors.textPrimary },
+  photosHint: { ...type.secondary, fontSize: fontSize.xs, color: colors.textSecondary, marginTop: -6 },
   field: {},
   fieldLabel: {
     ...type.labelStrong,
