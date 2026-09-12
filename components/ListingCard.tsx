@@ -101,8 +101,15 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     overflow: 'hidden',
     backgroundColor: colors.border,
+    position: 'relative',
   },
-  image: { width: '100%', height: '100%' },
+  // Absolutely filling the container (rather than width/height: '100%') sidesteps
+  // a real cross-browser bug where a percentage-sized child inside a parent whose
+  // height comes from `aspectRatio` (not an explicit pixel height) can fail to
+  // resolve that percentage and fall back to the photo's native intrinsic size --
+  // which is how a photo ends up bleeding out past its card instead of being
+  // cropped by `overflow: hidden` above.
+  image: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%' },
   imagePlaceholder: { alignItems: 'center', justifyContent: 'center' },
   badgeSlot: { position: 'absolute', top: spacing.sm, left: spacing.sm },
   favoriteSlot: { position: 'absolute', top: spacing.sm, right: spacing.sm },

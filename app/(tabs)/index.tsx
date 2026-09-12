@@ -15,12 +15,20 @@ import { ListingCard } from '../../components/ListingCard';
 import { FilterPills, type PillOption } from '../../components/FilterPills';
 import { EdgeFade } from '../../components/EdgeFade';
 import { AppInstallPrompt } from '../../components/AppInstallPrompt';
-import { initialsFor } from '../../lib/format';
+import { daysSince, initialsFor } from '../../lib/format';
 import type { Listing, ListingCategory } from '../../lib/types';
 
 type CategoryFilter = 'all' | ListingCategory;
 
 const HOME_FEED_CACHE_KEY = 'easyfen_home_feed_cache_v1';
+// Mirrors the "New" badge threshold on ListingCard, so a listing counted as
+// "new" here is the same one that gets the "New" badge on its own card.
+const NEW_WITHIN_DAYS = 7;
+// Below this many distinct listings left over after New Listings has taken
+// its share, a "Recommended" row would just be reshuffling 1-2 of the same
+// listings under a different heading -- indistinguishable from a bug to a
+// user. Hide the section rather than show that.
+const MIN_RECOMMENDED_POOL = 6;
 
 const categoryOptions: PillOption<CategoryFilter>[] = [
   { value: 'all', label: 'All Properties' },
@@ -185,16 +193,29 @@ export default function HomeScreen() {
     router.push(session ? '/add' : '/auth');
   }
 
-  // "New Listings" — a fresh-first strip, not a fake proximity search (the
-  // app has no geolocation data to actually rank by "near you").
-  const freshListings = useMemo(() => listings.slice(0, 10), [listings]);
-  // "Recommended" surfaces boosted/featured listings when there are any —
-  // real product purpose for the paid boost feature — and falls back to the
-  // full feed once inventory of boosted listings is thin.
+  // "New Listings" — genuinely recent listings (last 7 days), not just "the
+  // 10 most recent regardless of age," and not a fake proximity search (the
+  // app has no geolocation data to actually rank by "near you"). `listings`
+  // is already ordered newest-first by the query.
+  const freshListings = useMemo(
+    () => listings.filter((l) => daysSince(l.created_at) <= NEW_WITHIN_DAYS).slice(0, 10),
+    [listings]
+  );
+  // "Recommended" needs to read as an actually different section, not the
+  // same 1-2 listings reshuffled under a new heading -- so it draws only
+  // from whatever New Listings didn't already use, ranked by boost status
+  // then view count (real product purpose for the paid boost feature), and
+  // disappears entirely rather than duplicate New Listings when that
+  // remaining pool is too thin to look like a real second section.
   const recommended = useMemo(() => {
-    const featured = listings.filter((l) => l.is_premium);
-    return featured.length > 0 ? featured : listings;
-  }, [listings]);
+    const shownIds = new Set(freshListings.map((l) => l.id));
+    const pool = listings.filter((l) => !shownIds.has(l.id));
+    if (pool.length < MIN_RECOMMENDED_POOL) return [];
+    return [...pool].sort((a, b) => {
+      if (a.is_premium !== b.is_premium) return a.is_premium ? -1 : 1;
+      return (b.view_count ?? 0) - (a.view_count ?? 0);
+    }).slice(0, 10);
+  }, [listings, freshListings]);
 
   const firstName = profile?.full_name?.trim().split(' ')[0];
 
