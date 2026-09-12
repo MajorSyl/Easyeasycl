@@ -110,32 +110,6 @@ export default function DownloadScreen() {
               </View>
             </View>
 
-            {/* Android */}
-            <View style={styles.platformSection}>
-              <View style={styles.platformHeader}>
-                <Ionicons name="logo-android" size={18} color={colors.textPrimary} />
-                <Text style={styles.platformTitle}>Android (Chrome)</Text>
-              </View>
-
-              <View style={styles.instructions}>
-                {installPrompt ? (
-                  <Text style={styles.platformNote}>
-                    Chrome can install Easyfen for you — tap "Install App" above.
-                  </Text>
-                ) : (
-                  <>
-                    <InstructionStep number={1} text="Open easyfen.com in Chrome." icon="globe-outline" />
-                    <InstructionStep
-                      number={2}
-                      text='Tap the menu (⋮) in the top-right corner, then "Add to Home screen" or "Install app" — whichever Chrome shows you.'
-                      icon="ellipsis-vertical-outline"
-                    />
-                    <InstructionStep number={3} text='Confirm by tapping "Install" or "Add".' icon="checkmark-circle-outline" />
-                  </>
-                )}
-              </View>
-            </View>
-
             {/* Secondary: native Android APK */}
             <Pressable style={styles.apkToggle} onPress={() => setShowApkOption((v) => !v)}>
               <Text style={styles.apkToggleText}>Prefer a native Android app instead?</Text>
@@ -230,11 +204,6 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   platformTitle: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: colors.textPrimary },
-  platformNote: {
-    fontSize: fontSize.sm,
-    color: colors.textSecondary,
-    lineHeight: 20,
-  },
   downloadBtn: {
     flexDirection: 'row',
     alignItems: 'center',
