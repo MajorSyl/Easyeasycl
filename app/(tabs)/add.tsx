@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -10,6 +10,8 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '../../lib/supabase';
@@ -26,14 +28,11 @@ import { PhotoPicker } from '../../components/PhotoPicker';
 import { SelectField, type SelectOption } from '../../components/SelectField';
 import { LocationFields } from '../../components/LocationFields';
 import { CurrencySegmentedControl } from '../../components/CurrencySegmentedControl';
-import { StepProgress } from '../../components/StepProgress';
 import { coordsForCity } from '../../constants/locations';
 import { AMENITIES } from '../../constants/amenities';
 import { generateListingDescription } from '../../constants/description-templates';
 import type { LocationMatch } from '../../lib/location-match';
 import type { ListingCategory, ListingCurrency } from '../../lib/types';
-
-const FORM_STEPS = ['Photos', 'Details', 'Review', 'Publish'];
 
 const categoryOptions: SelectOption<ListingCategory>[] = [
   { value: 'for_rent', label: 'For Rent' },
@@ -47,10 +46,33 @@ const rateUnitOptions: SelectOption<'hour' | 'day'>[] = [
   { value: 'day', label: 'Per Day' },
 ];
 
+// Everything that gets persisted as a local draft, so a dropped connection
+// or an accidental tab switch never loses what an agent already typed --
+// see the draft effect below. Deliberately excludes nothing: even the
+// already-uploaded `photos` URLs are worth keeping, since re-picking them
+// would mean re-uploading.
+type DraftState = {
+  title: string;
+  price: string;
+  priceNote: string;
+  currency: ListingCurrency;
+  location: string;
+  bedrooms: string;
+  amenities: string[];
+  category: ListingCategory | null;
+  rateUnit: 'hour' | 'day';
+  description: string;
+  photos: string[];
+};
+
+function draftKey(userId: string) {
+  return `easyfen:add-listing-draft:${userId}`;
+}
+
 export default function AddListingScreen() {
   const insets = useSafeAreaInsets();
   const tabBarGap = useTabBarGap();
-  const { session, profile } = useAuth();
+  const { session } = useAuth();
 
   const [photos, setPhotos] = useState<string[]>([]);
   const [title, setTitle] = useState('');
@@ -65,6 +87,78 @@ export default function AddListingScreen() {
   const [category, setCategory] = useState<ListingCategory | null>(null);
   const [rateUnit, setRateUnit] = useState<'hour' | 'day'>('hour');
   const [submitting, setSubmitting] = useState(false);
+  const [moreDetailsOpen, setMoreDetailsOpen] = useState(false);
+
+  // Guards against (a) saving a just-restored draft straight back to
+  // storage as if it were a fresh edit, and (b) restoring more than once if
+  // this effect's dependency (the user id) is stable across re-renders.
+  const restoredForUserRef = useRef<string | null>(null);
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Set right before resetForm() blanks every field, so the save effect's
+  // very next run (triggered by those blanked fields) skips once instead of
+  // writing an empty draft back over the removeItem() that just ran.
+  const skipNextSaveRef = useRef(false);
+
+  // Restore a local draft the moment we know who's signed in. Only ever
+  // reads -- if there's nothing saved, the form just starts blank as usual.
+  useEffect(() => {
+    const userId = session?.user.id;
+    if (!userId || restoredForUserRef.current === userId) return;
+    restoredForUserRef.current = userId;
+    AsyncStorage.getItem(draftKey(userId))
+      .then((raw) => {
+        if (!raw) return;
+        const draft = JSON.parse(raw) as Partial<DraftState>;
+        if (draft.title) setTitle(draft.title);
+        if (draft.price) setPrice(draft.price);
+        if (draft.priceNote) setPriceNote(draft.priceNote);
+        if (draft.currency) setCurrency(draft.currency);
+        if (draft.location) setLocation(draft.location);
+        if (draft.bedrooms) setBedrooms(draft.bedrooms);
+        if (draft.amenities?.length) setAmenities(draft.amenities);
+        if (draft.category) setCategory(draft.category);
+        if (draft.rateUnit) setRateUnit(draft.rateUnit);
+        if (draft.description) setDescription(draft.description);
+        if (draft.photos?.length) setPhotos(draft.photos);
+      })
+      .catch(() => {
+        // A corrupt or unreadable draft just means starting fresh -- never
+        // block the form over it.
+      });
+  }, [session?.user.id]);
+
+  // Debounced auto-save -- waits for a pause in typing rather than writing
+  // to storage on every keystroke. Skipped entirely until the restore pass
+  // above has run, so it can't immediately overwrite a draft with the blank
+  // initial state on first mount.
+  useEffect(() => {
+    const userId = session?.user.id;
+    if (!userId || restoredForUserRef.current !== userId) return;
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    if (skipNextSaveRef.current) {
+      skipNextSaveRef.current = false;
+      return;
+    }
+    saveTimerRef.current = setTimeout(() => {
+      const draft: DraftState = {
+        title,
+        price,
+        priceNote,
+        currency,
+        location,
+        bedrooms,
+        amenities,
+        category,
+        rateUnit,
+        description,
+        photos,
+      };
+      AsyncStorage.setItem(draftKey(userId), JSON.stringify(draft)).catch(() => {});
+    }, 500);
+    return () => {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    };
+  }, [title, price, priceNote, currency, location, bedrooms, amenities, category, rateUnit, description, photos, session?.user.id]);
 
   if (!session) {
     return (
@@ -78,26 +172,13 @@ export default function AddListingScreen() {
     );
   }
 
+  // Only Title and Price are required -- everything else (Location,
+  // Property Type, Bedrooms, Amenities, Description, even Photos) can be
+  // added later by editing the listing. The goal is getting a listing live
+  // in well under two minutes; richness is a post-publish nudge, not a
+  // pre-publish gate.
   const requiredFieldsFilled =
-    title.trim().length > 0 &&
-    price.trim().length > 0 &&
-    !Number.isNaN(parsePriceInput(price)) &&
-    parsePriceInput(price) > 0 &&
-    location.trim().length > 0 &&
-    description.trim().length > 0 &&
-    category !== null;
-
-  // Reflects real progress through the form (it's still one continuous
-  // scroll, not a paginated wizard) so the indicator means something
-  // rather than just decorating the top of the screen.
-  const hasStartedDetails =
-    title.trim().length > 0 ||
-    price.trim().length > 0 ||
-    location.trim().length > 0 ||
-    description.trim().length > 0 ||
-    bedrooms.trim().length > 0 ||
-    category !== null;
-  const currentStep = submitting ? 3 : requiredFieldsFilled ? 2 : photos.length > 0 || hasStartedDetails ? 1 : 0;
+    title.trim().length > 0 && price.trim().length > 0 && !Number.isNaN(parsePriceInput(price)) && parsePriceInput(price) > 0;
 
   const priceNumber = parsePriceInput(price);
   const pricePreview =
@@ -118,6 +199,9 @@ export default function AddListingScreen() {
     setAmenities([]);
     setCategory(null);
     setRateUnit('hour');
+    setMoreDetailsOpen(false);
+    skipNextSaveRef.current = true;
+    if (session?.user.id) AsyncStorage.removeItem(draftKey(session.user.id)).catch(() => {});
   }
 
   function toggleAmenity(amenity: string) {
@@ -161,8 +245,8 @@ export default function AddListingScreen() {
       .insert({
         owner_id: session.user.id,
         title: cleanTitle,
-        description: cleanDescription,
-        category: category!,
+        description: cleanDescription || null,
+        category: category ?? 'for_rent',
         price: priceValue,
         currency,
         price_unit: category === 'daily_hourly' ? rateUnit : null,
@@ -184,6 +268,10 @@ export default function AddListingScreen() {
     setSubmitting(false);
 
     if (error) {
+      // Surfaced to the console (not the user -- lib/errors.ts deliberately
+      // never shows raw SQL/API text) so a real failure can be diagnosed
+      // from a bug report instead of guessed at from "something went wrong."
+      console.error('Publish listing failed:', error);
       appAlert('Could not publish listing', friendlyErrorMessage(error));
       return;
     }
@@ -197,6 +285,7 @@ export default function AddListingScreen() {
       supabase.from('unmatched_locations').insert({ listing_id: data.id, location_text: cleanLocation });
     }
 
+    const listingId = data?.id;
     resetForm();
     notifyListingsChanged();
     // moderation_status is set server-side (see the listings_set_moderation_status
@@ -210,9 +299,16 @@ export default function AddListingScreen() {
         [{ text: 'OK', onPress: () => router.push('/profile') }]
       );
     } else {
-      appAlert('Listing published', 'Your listing is now live on Easyfen.', [
-        { text: 'View on Home', onPress: () => router.push('/') },
-      ]);
+      appAlert(
+        '🎉 Your listing is live!',
+        'Want more views? Add photos, a description, or more details anytime.',
+        [
+          ...(listingId
+            ? [{ text: 'Add More Details', onPress: () => router.push(`/edit/listing/${listingId}`) }]
+            : []),
+          { text: 'View Listing', onPress: () => (listingId ? router.push(`/listing/${listingId}`) : router.push('/')) },
+        ]
+      );
     }
   }
 
@@ -226,28 +322,14 @@ export default function AddListingScreen() {
         keyboardShouldPersistTaps="handled"
       >
         <Text style={styles.heading}>Create Listing</Text>
-        <Text style={styles.subheading}>Get your property in front of thousands.</Text>
-
-        <StepProgress steps={FORM_STEPS} currentIndex={currentStep} />
+        <Text style={styles.subheading}>List your property in under two minutes.</Text>
 
         <View style={styles.card}>
-          <View style={styles.sectionHeader}>
-            <View style={styles.stepBadge}>
-              <Text style={styles.stepBadgeText}>1</Text>
-            </View>
-            <Text style={styles.sectionTitle}>Photos</Text>
-          </View>
+          <Text style={styles.sectionTitle}>Photos (optional)</Text>
           <PhotoPicker photos={photos} onChange={setPhotos} userId={session.user.id} />
         </View>
 
         <View style={styles.card}>
-          <View style={styles.sectionHeader}>
-            <View style={styles.stepBadge}>
-              <Text style={styles.stepBadgeText}>2</Text>
-            </View>
-            <Text style={styles.sectionTitle}>Details</Text>
-          </View>
-
           <Field label="Title">
             <TextInput
               style={styles.input}
@@ -261,7 +343,6 @@ export default function AddListingScreen() {
           <View style={styles.currencyField}>
             <Text style={styles.fieldLabel}>Currency</Text>
             <CurrencySegmentedControl value={currency} onChange={setCurrency} />
-            <Text style={styles.currencyHelper}>Select currency, then enter your price.</Text>
           </View>
 
           <Field label="Price">
@@ -272,101 +353,117 @@ export default function AddListingScreen() {
               value={price}
               onChangeText={(text) => setPrice(sanitizePriceInput(text))}
               keyboardType="decimal-pad"
+              inputMode="numeric"
             />
             {pricePreview && <Text style={styles.pricePreview}>{pricePreview}</Text>}
           </Field>
 
-          <Field label="Price Note (optional)">
-            <TextInput
-              style={styles.input}
-              placeholder="e.g. per town lot, per acre, negotiable"
-              placeholderTextColor={colors.textMuted}
-              value={priceNote}
-              onChangeText={setPriceNote}
-            />
-          </Field>
-
           <LocationFields location={location} onLocationChange={setLocation} onResolvedChange={setLocationMatch} />
 
-          <View style={styles.row}>
-            <View style={styles.flex1}>
-              <SelectField
-                label="Property Type"
-                placeholder="Select type"
-                value={category}
-                options={categoryOptions}
-                onChange={setCategory}
-              />
-            </View>
-            {category !== 'land' && (
-              <Field label="Bedrooms" style={styles.flex1}>
+          <SelectField
+            label="Property Type (optional)"
+            placeholder="Select type"
+            value={category}
+            options={categoryOptions}
+            onChange={setCategory}
+          />
+
+          <Pressable
+            style={styles.moreDetailsToggle}
+            onPress={() => setMoreDetailsOpen((open) => !open)}
+            accessibilityRole="button"
+            accessibilityState={{ expanded: moreDetailsOpen }}
+          >
+            <Text style={styles.moreDetailsToggleText}>Add more details (optional)</Text>
+            <Ionicons
+              name={moreDetailsOpen ? 'chevron-up' : 'chevron-down'}
+              size={18}
+              color={colors.accent}
+            />
+          </Pressable>
+
+          {moreDetailsOpen && (
+            <View style={styles.moreDetails}>
+              {category !== 'land' && (
+                <Field label="Bedrooms">
+                  <TextInput
+                    style={styles.input}
+                    placeholder="e.g. 3"
+                    placeholderTextColor={colors.textMuted}
+                    value={bedrooms}
+                    onChangeText={setBedrooms}
+                    keyboardType="number-pad"
+                    inputMode="numeric"
+                  />
+                </Field>
+              )}
+
+              <Field label="Price Note (optional)">
                 <TextInput
                   style={styles.input}
-                  placeholder="e.g. 3"
+                  placeholder="e.g. per town lot, per acre, negotiable"
                   placeholderTextColor={colors.textMuted}
-                  value={bedrooms}
-                  onChangeText={setBedrooms}
-                  keyboardType="number-pad"
+                  value={priceNote}
+                  onChangeText={setPriceNote}
                 />
               </Field>
-            )}
-          </View>
 
-          {category === 'daily_hourly' && (
-            <SelectField
-              label="Rate"
-              placeholder="Select rate"
-              value={rateUnit}
-              options={rateUnitOptions}
-              onChange={setRateUnit}
-            />
-          )}
+              {category === 'daily_hourly' && (
+                <SelectField
+                  label="Rate"
+                  placeholder="Select rate"
+                  value={rateUnit}
+                  options={rateUnitOptions}
+                  onChange={setRateUnit}
+                />
+              )}
 
-          <View>
-            <Text style={styles.fieldLabel}>Amenities (optional)</Text>
-            <View style={styles.amenityWrap}>
-              {AMENITIES.map((amenity) => {
-                const active = amenities.includes(amenity);
-                return (
-                  <Pressable
-                    key={amenity}
-                    style={[styles.amenityChip, active && styles.amenityChipActive]}
-                    onPress={() => toggleAmenity(amenity)}
-                    accessibilityRole="checkbox"
-                    accessibilityState={{ checked: active }}
-                  >
-                    {active && <Text style={styles.amenityCheck}>✓ </Text>}
-                    <Text style={[styles.amenityChipText, active && styles.amenityChipTextActive]}>{amenity}</Text>
-                  </Pressable>
-                );
-              })}
+              {category !== 'land' && (
+                <View>
+                  <Text style={styles.fieldLabel}>Amenities (optional)</Text>
+                  <View style={styles.amenityWrap}>
+                    {AMENITIES.map((amenity) => {
+                      const active = amenities.includes(amenity);
+                      return (
+                        <Pressable
+                          key={amenity}
+                          style={[styles.amenityChip, active && styles.amenityChipActive]}
+                          onPress={() => toggleAmenity(amenity)}
+                          accessibilityRole="checkbox"
+                          accessibilityState={{ checked: active }}
+                        >
+                          {active && <Text style={styles.amenityCheck}>✓ </Text>}
+                          <Text style={[styles.amenityChipText, active && styles.amenityChipTextActive]}>{amenity}</Text>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                </View>
+              )}
+
+              <View style={styles.descriptionHeader}>
+                <Text style={styles.fieldLabel}>Description (optional)</Text>
+                <Pressable
+                  style={styles.generateButton}
+                  onPress={handleGenerateDescription}
+                  accessibilityRole="button"
+                  accessibilityLabel="Generate a draft description from the fields above"
+                >
+                  <Text style={styles.generateButtonText}>✨ Generate description</Text>
+                </Pressable>
+              </View>
+              <TextInput
+                style={[styles.input, styles.textArea]}
+                placeholder="Describe your property in detail..."
+                placeholderTextColor={colors.textMuted}
+                value={description}
+                onChangeText={setDescription}
+                multiline
+                numberOfLines={4}
+                textAlignVertical="top"
+              />
             </View>
-          </View>
-
-          <View style={styles.descriptionHeader}>
-            <Text style={styles.fieldLabel}>Description</Text>
-            <Pressable
-              style={styles.generateButton}
-              onPress={handleGenerateDescription}
-              accessibilityRole="button"
-              accessibilityLabel="Generate a draft description from the fields above"
-            >
-              <Text style={styles.generateButtonText}>✨ Generate description</Text>
-            </Pressable>
-          </View>
-          <TextInput
-            style={[styles.input, styles.textArea]}
-            placeholder="Describe your property in detail..."
-            placeholderTextColor={colors.textMuted}
-            value={description}
-            onChangeText={setDescription}
-            multiline
-            numberOfLines={4}
-            textAlignVertical="top"
-          />
-          <Text style={styles.generateHelper}>
-            Fill in the fields above, then tap Generate for a starting draft you can edit.
-          </Text>
+          )}
         </View>
 
         <Pressable
@@ -410,10 +507,6 @@ const styles = StyleSheet.create({
   loginButton: { backgroundColor: colors.accent, borderRadius: radius.md, paddingHorizontal: spacing.xl, paddingVertical: spacing.md },
   loginButtonText: { ...type.button, fontSize: fontSize.md, color: '#fff' },
   scrollContent: { padding: spacing.lg, paddingBottom: spacing.xxl },
-  // Screen-level heading -- Poppins, like every other section/page title in
-  // the app -- but this form stays in the flattened/functional tier (no
-  // elevation, no bold-surface treatment): the card below is bordered, not
-  // shadowed, and nothing here competes with the listing grid's cards.
   heading: { ...type.sectionTitle, fontSize: fontSize.xxl, color: colors.textPrimary },
   subheading: { ...type.body, fontSize: fontSize.sm, color: colors.textSecondary, marginTop: 2, marginBottom: spacing.lg },
   card: {
@@ -425,23 +518,8 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
     gap: spacing.md,
   },
-  sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.xs },
-  stepBadge: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: colors.accentSoft,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  stepBadgeText: { ...type.labelStrong, color: colors.accent },
   sectionTitle: { ...type.screenTitle, fontSize: fontSize.md, color: colors.textPrimary },
-  row: { flexDirection: 'row', gap: spacing.md },
-  flex1: { flex: 1 },
   field: {},
-  // Uppercase + letter-spacing kept as-is here -- this is a pre-existing
-  // form-field-label convention distinct from the badge "AI-app tell" this
-  // pass isn't re-litigating; only the font family changes.
   fieldLabel: {
     ...type.labelStrong,
     color: colors.textMuted,
@@ -464,6 +542,15 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
   },
   textArea: { minHeight: 90 },
+  moreDetailsToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: spacing.sm,
+  },
+  moreDetailsToggleText: { ...type.labelStrong, fontSize: fontSize.sm, color: colors.accent },
+  moreDetails: { gap: spacing.md },
   amenityWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   amenityChip: {
     flexDirection: 'row',
@@ -485,12 +572,9 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
     paddingHorizontal: spacing.md,
     paddingVertical: 6,
-    marginBottom: 6,
   },
   generateButtonText: { ...type.labelStrong, fontSize: fontSize.xs, color: colors.accentStrong },
-  generateHelper: { ...type.secondary, fontSize: fontSize.xs, color: colors.textMuted, marginTop: 6 },
   currencyField: { marginBottom: 2 },
-  currencyHelper: { ...type.secondary, fontSize: fontSize.xs, color: colors.textMuted, marginTop: 6 },
   pricePreview: { ...type.secondary, fontSize: fontSize.xs, color: colors.accentStrong, marginTop: 6 },
   publishButton: {
     backgroundColor: colors.accent,
