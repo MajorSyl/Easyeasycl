@@ -3,7 +3,7 @@
 import { usePathname } from 'next/navigation';
 import { useTransition } from 'react';
 import { logout } from '../app/actions';
-import { IconGrid, IconHome, IconUsers, IconCard, IconFlag, IconUserCheck, IconGear } from './icons';
+import { IconGrid, IconHome, IconUsers, IconCard, IconFlag, IconUserCheck, IconGear, IconPin } from './icons';
 import { initialsOf } from '../lib/avatar';
 
 const navItems = [
@@ -12,6 +12,7 @@ const navItems = [
   { href: '/users', label: 'Users', icon: IconUsers },
   { href: '/payments', label: 'Payments', icon: IconCard },
   { href: '/reports', label: 'Reports', icon: IconFlag },
+  { href: '/unmatched-locations', label: 'Unmatched Locations', icon: IconPin },
   { href: '/leads', label: 'Agent Leads', icon: IconUserCheck },
   { href: '/settings', label: 'Settings', icon: IconGear },
 ];

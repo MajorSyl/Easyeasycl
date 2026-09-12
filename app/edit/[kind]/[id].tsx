@@ -26,6 +26,7 @@ import { LocationFields } from '../../../components/LocationFields';
 import { CurrencyToggle } from '../../../components/CurrencyToggle';
 import { coordsForCity } from '../../../constants/locations';
 import { parsePriceInput } from '../../../lib/format';
+import type { LocationMatch } from '../../../lib/location-match';
 import type { ListingCategory, ListingCurrency } from '../../../lib/types';
 
 type Kind = 'listing' | 'hotel' | 'service';
@@ -51,9 +52,8 @@ export default function EditListingScreen() {
   const [title, setTitle] = useState('');
   const [price, setPrice] = useState('');
   const [currency, setCurrency] = useState<ListingCurrency>('NLE');
-  const [district, setDistrict] = useState('');
-  const [city, setCity] = useState('');
   const [location, setLocation] = useState('');
+  const [locationMatch, setLocationMatch] = useState<LocationMatch | null>(null);
   const [description, setDescription] = useState('');
   const [bedrooms, setBedrooms] = useState('');
   const [category, setCategory] = useState<ListingCategory | null>(null);
@@ -62,6 +62,13 @@ export default function EditListingScreen() {
   const [photos, setPhotos] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [notOwner, setNotOwner] = useState(false);
+  // Baseline captured on load -- if the agent never touches the Location
+  // text, a re-save shouldn't blank out a District/City that was set some
+  // other way before this auto-match feature existed (e.g. a custom "Other"
+  // city typed under the old picker that isn't in today's lookup list).
+  const [initialLocation, setInitialLocation] = useState('');
+  const [initialDistrict, setInitialDistrict] = useState('');
+  const [initialCity, setInitialCity] = useState('');
 
   useEffect(() => {
     if (!id || !kind || !session) return;
@@ -85,10 +92,11 @@ export default function EditListingScreen() {
         setPrice(String(data.price ?? data.rate ?? ''));
         if (kind === 'listing' && (data.currency === 'NLE' || data.currency === 'USD')) setCurrency(data.currency);
         if (kind === 'listing') {
-          setDistrict(data.district ?? '');
-          setCity(data.city ?? '');
+          setInitialDistrict(data.district ?? '');
+          setInitialCity(data.city ?? '');
         }
         setLocation(data.location ?? '');
+        setInitialLocation(data.location ?? '');
         setDescription(data.description ?? '');
         setBedrooms(data.bedrooms != null ? String(data.bedrooms) : '');
         setCategory((data.category as ListingCategory) ?? null);
@@ -105,8 +113,7 @@ export default function EditListingScreen() {
     price.trim().length > 0 &&
     !Number.isNaN(parsePriceInput(price)) &&
     parsePriceInput(price) > 0 &&
-    location.trim().length > 0 &&
-    (kind !== 'listing' || (district.trim().length > 0 && city.trim().length > 0));
+    location.trim().length > 0;
 
   async function handleSave() {
     if (!canSave || saving || !session || !id) return;
@@ -119,7 +126,13 @@ export default function EditListingScreen() {
     let error;
 
     if (kind === 'listing') {
-      const cleanCity = sanitizeText(city);
+      // Location unchanged + no fresh match -- keep whatever District/City
+      // was already stored rather than blanking it (see initialDistrict/
+      // initialCity comment above). Only flag for admin review when the
+      // agent actually typed something new that still didn't resolve.
+      const locationUnchanged = location.trim() === initialLocation.trim();
+      const resolvedDistrict = locationMatch?.district ?? (locationUnchanged ? initialDistrict : '');
+      const cleanCity = sanitizeText(locationMatch?.city ?? (locationUnchanged ? initialCity : ''));
       const cityCoords = coordsForCity(cleanCity);
       ({ error } = await supabase
         .from('listings')
@@ -130,7 +143,7 @@ export default function EditListingScreen() {
           price: priceValue,
           currency,
           price_unit: category === 'daily_hourly' ? rateUnit : null,
-          district,
+          district: resolvedDistrict,
           city: cleanCity,
           location: cleanLocation,
           latitude: cityCoords?.lat ?? null,
@@ -140,6 +153,10 @@ export default function EditListingScreen() {
         })
         .eq('id', id)
         .eq('owner_id', session.user.id));
+
+      if (!error && !locationMatch && !locationUnchanged) {
+        supabase.from('unmatched_locations').insert({ listing_id: id, location_text: cleanLocation });
+      }
     } else if (kind === 'hotel') {
       ({ error } = await supabase
         .from('hotels')
@@ -262,14 +279,7 @@ export default function EditListingScreen() {
           </View>
 
           {kind === 'listing' && (
-            <LocationFields
-              district={district}
-              city={city}
-              location={location}
-              onDistrictChange={setDistrict}
-              onCityChange={setCity}
-              onLocationChange={setLocation}
-            />
+            <LocationFields location={location} onLocationChange={setLocation} onResolvedChange={setLocationMatch} />
           )}
 
           {kind === 'listing' && (

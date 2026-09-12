@@ -1,107 +1,92 @@
-import { StyleSheet, Text, TextInput, View } from 'react-native';
-import { SelectField, type SelectOption } from './SelectField';
-import { SIERRA_LEONE_DISTRICTS, OTHER_CITY, citiesForDistrict } from '../constants/locations';
+import { useEffect, useMemo, useState } from 'react';
+import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { colors, fontSize, radius, spacing } from '../constants/theme';
 import { type } from '../constants/typography';
+import {
+  applyLocationSuggestion,
+  matchLocationText,
+  suggestLocations,
+  type LocationMatch,
+} from '../lib/location-match';
 
-const districtOptions: SelectOption<string>[] = SIERRA_LEONE_DISTRICTS.map((d) => ({ value: d.name, label: d.name }));
-
-// District -> City/Town -> Location, in that order, reused by both the Add
-// Listing and Edit Listing forms. City/Town always offers "Other" so an
-// agent in a town too small to be on our list can still list -- picking it
-// reveals a free-text input instead of leaving them stuck.
+// One free-text "Where is the property?" field, replacing the old
+// District -> City/Town -> Location three-step picker. District/City are
+// derived automatically in the background by matching the typed text
+// against the known Sierra Leone city/town list (lib/location-match.ts) --
+// the agent never selects them, just types where the property is (e.g. "Bo
+// Town" or "Goderich, Freetown"), with suggestions to make common places
+// quick to pick without typing the full name. Unmatched text still saves as
+// entered; `onResolvedChange` reports the outcome so the caller can flag it
+// for admin review.
 export function LocationFields({
-  district,
-  city,
   location,
-  onDistrictChange,
-  onCityChange,
   onLocationChange,
+  onResolvedChange,
 }: {
-  district: string;
-  city: string;
   location: string;
-  onDistrictChange: (district: string) => void;
-  onCityChange: (city: string) => void;
   onLocationChange: (location: string) => void;
+  onResolvedChange?: (match: LocationMatch | null) => void;
 }) {
-  const knownCities = district ? citiesForDistrict(district) : [];
-  const hasCity = city.trim().length > 0;
-  const isOtherCity = hasCity && !knownCities.includes(city);
-  const citySelectValue = !hasCity ? null : isOtherCity ? OTHER_CITY : city;
-  const cityOptions: SelectOption<string>[] = [
-    ...knownCities.map((c) => ({ value: c, label: c })),
-    { value: OTHER_CITY, label: 'Other (type your town)' },
-  ];
+  const [focused, setFocused] = useState(false);
+  const suggestions = useMemo(() => (focused ? suggestLocations(location) : []), [focused, location]);
+  const match = useMemo(() => matchLocationText(location), [location]);
 
-  function handleDistrictChange(next: string) {
-    onDistrictChange(next);
-    // Only clear the city if the district actually changed -- SelectField
-    // fires onChange even when re-tapping the option that's already
-    // selected, so without this guard, opening the District picker just to
-    // look and tapping the same value again would silently wipe out a
-    // City/Town the agent had already picked.
-    if (next !== district) onCityChange('');
-  }
-
-  function handleCitySelect(next: string) {
-    onCityChange(next === OTHER_CITY ? '' : next);
-  }
+  useEffect(() => {
+    onResolvedChange?.(match);
+    // onResolvedChange deliberately excluded from deps -- callers pass an
+    // inline setter that's a new function reference every render, which
+    // would otherwise re-fire this effect on every keystroke instead of
+    // only when the resolved match itself changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [match]);
 
   return (
-    <View style={styles.stack}>
-      <View style={styles.row}>
-        <View style={styles.flex1}>
-          <SelectField
-            label="District"
-            placeholder="Select district"
-            value={district || null}
-            options={districtOptions}
-            onChange={handleDistrictChange}
-          />
-        </View>
-        <View style={styles.flex1}>
-          <SelectField
-            label="City / Town"
-            placeholder={district ? 'Select city/town' : 'Select a district first'}
-            value={citySelectValue}
-            options={cityOptions}
-            onChange={handleCitySelect}
-          />
-        </View>
-      </View>
+    <View style={styles.wrap}>
+      <Text style={styles.fieldLabel}>Location</Text>
+      <TextInput
+        style={styles.input}
+        placeholder="Where is the property? e.g. Goderich, Freetown"
+        placeholderTextColor={colors.textMuted}
+        value={location}
+        onChangeText={onLocationChange}
+        onFocus={() => setFocused(true)}
+        // Delayed so a tap on a suggestion below registers before the list
+        // unmounts -- blur fires before the suggestion's onPress otherwise.
+        onBlur={() => setTimeout(() => setFocused(false), 150)}
+      />
 
-      {isOtherCity && (
-        <View>
-          <Text style={styles.fieldLabel}>Your City / Town</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="e.g. Bumpe"
-            placeholderTextColor={colors.textMuted}
-            value={city}
-            onChangeText={onCityChange}
-          />
+      {location.trim().length > 0 &&
+        (match ? (
+          <Text style={styles.matchHint}>
+            📍 {match.city ? `${match.city}, ` : ''}
+            {match.district}
+          </Text>
+        ) : (
+          <Text style={styles.noMatchHint}>
+            We don't recognize this area yet — it'll still save, and we'll add it to our list.
+          </Text>
+        ))}
+
+      {suggestions.length > 0 && (
+        <View style={styles.suggestions}>
+          {suggestions.map((suggestion) => (
+            <Pressable
+              key={suggestion.city}
+              style={styles.suggestionRow}
+              onPress={() => onLocationChange(applyLocationSuggestion(location, suggestion))}
+            >
+              <Text style={styles.suggestionCity}>{suggestion.label}</Text>
+              <Text style={styles.suggestionDistrict}>{suggestion.district}</Text>
+            </Pressable>
+          ))}
         </View>
       )}
-
-      <View>
-        <Text style={styles.fieldLabel}>Location</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="e.g. Goderich"
-          placeholderTextColor={colors.textMuted}
-          value={location}
-          onChangeText={onLocationChange}
-        />
-      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  stack: { gap: spacing.md },
-  row: { flexDirection: 'row', gap: spacing.md },
-  flex1: { flex: 1 },
+  wrap: { position: 'relative', zIndex: 10 },
   fieldLabel: {
     ...type.labelStrong,
     color: colors.textMuted,
@@ -120,4 +105,35 @@ const styles = StyleSheet.create({
     fontSize: fontSize.md,
     color: colors.textPrimary,
   },
+  matchHint: { ...type.secondary, fontSize: fontSize.xs, color: colors.success, marginTop: 6 },
+  noMatchHint: { ...type.secondary, fontSize: fontSize.xs, color: colors.textMuted, marginTop: 6 },
+  suggestions: {
+    position: 'absolute',
+    top: '100%',
+    left: 0,
+    right: 0,
+    marginTop: 2,
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    paddingVertical: spacing.xs,
+    // Web and Android both need an explicit stacking hint to render this
+    // above the form fields that follow it in the scroll view.
+    elevation: 6,
+    shadowColor: '#000',
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    zIndex: 20,
+  },
+  suggestionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+  },
+  suggestionCity: { ...type.body, fontSize: fontSize.sm, color: colors.textPrimary },
+  suggestionDistrict: { ...type.secondary, fontSize: fontSize.xs, color: colors.textMuted },
 });

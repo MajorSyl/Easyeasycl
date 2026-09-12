@@ -30,6 +30,7 @@ import { StepProgress } from '../../components/StepProgress';
 import { coordsForCity } from '../../constants/locations';
 import { AMENITIES } from '../../constants/amenities';
 import { generateListingDescription } from '../../constants/description-templates';
+import type { LocationMatch } from '../../lib/location-match';
 import type { ListingCategory, ListingCurrency } from '../../lib/types';
 
 const FORM_STEPS = ['Photos', 'Details', 'Review', 'Publish'];
@@ -55,9 +56,8 @@ export default function AddListingScreen() {
   const [title, setTitle] = useState('');
   const [price, setPrice] = useState('');
   const [currency, setCurrency] = useState<ListingCurrency>('NLE');
-  const [district, setDistrict] = useState('');
-  const [city, setCity] = useState('');
   const [location, setLocation] = useState('');
+  const [locationMatch, setLocationMatch] = useState<LocationMatch | null>(null);
   const [description, setDescription] = useState('');
   const [bedrooms, setBedrooms] = useState('');
   const [amenities, setAmenities] = useState<string[]>([]);
@@ -82,8 +82,6 @@ export default function AddListingScreen() {
     price.trim().length > 0 &&
     !Number.isNaN(parsePriceInput(price)) &&
     parsePriceInput(price) > 0 &&
-    district.trim().length > 0 &&
-    city.trim().length > 0 &&
     location.trim().length > 0 &&
     description.trim().length > 0 &&
     category !== null;
@@ -94,8 +92,6 @@ export default function AddListingScreen() {
   const hasStartedDetails =
     title.trim().length > 0 ||
     price.trim().length > 0 ||
-    district.trim().length > 0 ||
-    city.trim().length > 0 ||
     location.trim().length > 0 ||
     description.trim().length > 0 ||
     bedrooms.trim().length > 0 ||
@@ -113,9 +109,8 @@ export default function AddListingScreen() {
     setTitle('');
     setPrice('');
     setCurrency('NLE');
-    setDistrict('');
-    setCity('');
     setLocation('');
+    setLocationMatch(null);
     setDescription('');
     setBedrooms('');
     setAmenities([]);
@@ -134,8 +129,8 @@ export default function AddListingScreen() {
       generateListingDescription({
         category,
         bedrooms,
-        district,
-        city,
+        district: locationMatch?.district ?? '',
+        city: locationMatch?.city ?? '',
         location,
         price: price.trim() ? parsePriceInput(price) : null,
         currency,
@@ -153,7 +148,7 @@ export default function AddListingScreen() {
     const cleanTitle = sanitizeText(title);
     const cleanDescription = sanitizeText(description);
     const cleanLocation = sanitizeText(location);
-    const cleanCity = sanitizeText(city);
+    const cleanCity = sanitizeText(locationMatch?.city ?? '');
     // No geocoding service is wired into this app -- fall back to the
     // city's approximate town-centroid so the listing still has *some*
     // coordinate to sort by in "Near Me" until it's ever set precisely.
@@ -169,7 +164,7 @@ export default function AddListingScreen() {
         price: priceValue,
         currency,
         price_unit: category === 'daily_hourly' ? rateUnit : null,
-        district,
+        district: locationMatch?.district ?? '',
         city: cleanCity,
         location: cleanLocation,
         latitude: cityCoords?.lat ?? null,
@@ -177,7 +172,7 @@ export default function AddListingScreen() {
         bedrooms: bedrooms.trim() ? Number(bedrooms) : null,
         photos,
       })
-      .select('moderation_status')
+      .select('id, moderation_status')
       .single();
 
     setSubmitting(false);
@@ -185,6 +180,15 @@ export default function AddListingScreen() {
     if (error) {
       appAlert('Could not publish listing', friendlyErrorMessage(error));
       return;
+    }
+
+    // The Location text didn't match any known city/town -- the listing
+    // still saved fine with district/city left blank, but flag it so an
+    // admin can add the area to constants/locations.ts and this stops
+    // happening for future listings from the same area. Fire-and-forget:
+    // never blocks or fails the publish that already succeeded above.
+    if (!locationMatch && data?.id) {
+      supabase.from('unmatched_locations').insert({ listing_id: data.id, location_text: cleanLocation });
     }
 
     resetForm();
@@ -266,14 +270,7 @@ export default function AddListingScreen() {
             {pricePreview && <Text style={styles.pricePreview}>{pricePreview}</Text>}
           </Field>
 
-          <LocationFields
-            district={district}
-            city={city}
-            location={location}
-            onDistrictChange={setDistrict}
-            onCityChange={setCity}
-            onLocationChange={setLocation}
-          />
+          <LocationFields location={location} onLocationChange={setLocation} onResolvedChange={setLocationMatch} />
 
           <View style={styles.row}>
             <View style={styles.flex1}>

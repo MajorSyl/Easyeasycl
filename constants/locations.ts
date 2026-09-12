@@ -98,3 +98,13 @@ export function coordsForCity(city: string): { lat: number; lng: number } | null
 export const ALL_CITIES: { district: string; city: string }[] = SIERRA_LEONE_DISTRICTS.flatMap((d) =>
   d.cities.map((city) => ({ district: d.name, city }))
 );
+
+// Short forms Sierra Leoneans actually type/say for a handful of multi-word
+// city names -- e.g. "Bo" rather than "Bo Town". Used by lib/location-match.ts
+// so typing the common short form still auto-resolves District/City; the
+// canonical name (right-hand side) is what's actually stored as `city`.
+export const CITY_ALIASES: Record<string, string> = {
+  Bo: 'Bo Town',
+  Koidu: 'Koidu Town',
+  Mattru: 'Mattru Jong',
+};
