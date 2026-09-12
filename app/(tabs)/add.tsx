@@ -28,6 +28,8 @@ import { LocationFields } from '../../components/LocationFields';
 import { CurrencySegmentedControl } from '../../components/CurrencySegmentedControl';
 import { StepProgress } from '../../components/StepProgress';
 import { coordsForCity } from '../../constants/locations';
+import { AMENITIES } from '../../constants/amenities';
+import { generateListingDescription } from '../../constants/description-templates';
 import type { ListingCategory, ListingCurrency } from '../../lib/types';
 
 const FORM_STEPS = ['Photos', 'Details', 'Review', 'Publish'];
@@ -58,6 +60,7 @@ export default function AddListingScreen() {
   const [location, setLocation] = useState('');
   const [description, setDescription] = useState('');
   const [bedrooms, setBedrooms] = useState('');
+  const [amenities, setAmenities] = useState<string[]>([]);
   const [category, setCategory] = useState<ListingCategory | null>(null);
   const [rateUnit, setRateUnit] = useState<'hour' | 'day'>('hour');
   const [submitting, setSubmitting] = useState(false);
@@ -115,8 +118,31 @@ export default function AddListingScreen() {
     setLocation('');
     setDescription('');
     setBedrooms('');
+    setAmenities([]);
     setCategory(null);
     setRateUnit('hour');
+  }
+
+  function toggleAmenity(amenity: string) {
+    setAmenities((current) =>
+      current.includes(amenity) ? current.filter((a) => a !== amenity) : [...current, amenity]
+    );
+  }
+
+  function handleGenerateDescription() {
+    setDescription(
+      generateListingDescription({
+        category,
+        bedrooms,
+        district,
+        city,
+        location,
+        price: price.trim() ? Number(price) : null,
+        currency,
+        priceUnit: category === 'daily_hourly' ? rateUnit : null,
+        amenities,
+      })
+    );
   }
 
   async function handlePublish() {
@@ -281,18 +307,51 @@ export default function AddListingScreen() {
             />
           )}
 
-          <Field label="Description">
-            <TextInput
-              style={[styles.input, styles.textArea]}
-              placeholder="Describe your property in detail..."
-              placeholderTextColor={colors.textMuted}
-              value={description}
-              onChangeText={setDescription}
-              multiline
-              numberOfLines={4}
-              textAlignVertical="top"
-            />
-          </Field>
+          <View>
+            <Text style={styles.fieldLabel}>Amenities (optional)</Text>
+            <View style={styles.amenityWrap}>
+              {AMENITIES.map((amenity) => {
+                const active = amenities.includes(amenity);
+                return (
+                  <Pressable
+                    key={amenity}
+                    style={[styles.amenityChip, active && styles.amenityChipActive]}
+                    onPress={() => toggleAmenity(amenity)}
+                    accessibilityRole="checkbox"
+                    accessibilityState={{ checked: active }}
+                  >
+                    {active && <Text style={styles.amenityCheck}>✓ </Text>}
+                    <Text style={[styles.amenityChipText, active && styles.amenityChipTextActive]}>{amenity}</Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </View>
+
+          <View style={styles.descriptionHeader}>
+            <Text style={styles.fieldLabel}>Description</Text>
+            <Pressable
+              style={styles.generateButton}
+              onPress={handleGenerateDescription}
+              accessibilityRole="button"
+              accessibilityLabel="Generate a draft description from the fields above"
+            >
+              <Text style={styles.generateButtonText}>✨ Generate description</Text>
+            </Pressable>
+          </View>
+          <TextInput
+            style={[styles.input, styles.textArea]}
+            placeholder="Describe your property in detail..."
+            placeholderTextColor={colors.textMuted}
+            value={description}
+            onChangeText={setDescription}
+            multiline
+            numberOfLines={4}
+            textAlignVertical="top"
+          />
+          <Text style={styles.generateHelper}>
+            Fill in the fields above, then tap Generate for a starting draft you can edit.
+          </Text>
         </View>
 
         <Pressable
@@ -390,6 +449,31 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
   },
   textArea: { minHeight: 90 },
+  amenityWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  amenityChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.card,
+  },
+  amenityChipActive: { backgroundColor: colors.accentSoft, borderColor: colors.accent },
+  amenityCheck: { color: colors.accent, fontSize: fontSize.sm, fontWeight: '700' },
+  amenityChipText: { ...type.body, fontSize: fontSize.sm, color: colors.textSecondary },
+  amenityChipTextActive: { color: colors.accentStrong },
+  descriptionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  generateButton: {
+    backgroundColor: colors.accentSoft,
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 6,
+    marginBottom: 6,
+  },
+  generateButtonText: { ...type.labelStrong, fontSize: fontSize.xs, color: colors.accentStrong },
+  generateHelper: { ...type.secondary, fontSize: fontSize.xs, color: colors.textMuted, marginTop: 6 },
   currencyField: { marginBottom: 2 },
   currencyHelper: { ...type.secondary, fontSize: fontSize.xs, color: colors.textMuted, marginTop: 6 },
   pricePreview: { ...type.secondary, fontSize: fontSize.xs, color: colors.accentStrong, marginTop: 6 },

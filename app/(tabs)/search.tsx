@@ -13,6 +13,8 @@ import { ListingCard } from '../../components/ListingCard';
 import { CurrencyFilterToggle, type CurrencyFilter } from '../../components/CurrencyFilterToggle';
 import { distanceKm, formatDistance } from '../../lib/geo';
 import { useDeviceLocation } from '../../lib/use-device-location';
+import { parseSearchQuery } from '../../lib/search-query-parser';
+import { categoryLabel } from '../../lib/format';
 import type { Listing } from '../../lib/types';
 
 type SearchResult = {
@@ -56,6 +58,7 @@ export default function SearchScreen() {
   const [searchError, setSearchError] = useState(false);
   const [savingSearch, setSavingSearch] = useState(false);
   const [nearMe, setNearMe] = useState(false);
+  const [understood, setUnderstood] = useState<string | null>(null);
   const { coords, requesting: requestingLocation, request: requestLocation } = useDeviceLocation();
 
   useEffect(() => {
@@ -93,7 +96,7 @@ export default function SearchScreen() {
     nearCoords: { lat: number; lng: number } | null
   ) {
     setLoading(true);
-    const term = escapeForFilter(text.trim());
+    const trimmed = text.trim();
     const maxPrice = currency !== 'ALL' && budgetText.trim() ? Number(budgetText) : null;
 
     let listingsQuery = supabase
@@ -103,12 +106,47 @@ export default function SearchScreen() {
       )
       .eq('is_active', true);
 
-    if (term) {
-      // Nationwide: a district or city name (e.g. "Bo") matches just as
-      // well as a neighborhood-level location or a title keyword.
-      listingsQuery = listingsQuery.or(
-        `title.ilike.%${term}%,location.ilike.%${term}%,city.ilike.%${term}%,district.ilike.%${term}%`
-      );
+    // Rule-based keyword parsing (no AI/API): "cheap 2 bedroom house in Bo"
+    // maps to category/bedrooms/location filters plus a price sort, all
+    // from a lookup table + regex -- see lib/search-query-parser.ts. Falls
+    // straight back to the old plain-text search when nothing matches.
+    const parsed = trimmed ? parseSearchQuery(trimmed) : null;
+
+    if (parsed?.matchedAnything) {
+      const summaryParts: string[] = [];
+      if (parsed.category) summaryParts.push(categoryLabel(parsed.category));
+      for (const kw of parsed.keywordTerms) summaryParts.push(kw.charAt(0).toUpperCase() + kw.slice(1));
+      if (parsed.bedrooms != null) summaryParts.push(`${parsed.bedrooms} bed`);
+      if (parsed.locationTerm) summaryParts.push(parsed.locationTerm);
+      if (parsed.priceIntent) summaryParts.push(parsed.priceIntent === 'asc' ? 'lowest price first' : 'highest price first');
+      setUnderstood(summaryParts.join(' · '));
+
+      if (parsed.category) listingsQuery = listingsQuery.eq('category', parsed.category);
+      if (parsed.bedrooms != null) listingsQuery = listingsQuery.eq('bedrooms', parsed.bedrooms);
+      if (parsed.locationTerm) {
+        const loc = escapeForFilter(parsed.locationTerm);
+        listingsQuery = listingsQuery.or(`city.ilike.%${loc}%,district.ilike.%${loc}%,location.ilike.%${loc}%`);
+      }
+      for (const kw of parsed.keywordTerms) {
+        const safe = escapeForFilter(kw);
+        listingsQuery = listingsQuery.or(`title.ilike.%${safe}%,description.ilike.%${safe}%`);
+      }
+      if (parsed.leftoverText) {
+        const safe = escapeForFilter(parsed.leftoverText);
+        listingsQuery = listingsQuery.or(
+          `title.ilike.%${safe}%,location.ilike.%${safe}%,city.ilike.%${safe}%,district.ilike.%${safe}%`
+        );
+      }
+    } else {
+      setUnderstood(null);
+      if (trimmed) {
+        const term = escapeForFilter(trimmed);
+        // Nationwide: a district or city name (e.g. "Bo") matches just as
+        // well as a neighborhood-level location or a title keyword.
+        listingsQuery = listingsQuery.or(
+          `title.ilike.%${term}%,location.ilike.%${term}%,city.ilike.%${term}%,district.ilike.%${term}%`
+        );
+      }
     }
     if (currency !== 'ALL') {
       listingsQuery = listingsQuery.eq('currency', currency);
@@ -144,14 +182,20 @@ export default function SearchScreen() {
           : null,
     }));
 
+    // "cheap"/"luxury" in the query only becomes a real sort once a single
+    // currency is selected -- same rule as the manual sort menu, comparing
+    // raw price numbers across currencies is meaningless.
+    const effectiveSort: SortMode =
+      parsed?.priceIntent && currency !== 'ALL' ? (parsed.priceIntent === 'asc' ? 'price_asc' : 'price_desc') : sort;
+
     if (nearCoords) {
       // Near Me overrides the picked sort mode -- closest first, listings
       // with no coordinates at all pushed to the end rather than dropped.
       combined.sort((a, b) => (a.distanceKm ?? Infinity) - (b.distanceKm ?? Infinity));
     } else {
       combined.sort((a, b) => {
-        if (sort === 'price_asc') return a.sortPrice - b.sortPrice;
-        if (sort === 'price_desc') return b.sortPrice - a.sortPrice;
+        if (effectiveSort === 'price_asc') return a.sortPrice - b.sortPrice;
+        if (effectiveSort === 'price_desc') return b.sortPrice - a.sortPrice;
         return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
       });
     }
@@ -281,6 +325,7 @@ export default function SearchScreen() {
         </View>
 
         <Text style={styles.resultCount}>{loading ? 'Searching...' : resultCountLabel}</Text>
+        {understood && <Text style={styles.understoodText}>Understood as: {understood}</Text>}
       </View>
 
       {loading ? (
@@ -412,6 +457,7 @@ const styles = StyleSheet.create({
   },
   sortButtonDisabled: { opacity: 0.5 },
   resultCount: { fontSize: fontSize.sm, color: colors.textSecondary, fontWeight: fontWeight.semibold, marginTop: 2 },
+  understoodText: { fontSize: fontSize.xs, color: colors.accentStrong, marginTop: 2 },
   loadingWrap: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   listContent: { padding: spacing.lg, paddingTop: spacing.md, gap: spacing.md },
   emptyState: { paddingTop: spacing.xxl, alignItems: 'center', gap: spacing.md, paddingHorizontal: spacing.xl },
