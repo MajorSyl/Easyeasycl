@@ -73,7 +73,10 @@ export function LocationFields({
             <Pressable
               key={suggestion.city}
               style={styles.suggestionRow}
-              onPress={() => onLocationChange(applyLocationSuggestion(location, suggestion))}
+              // onPressIn (not onPress) fires before the TextInput's onBlur,
+              // so the suggestion still registers even without a screen- or
+              // native-specific blur workaround.
+              onPressIn={() => onLocationChange(applyLocationSuggestion(location, suggestion))}
             >
               <Text style={styles.suggestionCity}>{suggestion.label}</Text>
               <Text style={styles.suggestionDistrict}>{suggestion.district}</Text>
@@ -86,7 +89,15 @@ export function LocationFields({
 }
 
 const styles = StyleSheet.create({
-  wrap: { position: 'relative', zIndex: 10 },
+  // Deliberately NOT position: 'absolute' -- an overlay here would sit on
+  // top of the Property Type / Bedrooms row directly below in the scroll
+  // flow, silently swallowing taps on those fields (and everything else
+  // further down, since a same-size row of suggestions can run taller than
+  // the gap to the next field) without any visible sign of why the form
+  // stopped responding. Rendering in normal flow instead means the list
+  // just pushes the rest of the form down while it's open -- a minor
+  // reflow, and never a dead zone.
+  wrap: {},
   fieldLabel: {
     ...type.labelStrong,
     color: colors.textMuted,
@@ -108,24 +119,12 @@ const styles = StyleSheet.create({
   matchHint: { ...type.secondary, fontSize: fontSize.xs, color: colors.success, marginTop: 6 },
   noMatchHint: { ...type.secondary, fontSize: fontSize.xs, color: colors.textMuted, marginTop: 6 },
   suggestions: {
-    position: 'absolute',
-    top: '100%',
-    left: 0,
-    right: 0,
-    marginTop: 2,
+    marginTop: 6,
     backgroundColor: colors.card,
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: radius.md,
     paddingVertical: spacing.xs,
-    // Web and Android both need an explicit stacking hint to render this
-    // above the form fields that follow it in the scroll view.
-    elevation: 6,
-    shadowColor: '#000',
-    shadowOpacity: 0.12,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
-    zIndex: 20,
   },
   suggestionRow: {
     flexDirection: 'row',

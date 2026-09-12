@@ -82,7 +82,11 @@ export type LocationSuggestion = { label: string; district: string; city: string
 export function suggestLocations(text: string, limit = 6): LocationSuggestion[] {
   const parts = text.split(',');
   const current = (parts[parts.length - 1] ?? '').trim().toLowerCase();
-  if (!current) return [];
+  // Nothing left to suggest once the segment being typed already spells out
+  // a known city exactly -- surfacing "Freetown" as a tappable option right
+  // after someone finishes typing "Freetown" themselves just keeps the list
+  // (and the space it takes in the form) open for no reason.
+  if (!current || CITY_LOOKUP.has(current)) return [];
 
   const seen = new Set<string>();
   const starts: LocationSuggestion[] = [];
