@@ -19,6 +19,11 @@ export type Listing = {
   price: number;
   currency: ListingCurrency;
   price_unit: RateUnit;
+  // Free-text context for the price the structured currency/price_unit
+  // pair can't express -- "per town lot", "per acre", "negotiable". Kept
+  // separate from `price` (always a plain number, for sorting/filtering)
+  // and from `price_unit` (a fixed enum) rather than folded into either.
+  price_note?: string | null;
   district: string;
   city: string;
   location: string;

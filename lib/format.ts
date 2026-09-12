@@ -52,6 +52,22 @@ export function parsePriceInput(text: string): number {
   return Number(text.replace(/,/g, '').trim());
 }
 
+// Filters the Price field's input as it's typed, so it can never end up
+// holding something parsePriceInput can't parse -- e.g. typing "$12,500 per
+// town lot" (a real report: an agent describing land pricing directly in
+// the Price field) silently left the field un-parseable and the Publish
+// button permanently disabled with no visible explanation. Keeps digits,
+// commas (thousands separators, stripped later by parsePriceInput) and a
+// single decimal point; drops everything else -- currency symbols, letters,
+// spaces -- as it's typed. Free-text context like "per town lot" belongs in
+// the separate Price Note field instead.
+export function sanitizePriceInput(text: string): string {
+  const cleaned = text.replace(/[^0-9.,]/g, '');
+  const firstDot = cleaned.indexOf('.');
+  if (firstDot === -1) return cleaned;
+  return cleaned.slice(0, firstDot + 1) + cleaned.slice(firstDot + 1).replace(/\./g, '');
+}
+
 export function formatPrice(price: number, currency: string, unit: RateUnit) {
   const amount = Math.round(price).toLocaleString('en-US');
   const display = currencyDisplay[currency] ?? { symbol: currency, spaced: true };

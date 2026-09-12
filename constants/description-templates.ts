@@ -14,6 +14,9 @@ export type DescriptionInput = {
   price: number | null;
   currency: ListingCurrency;
   priceUnit: RateUnit;
+  // Free-text price context a structured price/currency/priceUnit can't
+  // express -- "per town lot", "per acre", "negotiable".
+  priceNote: string;
   amenities: string[];
 };
 
@@ -79,7 +82,12 @@ const PRICE_LINES: Record<ListingCategory, ((priceStr: string) => string)[]> = {
 function priceLine(input: DescriptionInput): string {
   if (input.price == null || Number.isNaN(input.price) || input.price <= 0) return '';
   const priceStr = formatPrice(input.price, input.currency, input.priceUnit);
-  return pick(PRICE_LINES[input.category ?? 'for_rent'])(priceStr);
+  const line = pick(PRICE_LINES[input.category ?? 'for_rent'])(priceStr);
+  const note = input.priceNote.trim();
+  // Drop the trailing period so the note reads as part of the same
+  // sentence: "Priced at NLe 12,500 (per town lot)." not "...12,500. (per
+  // town lot)."
+  return note ? `${line.slice(0, -1)} (${note}).` : line;
 }
 
 // Assembles a usable first-draft description from whatever's already been

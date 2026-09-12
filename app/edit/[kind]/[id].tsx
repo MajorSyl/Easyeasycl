@@ -25,7 +25,7 @@ import { SelectField, type SelectOption } from '../../../components/SelectField'
 import { LocationFields } from '../../../components/LocationFields';
 import { CurrencyToggle } from '../../../components/CurrencyToggle';
 import { coordsForCity } from '../../../constants/locations';
-import { parsePriceInput } from '../../../lib/format';
+import { parsePriceInput, sanitizePriceInput } from '../../../lib/format';
 import type { LocationMatch } from '../../../lib/location-match';
 import type { ListingCategory, ListingCurrency } from '../../../lib/types';
 
@@ -51,6 +51,7 @@ export default function EditListingScreen() {
   const [loading, setLoading] = useState(true);
   const [title, setTitle] = useState('');
   const [price, setPrice] = useState('');
+  const [priceNote, setPriceNote] = useState('');
   const [currency, setCurrency] = useState<ListingCurrency>('NLE');
   const [location, setLocation] = useState('');
   const [locationMatch, setLocationMatch] = useState<LocationMatch | null>(null);
@@ -90,6 +91,7 @@ export default function EditListingScreen() {
         }
         setTitle(data.title ?? data.name ?? data.business_name ?? '');
         setPrice(String(data.price ?? data.rate ?? ''));
+        if (kind === 'listing') setPriceNote(data.price_note ?? '');
         if (kind === 'listing' && (data.currency === 'NLE' || data.currency === 'USD')) setCurrency(data.currency);
         if (kind === 'listing') {
           setInitialDistrict(data.district ?? '');
@@ -143,12 +145,13 @@ export default function EditListingScreen() {
           price: priceValue,
           currency,
           price_unit: category === 'daily_hourly' ? rateUnit : null,
+          price_note: priceNote.trim() ? sanitizeText(priceNote) : null,
           district: resolvedDistrict,
           city: cleanCity,
           location: cleanLocation,
           latitude: cityCoords?.lat ?? null,
           longitude: cityCoords?.lng ?? null,
-          bedrooms: bedrooms.trim() ? Number(bedrooms) : null,
+          bedrooms: category === 'land' ? null : bedrooms.trim() ? Number(bedrooms) : null,
           photos,
         })
         .eq('id', id)
@@ -251,7 +254,7 @@ export default function EditListingScreen() {
                   <TextInput
                     style={[styles.input, styles.priceInput]}
                     value={price}
-                    onChangeText={setPrice}
+                    onChangeText={(text) => setPrice(sanitizePriceInput(text))}
                     keyboardType="decimal-pad"
                     placeholderTextColor={colors.textMuted}
                   />
@@ -265,7 +268,7 @@ export default function EditListingScreen() {
                 <TextInput
                   style={styles.input}
                   value={price}
-                  onChangeText={setPrice}
+                  onChangeText={(text) => setPrice(sanitizePriceInput(text))}
                   keyboardType="decimal-pad"
                   placeholderTextColor={colors.textMuted}
                 />
@@ -277,6 +280,18 @@ export default function EditListingScreen() {
               </Field>
             )}
           </View>
+
+          {kind === 'listing' && (
+            <Field label="Price Note (optional)">
+              <TextInput
+                style={styles.input}
+                placeholder="e.g. per town lot, per acre, negotiable"
+                value={priceNote}
+                onChangeText={setPriceNote}
+                placeholderTextColor={colors.textMuted}
+              />
+            </Field>
+          )}
 
           {kind === 'listing' && (
             <LocationFields location={location} onLocationChange={setLocation} onResolvedChange={setLocationMatch} />
@@ -293,15 +308,17 @@ export default function EditListingScreen() {
                   onChange={setCategory}
                 />
               </View>
-              <Field label="Bedrooms" style={styles.flex1}>
-                <TextInput
-                  style={styles.input}
-                  value={bedrooms}
-                  onChangeText={setBedrooms}
-                  keyboardType="number-pad"
-                  placeholderTextColor={colors.textMuted}
-                />
-              </Field>
+              {category !== 'land' && (
+                <Field label="Bedrooms" style={styles.flex1}>
+                  <TextInput
+                    style={styles.input}
+                    value={bedrooms}
+                    onChangeText={setBedrooms}
+                    keyboardType="number-pad"
+                    placeholderTextColor={colors.textMuted}
+                  />
+                </Field>
+              )}
             </View>
           )}
 

@@ -21,7 +21,7 @@ import { sanitizeText } from '../../lib/sanitize';
 import { useTabBarGap } from '../../lib/use-bottom-gap';
 import { colors, fontSize, radius, spacing } from '../../constants/theme';
 import { type } from '../../constants/typography';
-import { formatPrice, parsePriceInput } from '../../lib/format';
+import { formatPrice, parsePriceInput, sanitizePriceInput } from '../../lib/format';
 import { PhotoPicker } from '../../components/PhotoPicker';
 import { SelectField, type SelectOption } from '../../components/SelectField';
 import { LocationFields } from '../../components/LocationFields';
@@ -55,6 +55,7 @@ export default function AddListingScreen() {
   const [photos, setPhotos] = useState<string[]>([]);
   const [title, setTitle] = useState('');
   const [price, setPrice] = useState('');
+  const [priceNote, setPriceNote] = useState('');
   const [currency, setCurrency] = useState<ListingCurrency>('NLE');
   const [location, setLocation] = useState('');
   const [locationMatch, setLocationMatch] = useState<LocationMatch | null>(null);
@@ -108,6 +109,7 @@ export default function AddListingScreen() {
     setPhotos([]);
     setTitle('');
     setPrice('');
+    setPriceNote('');
     setCurrency('NLE');
     setLocation('');
     setLocationMatch(null);
@@ -134,6 +136,7 @@ export default function AddListingScreen() {
         price: price.trim() ? parsePriceInput(price) : null,
         currency,
         priceUnit: category === 'daily_hourly' ? rateUnit : null,
+        priceNote,
         amenities,
       })
     );
@@ -163,12 +166,16 @@ export default function AddListingScreen() {
         price: priceValue,
         currency,
         price_unit: category === 'daily_hourly' ? rateUnit : null,
+        price_note: priceNote.trim() ? sanitizeText(priceNote) : null,
         district: locationMatch?.district ?? '',
         city: cleanCity,
         location: cleanLocation,
         latitude: cityCoords?.lat ?? null,
         longitude: cityCoords?.lng ?? null,
-        bedrooms: bedrooms.trim() ? Number(bedrooms) : null,
+        // Land has no bedrooms, regardless of whatever's left in the field
+        // from before the agent switched Property Type to Land -- the field
+        // is hidden for Land, so there's no way to clear it by hand.
+        bedrooms: category === 'land' ? null : bedrooms.trim() ? Number(bedrooms) : null,
         photos,
       })
       .select('id, moderation_status')
@@ -263,10 +270,20 @@ export default function AddListingScreen() {
               placeholder="0.00"
               placeholderTextColor={colors.textMuted}
               value={price}
-              onChangeText={setPrice}
+              onChangeText={(text) => setPrice(sanitizePriceInput(text))}
               keyboardType="decimal-pad"
             />
             {pricePreview && <Text style={styles.pricePreview}>{pricePreview}</Text>}
+          </Field>
+
+          <Field label="Price Note (optional)">
+            <TextInput
+              style={styles.input}
+              placeholder="e.g. per town lot, per acre, negotiable"
+              placeholderTextColor={colors.textMuted}
+              value={priceNote}
+              onChangeText={setPriceNote}
+            />
           </Field>
 
           <LocationFields location={location} onLocationChange={setLocation} onResolvedChange={setLocationMatch} />
@@ -281,16 +298,18 @@ export default function AddListingScreen() {
                 onChange={setCategory}
               />
             </View>
-            <Field label="Bedrooms" style={styles.flex1}>
-              <TextInput
-                style={styles.input}
-                placeholder="e.g. 3"
-                placeholderTextColor={colors.textMuted}
-                value={bedrooms}
-                onChangeText={setBedrooms}
-                keyboardType="number-pad"
-              />
-            </Field>
+            {category !== 'land' && (
+              <Field label="Bedrooms" style={styles.flex1}>
+                <TextInput
+                  style={styles.input}
+                  placeholder="e.g. 3"
+                  placeholderTextColor={colors.textMuted}
+                  value={bedrooms}
+                  onChangeText={setBedrooms}
+                  keyboardType="number-pad"
+                />
+              </Field>
+            )}
           </View>
 
           {category === 'daily_hourly' && (

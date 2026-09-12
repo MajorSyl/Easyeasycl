@@ -331,7 +331,7 @@ export default function ListingDetailScreen() {
             {formatPrice(listing.price, listing.currency, null)}
           </Text>
           <Text style={styles.footerPriceUnit} numberOfLines={1}>
-            {listing.price_unit ? priceUnitLabel[listing.price_unit] : 'Asking price'}
+            {listing.price_note || (listing.price_unit ? priceUnitLabel[listing.price_unit] : 'Asking price')}
           </Text>
         </View>
         <Pressable style={styles.messageButton} onPress={messageAgent} disabled={starting}>
