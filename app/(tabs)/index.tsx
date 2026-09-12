@@ -298,12 +298,12 @@ export default function HomeScreen() {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
-      <AppInstallPrompt />
       <ScrollView
         contentContainerStyle={[styles.listContent, { paddingBottom: tabBarGap + spacing.lg }]}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
       >
         <View>
+          <AppInstallPrompt />
           <View style={styles.headerRow}>
             <View style={styles.greetingBlock}>
               <Text style={styles.greeting}>{firstName ? `Hello ${firstName}!` : 'Hello!'}</Text>

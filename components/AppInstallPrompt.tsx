@@ -1,139 +1,114 @@
 import { useEffect, useState } from 'react';
-import { Modal, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { colors, radius, spacing } from '../constants/theme';
+import { colors, fontSize, fontWeight, radius, shadow, spacing } from '../constants/theme';
 import { type } from '../constants/typography';
+import { Logo } from './Logo';
 
-const DISMISSED_AT_KEY = 'easyfen_install_prompt_dismissed_at';
-// "A few days" -- long enough that it isn't a nag on every visit, short
-// enough that a genuinely interested-but-busy visitor sees it again.
-const REPROMPT_AFTER_MS = 3 * 24 * 60 * 60 * 1000;
-const SHOW_AFTER_MS = 3000;
+const DISMISSED_KEY = 'easyfen_install_banner_dismissed';
 
-// Module-level, not state -- this is "don't show again this session" in the
-// most literal sense: it only resets on a real reload (page refresh / app
-// relaunch), same lifetime as the in-memory session itself, independent of
-// which screen re-mounts this component.
-let dismissedThisSession = false;
-
-// Web-only -- native builds are already the app this promotes. Was a
-// permanent card wedged into the Home feed, pushing real listings down on
-// every single visit; now a soft, deferred, dismissible prompt instead, so
-// it asks once and then gets out of the way.
+// Web-only -- native builds are already the app this promotes. An
+// Airbnb-style top banner: once closed it's gone for good (persisted to
+// localStorage via AsyncStorage), not a nag that reappears on a timer.
 export function AppInstallPrompt() {
-  const [visible, setVisible] = useState(false);
+  const [dismissed, setDismissed] = useState(true);
 
   useEffect(() => {
-    if (Platform.OS !== 'web' || dismissedThisSession) return;
-    let cancelled = false;
-    let timer: ReturnType<typeof setTimeout> | undefined;
-
-    AsyncStorage.getItem(DISMISSED_AT_KEY).then((raw) => {
-      if (cancelled) return;
-      const dismissedAt = raw ? Number(raw) : 0;
-      if (dismissedAt && Date.now() - dismissedAt < REPROMPT_AFTER_MS) return;
-      timer = setTimeout(() => {
-        if (!cancelled && !dismissedThisSession) setVisible(true);
-      }, SHOW_AFTER_MS);
+    if (Platform.OS !== 'web') return;
+    AsyncStorage.getItem(DISMISSED_KEY).then((raw) => {
+      setDismissed(raw === 'true');
     });
-
-    return () => {
-      cancelled = true;
-      if (timer) clearTimeout(timer);
-    };
   }, []);
 
   function dismiss() {
-    dismissedThisSession = true;
-    setVisible(false);
-    AsyncStorage.setItem(DISMISSED_AT_KEY, String(Date.now())).catch(() => {});
+    setDismissed(true);
+    AsyncStorage.setItem(DISMISSED_KEY, 'true').catch(() => {});
   }
 
-  function download() {
+  function useApp() {
     dismiss();
     router.push('/download');
   }
 
-  if (Platform.OS !== 'web') return null;
+  if (Platform.OS !== 'web' || dismissed) return null;
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={dismiss}>
-      <Pressable style={styles.backdrop} onPress={dismiss} accessibilityLabel="Close">
-        {/* Swallow taps on the sheet itself so they don't bubble to the
-            backdrop's dismiss handler. */}
-        <Pressable style={styles.sheet} onPress={() => {}}>
-          <Pressable
-            style={styles.closeButton}
-            onPress={dismiss}
-            hitSlop={8}
-            accessibilityRole="button"
-            accessibilityLabel="Close"
-          >
-            <Ionicons name="close" size={20} color={colors.textMuted} />
-          </Pressable>
-
-          <View style={styles.iconWrap}>
-            <Ionicons name="logo-android" size={22} color={colors.accent} />
-          </View>
-          <Text style={styles.title}>Get the Easyfen app</Text>
-          <Text style={styles.subtitle}>Browse listings and message agents faster, right from your phone.</Text>
-
-          <Pressable
-            style={({ pressed }) => [styles.cta, pressed && styles.ctaPressed]}
-            onPress={download}
-            accessibilityRole="button"
-            accessibilityLabel="Download the Easyfen app for Android"
-          >
-            <Text style={styles.ctaText}>Download for Android</Text>
-          </Pressable>
-          <Pressable onPress={dismiss} hitSlop={8} style={styles.laterButton}>
-            <Text style={styles.laterText}>Maybe later</Text>
-          </Pressable>
-        </Pressable>
+    <View style={styles.banner}>
+      <View style={styles.iconWrap}>
+        <Logo size={28} showWordmark={false} />
+      </View>
+      <View style={styles.textBlock}>
+        <Text style={styles.title} numberOfLines={1}>
+          Get the Easyfen App
+        </Text>
+        <Text style={styles.subtitle} numberOfLines={2}>
+          The fastest way to use Easyfen
+        </Text>
+      </View>
+      <Pressable
+        style={({ pressed }) => [styles.cta, pressed && styles.ctaPressed]}
+        onPress={useApp}
+        accessibilityRole="button"
+        accessibilityLabel="Use the Easyfen app"
+      >
+        <Text style={styles.ctaText}>Use App</Text>
       </Pressable>
-    </Modal>
+      <Pressable
+        style={styles.closeButton}
+        onPress={dismiss}
+        hitSlop={10}
+        accessibilityRole="button"
+        accessibilityLabel="Dismiss"
+      >
+        <Ionicons name="close" size={16} color={colors.textMuted} />
+      </Pressable>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
-  sheet: {
-    alignItems: 'flex-start',
-    gap: 6,
+  banner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
     backgroundColor: colors.card,
-    borderTopLeftRadius: radius.xl,
-    borderTopRightRadius: radius.xl,
-    paddingTop: spacing.lg,
-    paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.xl,
+    borderRadius: radius.lg,
+    marginHorizontal: spacing.lg,
+    marginTop: spacing.sm,
+    paddingVertical: spacing.sm,
+    paddingLeft: spacing.sm,
+    paddingRight: spacing.xl + spacing.sm,
+    ...shadow.card,
   },
-  closeButton: { position: 'absolute', top: spacing.md, right: spacing.md, padding: 4 },
   iconWrap: {
-    width: 44,
-    height: 44,
+    width: 40,
+    height: 40,
     borderRadius: radius.md,
     backgroundColor: colors.accentSoft,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 4,
   },
-  title: { ...type.cardTitle, fontSize: 16, lineHeight: 21, color: colors.textPrimary },
-  subtitle: { ...type.secondary, color: colors.textMuted, marginBottom: 6 },
+  textBlock: { flex: 1, minWidth: 0 },
+  title: { ...type.cardTitle, fontSize: fontSize.sm, color: colors.textPrimary },
+  subtitle: { ...type.secondary, fontSize: fontSize.xs, color: colors.textMuted, marginTop: 1 },
   cta: {
-    alignSelf: 'stretch',
-    alignItems: 'center',
     backgroundColor: colors.accent,
     borderRadius: radius.pill,
-    paddingVertical: 13,
-    paddingHorizontal: spacing.lg,
-    minHeight: 44,
-    justifyContent: 'center',
-    marginTop: spacing.sm,
+    paddingVertical: 9,
+    paddingHorizontal: spacing.md,
   },
   ctaPressed: { backgroundColor: colors.accentStrong },
-  ctaText: { ...type.button, color: '#fff' },
-  laterButton: { alignSelf: 'center', paddingVertical: spacing.sm, paddingHorizontal: spacing.md },
-  laterText: { ...type.button, color: colors.textMuted },
+  ctaText: { ...type.button, fontSize: fontSize.xs, fontWeight: fontWeight.semibold, color: '#fff' },
+  closeButton: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
 });

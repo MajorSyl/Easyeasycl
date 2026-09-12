@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { Linking, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -15,8 +16,38 @@ const APK_DOWNLOAD_URL = 'https://github.com/MajorSyl/Easyeasycl/releases/downlo
 // choice as components/AppInstallPrompt.tsx, see its comment for why.
 const BRAND_BLUE = '#3E6FBF';
 
+// The browser fires this before showing its own native "Install app" UI on
+// Chrome/Android and holds a deferred prompt we can trigger ourselves from
+// a button tap -- but only if the page hasn't already been installed and
+// the browser thinks the PWA is installable (valid manifest + service
+// worker + HTTPS). Safari never fires this; there, "Add to Home Screen"
+// stays a manual Share-menu step with no programmatic equivalent.
+type BeforeInstallPromptEvent = Event & {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
+};
+
 export default function DownloadScreen() {
   const insets = useSafeAreaInsets();
+  const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+  const [showApkOption, setShowApkOption] = useState(false);
+
+  useEffect(() => {
+    if (Platform.OS !== 'web') return;
+    function onPrompt(event: Event) {
+      event.preventDefault();
+      setInstallPrompt(event as BeforeInstallPromptEvent);
+    }
+    window.addEventListener('beforeinstallprompt', onPrompt);
+    return () => window.removeEventListener('beforeinstallprompt', onPrompt);
+  }, []);
+
+  async function triggerInstall() {
+    if (!installPrompt) return;
+    await installPrompt.prompt();
+    await installPrompt.userChoice;
+    setInstallPrompt(null);
+  }
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -24,7 +55,7 @@ export default function DownloadScreen() {
         <Pressable style={styles.backBtn} onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}>
           <Ionicons name="arrow-back" size={20} color={colors.textPrimary} />
         </Pressable>
-        <Text style={styles.headerTitle}>Download Easyfen</Text>
+        <Text style={styles.headerTitle}>Get the App</Text>
         <View style={styles.backBtn} />
       </View>
 
@@ -38,68 +69,93 @@ export default function DownloadScreen() {
             <Ionicons name="checkmark-circle" size={28} color={colors.accent} />
             <Text style={styles.alreadyHaveTitle}>You're already using the app 🎉</Text>
             <Text style={styles.alreadyHaveBody}>
-              This page is for downloading Easyfen on the web — nothing to do here on your phone.
+              This page is for installing Easyfen on the web — nothing to do here on your phone.
             </Text>
           </View>
         ) : (
           <>
-            <Text style={styles.title}>Get Easyfen on your phone</Text>
+            <Text style={styles.title}>Install Easyfen on your phone</Text>
             <Text style={styles.subtitle}>
-              Browse, message agents, and post listings on the go. Pick your platform below.
+              No App Store or Play Store needed. Add Easyfen straight to your Home Screen — it opens full-screen like
+              a real app, and every update we ship appears the next time you open it, automatically.
             </Text>
 
-            {/* Android */}
-            <View style={styles.platformSection}>
-              <View style={styles.platformHeader}>
-                <Ionicons name="logo-android" size={18} color={colors.textPrimary} />
-                <Text style={styles.platformTitle}>Android</Text>
-              </View>
-
-              <Pressable style={styles.downloadBtn} onPress={() => Linking.openURL(APK_DOWNLOAD_URL)}>
-                <Ionicons name="download-outline" size={20} color="#fff" />
-                <Text style={styles.downloadBtnText}>Download for Android</Text>
+            {installPrompt && (
+              <Pressable style={styles.installNowBtn} onPress={triggerInstall}>
+                <Ionicons name="add-circle-outline" size={20} color="#fff" />
+                <Text style={styles.installNowBtnText}>Install App</Text>
               </Pressable>
-              <Text style={styles.fileNote}>Downloads an .apk file (~105 MB), no Play Store account needed.</Text>
-
-              <View style={styles.instructions}>
-                <Text style={styles.instructionsTitle}>Installing it</Text>
-                <InstructionStep number={1} text="Tap Download above and let the .apk file finish downloading." />
-                <InstructionStep
-                  number={2}
-                  text={'Open it from your Downloads/notifications. If Android blocks it, tap "Settings" in the prompt and allow installs from this source — that\'s expected for an app outside the Play Store.'}
-                />
-                <InstructionStep number={3} text="Tap Install, then open Easyfen and sign in or create an account." />
-              </View>
-            </View>
+            )}
 
             {/* iOS */}
             <View style={styles.platformSection}>
               <View style={styles.platformHeader}>
                 <Ionicons name="logo-apple" size={18} color={colors.textPrimary} />
-                <Text style={styles.platformTitle}>iPhone &amp; iPad</Text>
+                <Text style={styles.platformTitle}>iPhone &amp; iPad (Safari)</Text>
               </View>
-              <Text style={styles.platformNote}>
-                Easyfen isn't in the App Store yet — instead, add it to your Home Screen straight from Safari. It
-                opens full-screen like a regular app, with its own icon, and works from an internet connection you've
-                used before even when you go offline.
-              </Text>
 
               <View style={styles.instructions}>
-                <Text style={styles.instructionsTitle}>Add to Home Screen</Text>
                 <InstructionStep
                   number={1}
-                  text="Open easyfen.com in Safari (this has to be Safari — Chrome and other browsers on iOS can't add to the Home Screen)."
+                  text="Open easyfen.com in Safari — this has to be Safari, since Chrome and other browsers on iOS can't add to the Home Screen."
                   icon="compass-outline"
                 />
                 <InstructionStep
                   number={2}
-                  text='Tap the Share button in the toolbar — the square with an arrow pointing up.'
+                  text="Tap the Share button in the toolbar — the square with an arrow pointing up."
                   icon="share-outline"
                 />
                 <InstructionStep number={3} text='Scroll down and tap "Add to Home Screen".' icon="add-circle-outline" />
                 <InstructionStep number={4} text={'Tap "Add" in the top-right corner — that\'s it.'} icon="checkmark-circle-outline" />
               </View>
             </View>
+
+            {/* Android */}
+            <View style={styles.platformSection}>
+              <View style={styles.platformHeader}>
+                <Ionicons name="logo-android" size={18} color={colors.textPrimary} />
+                <Text style={styles.platformTitle}>Android (Chrome)</Text>
+              </View>
+
+              <View style={styles.instructions}>
+                {installPrompt ? (
+                  <Text style={styles.platformNote}>
+                    Chrome can install Easyfen for you — tap "Install App" above.
+                  </Text>
+                ) : (
+                  <>
+                    <InstructionStep number={1} text="Open easyfen.com in Chrome." icon="globe-outline" />
+                    <InstructionStep
+                      number={2}
+                      text='Tap the menu (⋮) in the top-right corner, then "Add to Home screen" or "Install app" — whichever Chrome shows you.'
+                      icon="ellipsis-vertical-outline"
+                    />
+                    <InstructionStep number={3} text='Confirm by tapping "Install" or "Add".' icon="checkmark-circle-outline" />
+                  </>
+                )}
+              </View>
+            </View>
+
+            {/* Secondary: native Android APK */}
+            <Pressable style={styles.apkToggle} onPress={() => setShowApkOption((v) => !v)}>
+              <Text style={styles.apkToggleText}>Prefer a native Android app instead?</Text>
+              <Ionicons name={showApkOption ? 'chevron-up' : 'chevron-down'} size={16} color={colors.textMuted} />
+            </Pressable>
+
+            {showApkOption && (
+              <View style={styles.apkSection}>
+                <Text style={styles.apkNote}>
+                  This is a separate, standalone Android app (.apk), not the auto-updating web install above. New
+                  versions require manually downloading and reinstalling it — the web install updates itself with
+                  every visit, so most people are better off with that.
+                </Text>
+                <Pressable style={styles.downloadBtn} onPress={() => Linking.openURL(APK_DOWNLOAD_URL)}>
+                  <Ionicons name="download-outline" size={18} color="#fff" />
+                  <Text style={styles.downloadBtnText}>Download for Android</Text>
+                </Pressable>
+                <Text style={styles.fileNote}>Downloads an .apk file (~105 MB), no Play Store account needed.</Text>
+              </View>
+            )}
           </>
         )}
       </ScrollView>
@@ -148,11 +204,24 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 21,
     marginBottom: spacing.xl,
-    maxWidth: 380,
+    maxWidth: 420,
   },
+  installNowBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    backgroundColor: BRAND_BLUE,
+    borderRadius: radius.md,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.xl,
+    width: '100%',
+    marginBottom: spacing.xl,
+  },
+  installNowBtnText: { fontSize: fontSize.md, fontWeight: fontWeight.semibold, color: '#fff' },
   platformSection: {
     width: '100%',
-    marginBottom: spacing.xxl,
+    marginBottom: spacing.xl,
   },
   platformHeader: {
     flexDirection: 'row',
@@ -165,35 +234,28 @@ const styles = StyleSheet.create({
     fontSize: fontSize.sm,
     color: colors.textSecondary,
     lineHeight: 20,
-    marginBottom: spacing.md,
   },
   downloadBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: spacing.sm,
-    backgroundColor: BRAND_BLUE,
+    backgroundColor: colors.textSecondary,
     borderRadius: radius.md,
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.xl,
-    alignSelf: 'flex-start',
+    alignSelf: 'stretch',
+    marginTop: spacing.md,
   },
   downloadBtnText: { fontSize: fontSize.md, fontWeight: fontWeight.semibold, color: '#fff' },
-  fileNote: { fontSize: fontSize.xs, color: colors.textMuted, marginTop: spacing.sm },
+  fileNote: { fontSize: fontSize.xs, color: colors.textMuted, marginTop: spacing.sm, textAlign: 'center' },
   instructions: {
-    marginTop: spacing.lg,
     backgroundColor: colors.card,
     borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: colors.border,
     padding: spacing.lg,
     width: '100%',
-  },
-  instructionsTitle: {
-    fontSize: fontSize.md,
-    fontWeight: fontWeight.semibold,
-    color: colors.textPrimary,
-    marginBottom: spacing.md,
   },
   step: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.md, marginBottom: spacing.md },
   stepNumber: {
@@ -208,6 +270,25 @@ const styles = StyleSheet.create({
   stepNumberText: { fontSize: fontSize.xs, fontWeight: fontWeight.bold, color: colors.accent },
   stepText: { flex: 1, fontSize: fontSize.sm, color: colors.textSecondary, lineHeight: 20 },
   stepIcon: { marginTop: 1 },
+  apkToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: spacing.sm,
+    marginTop: spacing.sm,
+  },
+  apkToggleText: { fontSize: fontSize.sm, color: colors.textMuted, fontWeight: fontWeight.medium },
+  apkSection: {
+    width: '100%',
+    marginTop: spacing.md,
+    padding: spacing.lg,
+    backgroundColor: colors.card,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  apkNote: { fontSize: fontSize.xs, color: colors.textMuted, lineHeight: 18, marginBottom: spacing.sm },
   alreadyHave: { alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.xxl },
   alreadyHaveTitle: { fontSize: fontSize.lg, fontWeight: fontWeight.semibold, color: colors.textPrimary },
   alreadyHaveBody: { fontSize: fontSize.sm, color: colors.textSecondary, textAlign: 'center', maxWidth: 300 },
