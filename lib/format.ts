@@ -11,6 +11,20 @@ export function categoryBadgeLabel(category: ListingCategory) {
   return categoryBadgeLabels[category];
 }
 
+const categoryLabels: Record<ListingCategory, string> = {
+  for_rent: 'For Rent',
+  for_sale: 'For Sale',
+  land: 'Land',
+  daily_hourly: 'Daily/Hourly',
+};
+
+// Full-word form of categoryBadgeLabel, for prose contexts (the listing
+// detail summary line) where the yard-sign-style "RENT"/"SALE" abbreviation
+// used on card badges would read as clipped rather than intentional.
+export function categoryLabel(category: ListingCategory) {
+  return categoryLabels[category];
+}
+
 const rateUnitAbbreviation: Record<Exclude<RateUnit, null>, string> = {
   hour: 'hr',
   day: 'day',
@@ -18,9 +32,68 @@ const rateUnitAbbreviation: Record<Exclude<RateUnit, null>, string> = {
   night: 'night',
 };
 
+// USD gets a plain "$" prefix (no space, the universal convention); NLE
+// gets "NLe" -- the standard abbreviation for the Leone, distinct from the
+// bare "NLE" stored in the database (currency is a fixed enum value there,
+// this is just how it reads to a person). Falls back to the raw stored
+// code for anything unrecognized, so a data issue degrades to "odd label"
+// rather than a wrong symbol.
+const currencyDisplay: Record<string, { symbol: string; spaced: boolean }> = {
+  USD: { symbol: '$', spaced: false },
+  NLE: { symbol: 'NLe', spaced: true },
+};
+
+// formatPrice above renders with thousands-separator commas (12,500), so a
+// user editing a price field naturally types it back the same way -- this
+// strips those commas before parsing rather than silently producing NaN
+// (which read as "the Publish button just won't turn on" with no
+// explanation, since a NaN price fails the required-fields check).
+export function parsePriceInput(text: string): number {
+  return Number(text.replace(/,/g, '').trim());
+}
+
+// Filters the Price field's input as it's typed, so it can never end up
+// holding something parsePriceInput can't parse -- e.g. typing "$12,500 per
+// town lot" (a real report: an agent describing land pricing directly in
+// the Price field) silently left the field un-parseable and the Publish
+// button permanently disabled with no visible explanation. Keeps digits,
+// commas (thousands separators, stripped later by parsePriceInput) and a
+// single decimal point; drops everything else -- currency symbols, letters,
+// spaces -- as it's typed. Free-text context like "per town lot" belongs in
+// the separate Price Note field instead.
+export function sanitizePriceInput(text: string): string {
+  const cleaned = text.replace(/[^0-9.,]/g, '');
+  const firstDot = cleaned.indexOf('.');
+  if (firstDot === -1) return cleaned;
+  return cleaned.slice(0, firstDot + 1) + cleaned.slice(firstDot + 1).replace(/\./g, '');
+}
+
 export function formatPrice(price: number, currency: string, unit: RateUnit) {
   const amount = Math.round(price).toLocaleString('en-US');
-  return unit ? `${currency} ${amount} / ${rateUnitAbbreviation[unit]}` : `${currency} ${amount}`;
+  const display = currencyDisplay[currency] ?? { symbol: currency, spaced: true };
+  const amountWithSymbol = `${display.symbol}${display.spaced ? ' ' : ''}${amount}`;
+  return unit ? `${amountWithSymbol} / ${rateUnitAbbreviation[unit]}` : amountWithSymbol;
+}
+
+// Renders a listing's place as a single display string, without repeating
+// the city. Since the redesigned Add Listing "Location" field folds the
+// city into what the agent types (e.g. "Goderich, Freetown"), `location`
+// alone already reads as a complete place for most listings; naively
+// appending the stored `city` on top of that produced "Goderich, Freetown,
+// Freetown". Older listings from before that redesign still have a bare
+// specific-area `location` ("Wilberforce") with `city` stored separately,
+// so this only appends city/district when they aren't already part of the
+// location text.
+export function formatListingPlace(listing: { location: string; city: string; district?: string }): string {
+  const parts = [listing.location];
+  const locationLower = listing.location.toLowerCase();
+  if (listing.city && !locationLower.includes(listing.city.toLowerCase())) {
+    parts.push(listing.city);
+  }
+  if (listing.district && !locationLower.includes(listing.district.toLowerCase())) {
+    parts.push(listing.district);
+  }
+  return parts.filter((part) => part.trim().length > 0).join(', ');
 }
 
 export function initialsFor(name: string | null) {
@@ -66,8 +139,23 @@ const verificationLabels: Record<string, string> = {
 // read correctly for whichever role holds it.
 export function verificationBadgeLabel(tier: string | null | undefined, role?: string | null) {
   if (!tier) return null;
-  if (tier === 'agent_verified' && role === 'landlord') return 'Verified Property Owner';
+  if (tier === 'agent_verified') {
+    if (role === 'landlord') return 'Verified Property Owner';
+    if (role === 'agency') return 'Verified Agency';
+  }
   return verificationLabels[tier] ?? null;
+}
+
+// "Agent since <Month Year>" -- the account's real creation date, not a
+// fabricated tenure stat. Falls back to a plain "On Easyfen since ..." for
+// the first year, since "Agent for 3 months" reads oddly that early on.
+export function agentTenureLabel(isoDate: string) {
+  const created = new Date(isoDate);
+  const months = Math.floor(daysSince(isoDate) / 30);
+  const monthYear = created.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  if (months < 12) return `On Easyfen since ${monthYear}`;
+  const years = Math.floor(months / 12);
+  return `${years} year${years === 1 ? '' : 's'} on Easyfen`;
 }
 
 export function formatMessageTimestamp(isoDate: string) {

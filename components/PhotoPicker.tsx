@@ -6,6 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { uploadListingPhoto } from '../lib/upload';
 import { appAlert } from '../lib/alert';
 import { colors, fontSize, radius, spacing } from '../constants/theme';
+import { type } from '../constants/typography';
 
 const MAX_PHOTOS = 10;
 
@@ -59,14 +60,26 @@ export function PhotoPicker({
     if (result.canceled || result.assets.length === 0) return;
     setUploading(true);
     try {
-      const uploaded: string[] = [];
-      for (const asset of result.assets) {
-        const url = await uploadListingPhoto(asset.uri, userId);
-        uploaded.push(url);
+      // Settle each upload independently -- a single flaky network blip in a
+      // 10-photo batch used to throw out of a sequential for-loop and
+      // discard every photo that had already uploaded successfully before
+      // it. Now a partial failure keeps whatever succeeded and only asks
+      // the user to retry the ones that didn't.
+      const settled = await Promise.allSettled(result.assets.map((asset) => uploadListingPhoto(asset.uri, userId)));
+      const uploaded = settled
+        .filter((r): r is PromiseFulfilledResult<string> => r.status === 'fulfilled')
+        .map((r) => r.value);
+      const failedCount = settled.length - uploaded.length;
+
+      if (uploaded.length > 0) onChange([...photos, ...uploaded]);
+      if (failedCount > 0) {
+        appAlert(
+          'Upload failed',
+          uploaded.length > 0
+            ? `${uploaded.length} of ${settled.length} photos uploaded. ${failedCount} could not be uploaded — please try adding ${failedCount === 1 ? 'it' : 'them'} again.`
+            : 'One or more photos could not be uploaded. Please try again.',
+        );
       }
-      onChange([...photos, ...uploaded]);
-    } catch {
-      appAlert('Upload failed', 'One or more photos could not be uploaded. Please try again.');
     } finally {
       setUploading(false);
     }
@@ -99,7 +112,11 @@ export function PhotoPicker({
   }
 
   return (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.thumbRow}>
+    <View>
+      <Text style={styles.countText}>
+        {photos.length} of {MAX_PHOTOS} photos added
+      </Text>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.thumbRow}>
       {photos.map((url, index) => (
         <View key={url} style={styles.thumbWrap}>
           <Image
@@ -131,11 +148,13 @@ export function PhotoPicker({
           {uploading ? <ActivityIndicator color={colors.accent} /> : <Ionicons name="add" size={24} color={colors.textMuted} />}
         </Pressable>
       )}
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  countText: { ...type.secondary, fontSize: fontSize.xs, color: colors.textSecondary, marginBottom: spacing.sm },
   emptyBox: {
     borderWidth: 1.5,
     borderColor: colors.border,
@@ -146,8 +165,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 6,
   },
-  emptyBoxTitle: { fontSize: fontSize.sm, color: colors.textSecondary, fontWeight: '600' },
-  emptyBoxCaption: { fontSize: 10, color: colors.textMuted, fontWeight: '600', letterSpacing: 0.5 },
+  emptyBoxTitle: { ...type.bodyMedium, fontSize: fontSize.sm, color: colors.textSecondary },
+  emptyBoxCaption: { ...type.labelStrong, fontSize: 10, color: colors.textMuted, letterSpacing: 0.5 },
   thumbRow: { gap: spacing.sm },
   thumbWrap: { width: 72, height: 72, borderRadius: radius.sm, overflow: 'hidden' },
   thumb: { width: '100%', height: '100%' },

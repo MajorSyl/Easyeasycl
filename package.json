@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "main": "expo-router/entry",
   "dependencies": {
+    "@expo-google-fonts/inter": "^0.4.2",
+    "@expo-google-fonts/montserrat": "^0.4.2",
+    "@expo-google-fonts/poppins": "^0.4.1",
     "@expo/vector-icons": "^15.1.1",
     "@react-native-async-storage/async-storage": "^2.2.0",
     "@supabase/supabase-js": "^2.110.7",
@@ -13,6 +16,7 @@
     "expo-image-manipulator": "~57.0.5",
     "expo-image-picker": "~57.0.5",
     "expo-linking": "~57.0.3",
+    "expo-location": "~57.0.9",
     "expo-router": "~57.0.7",
     "expo-splash-screen": "~57.0.8",
     "expo-status-bar": "~57.0.1",
@@ -35,7 +39,8 @@
     "start": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "export:web": "expo export --platform web && node scripts/inject-pwa-head.js"
   },
   "private": true
 }

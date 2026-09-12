@@ -26,12 +26,12 @@ export const ONBOARDING_SEEN_KEY = 'easyfen_seen_onboarding';
 
 const SLIDES = [
   {
-    headline: 'Find your next home in Freetown',
-    body: 'Real listings across every neighborhood you know — from Aberdeen to Wilberforce.',
+    headline: 'Find your next home, anywhere in Sierra Leone',
+    body: 'Real listings from Freetown to Bo, Kenema, Makeni, and beyond.',
     Illustration: CottonTreeIllustration,
   },
   {
-    headline: 'Real listings, real neighborhoods',
+    headline: 'Real listings, every location',
     body: 'Search where you actually want to live, filter by price, and see what’s new first.',
     Illustration: WaveBeachIllustration,
   },
@@ -42,7 +42,7 @@ const SLIDES = [
   },
   {
     headline: 'List your properties, reach real buyers',
-    body: 'Post in minutes and get discovered across the city.',
+    body: 'Post in minutes and get discovered nationwide.',
     Illustration: SkylineIllustration,
   },
 ];

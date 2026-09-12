@@ -10,9 +10,21 @@ import { useAuth } from '../../lib/auth-context';
 import { friendlyErrorMessage } from '../../lib/errors';
 import { appAlert } from '../../lib/alert';
 import { ListingCard } from '../../components/ListingCard';
+import { CurrencyFilterToggle, type CurrencyFilter } from '../../components/CurrencyFilterToggle';
+import { distanceKm, formatDistance } from '../../lib/geo';
+import { useDeviceLocation } from '../../lib/use-device-location';
+import { parseSearchQuery } from '../../lib/search-query-parser';
+import { categoryLabel, parsePriceInput } from '../../lib/format';
 import type { Listing } from '../../lib/types';
 
-type SearchResult = { kind: 'listing'; id: string; sortPrice: number; createdAt: string; data: Listing };
+type SearchResult = {
+  kind: 'listing';
+  id: string;
+  sortPrice: number;
+  createdAt: string;
+  data: Listing;
+  distanceKm: number | null;
+};
 
 type SortMode = 'newest' | 'price_asc' | 'price_desc';
 
@@ -21,6 +33,12 @@ const sortLabels: Record<SortMode, string> = {
   price_asc: 'Price: Low to High',
   price_desc: 'Price: High to Low',
 };
+
+// Sorting or filtering by a raw price number only means something within a
+// single currency -- $50 sorting as "less than" NLe 5,000 is meaningless
+// without an exchange rate. Price-based sort only shows up once a specific
+// currency is selected; picking "All" falls back to Newest.
+const priceSortModes: SortMode[] = ['price_asc', 'price_desc'];
 
 function escapeForFilter(text: string) {
   return text.replace(/[,()%]/g, '');
@@ -32,39 +50,117 @@ export default function SearchScreen() {
   const { session } = useAuth();
   const [query, setQuery] = useState('');
   const [budget, setBudget] = useState('');
+  const [currencyFilter, setCurrencyFilter] = useState<CurrencyFilter>('ALL');
   const [sortMode, setSortMode] = useState<SortMode>('newest');
   const [sortMenuOpen, setSortMenuOpen] = useState(false);
   const [results, setResults] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchError, setSearchError] = useState(false);
   const [savingSearch, setSavingSearch] = useState(false);
+  const [nearMe, setNearMe] = useState(false);
+  const [understood, setUnderstood] = useState<string | null>(null);
+  const { coords, requesting: requestingLocation, request: requestLocation } = useDeviceLocation();
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      runSearch(query, budget, sortMode);
+      runSearch(query, budget, currencyFilter, sortMode, nearMe ? coords : null);
     }, 300);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query, budget, sortMode]);
+  }, [query, budget, currencyFilter, sortMode, nearMe, coords]);
 
-  async function runSearch(text: string, budgetText: string, sort: SortMode) {
+  async function toggleNearMe() {
+    if (nearMe) {
+      setNearMe(false);
+      return;
+    }
+    const next = coords ?? (await requestLocation());
+    if (next) setNearMe(true);
+  }
+
+  // Switching to "All" drops both the budget and any price-based sort --
+  // neither means anything once results can span more than one currency.
+  function handleCurrencyChange(next: CurrencyFilter) {
+    setCurrencyFilter(next);
+    if (next === 'ALL') {
+      setBudget('');
+      if (priceSortModes.includes(sortMode)) setSortMode('newest');
+    }
+  }
+
+  async function runSearch(
+    text: string,
+    budgetText: string,
+    currency: CurrencyFilter,
+    sort: SortMode,
+    nearCoords: { lat: number; lng: number } | null
+  ) {
     setLoading(true);
-    const term = escapeForFilter(text.trim());
-    const maxPrice = budgetText.trim() ? Number(budgetText) : null;
+    const trimmed = text.trim();
+    const maxPrice = currency !== 'ALL' && budgetText.trim() ? parsePriceInput(budgetText) : null;
 
     let listingsQuery = supabase
       .from('listings')
-      .select('id, title, price, currency, price_unit, location, category, photos, view_count, is_premium, owner_id, created_at, last_confirmed_at, owner:profiles(full_name, avatar_url, role)')
+      .select(
+        'id, title, price, currency, price_unit, district, city, location, latitude, longitude, category, photos, view_count, is_premium, is_verified, owner_id, created_at, last_confirmed_at, owner:profiles(full_name, avatar_url, role)'
+      )
       .eq('is_active', true);
 
-    if (term) {
-      listingsQuery = listingsQuery.or(`title.ilike.%${term}%,location.ilike.%${term}%`);
+    // Rule-based keyword parsing (no AI/API): "cheap 2 bedroom house in Bo"
+    // maps to category/bedrooms/location filters plus a price sort, all
+    // from a lookup table + regex -- see lib/search-query-parser.ts. Falls
+    // straight back to the old plain-text search when nothing matches.
+    const parsed = trimmed ? parseSearchQuery(trimmed) : null;
+
+    if (parsed?.matchedAnything) {
+      const summaryParts: string[] = [];
+      if (parsed.category) summaryParts.push(categoryLabel(parsed.category));
+      for (const kw of parsed.keywordTerms) summaryParts.push(kw.charAt(0).toUpperCase() + kw.slice(1));
+      if (parsed.bedrooms != null) summaryParts.push(`${parsed.bedrooms} bed`);
+      if (parsed.locationTerm) summaryParts.push(parsed.locationTerm);
+      if (parsed.priceIntent) summaryParts.push(parsed.priceIntent === 'asc' ? 'lowest price first' : 'highest price first');
+      setUnderstood(summaryParts.join(' · '));
+
+      if (parsed.category) listingsQuery = listingsQuery.eq('category', parsed.category);
+      if (parsed.bedrooms != null) listingsQuery = listingsQuery.eq('bedrooms', parsed.bedrooms);
+      if (parsed.locationTerm) {
+        const loc = escapeForFilter(parsed.locationTerm);
+        listingsQuery = listingsQuery.or(`city.ilike.%${loc}%,district.ilike.%${loc}%,location.ilike.%${loc}%`);
+      }
+      for (const kw of parsed.keywordTerms) {
+        const safe = escapeForFilter(kw);
+        listingsQuery = listingsQuery.or(`title.ilike.%${safe}%,description.ilike.%${safe}%`);
+      }
+      if (parsed.leftoverText) {
+        const safe = escapeForFilter(parsed.leftoverText);
+        listingsQuery = listingsQuery.or(
+          `title.ilike.%${safe}%,location.ilike.%${safe}%,city.ilike.%${safe}%,district.ilike.%${safe}%`
+        );
+      }
+    } else {
+      setUnderstood(null);
+      if (trimmed) {
+        const term = escapeForFilter(trimmed);
+        // Nationwide: a district or city name (e.g. "Bo") matches just as
+        // well as a neighborhood-level location or a title keyword.
+        listingsQuery = listingsQuery.or(
+          `title.ilike.%${term}%,location.ilike.%${term}%,city.ilike.%${term}%,district.ilike.%${term}%`
+        );
+      }
+    }
+    if (currency !== 'ALL') {
+      listingsQuery = listingsQuery.eq('currency', currency);
     }
     if (maxPrice && !Number.isNaN(maxPrice)) {
       listingsQuery = listingsQuery.lte('price', maxPrice);
     }
 
-    const { data: listings, error } = await listingsQuery.order('created_at', { ascending: false }).limit(30);
+    // Near Me re-sorts by distance client-side, so pull a bigger pool than
+    // the default page size -- otherwise "closest first" would only ever
+    // rank among the 30 most recently posted listings.
+    const { data: listings, error } = await listingsQuery
+      .order('created_at', { ascending: false })
+      .limit(nearCoords ? 150 : 30);
 
     if (error) {
       setSearchError(true);
@@ -80,13 +176,29 @@ export default function SearchScreen() {
       sortPrice: item.price,
       createdAt: item.created_at,
       data: item,
+      distanceKm:
+        nearCoords && item.latitude != null && item.longitude != null
+          ? distanceKm(nearCoords.lat, nearCoords.lng, item.latitude, item.longitude)
+          : null,
     }));
 
-    combined.sort((a, b) => {
-      if (sort === 'price_asc') return a.sortPrice - b.sortPrice;
-      if (sort === 'price_desc') return b.sortPrice - a.sortPrice;
-      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-    });
+    // "cheap"/"luxury" in the query only becomes a real sort once a single
+    // currency is selected -- same rule as the manual sort menu, comparing
+    // raw price numbers across currencies is meaningless.
+    const effectiveSort: SortMode =
+      parsed?.priceIntent && currency !== 'ALL' ? (parsed.priceIntent === 'asc' ? 'price_asc' : 'price_desc') : sort;
+
+    if (nearCoords) {
+      // Near Me overrides the picked sort mode -- closest first, listings
+      // with no coordinates at all pushed to the end rather than dropped.
+      combined.sort((a, b) => (a.distanceKm ?? Infinity) - (b.distanceKm ?? Infinity));
+    } else {
+      combined.sort((a, b) => {
+        if (effectiveSort === 'price_asc') return a.sortPrice - b.sortPrice;
+        if (effectiveSort === 'price_desc') return b.sortPrice - a.sortPrice;
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      });
+    }
 
     setResults(combined);
     setLoading(false);
@@ -106,11 +218,16 @@ export default function SearchScreen() {
       return;
     }
     setSavingSearch(true);
-    const maxPrice = budget.trim() ? Number(budget) : null;
+    const maxPrice = currencyFilter !== 'ALL' && budget.trim() ? parsePriceInput(budget) : null;
     const { error } = await supabase.from('saved_searches').insert({
       user_id: session.user.id,
       query: query.trim() || null,
       max_price: maxPrice && !Number.isNaN(maxPrice) ? maxPrice : null,
+      // Only actually consulted by the matching trigger when max_price is
+      // also set (see notify_saved_search_matches) -- harmless default
+      // otherwise, since a query-only saved search matches on keyword alone
+      // regardless of a listing's currency.
+      currency: currencyFilter === 'ALL' ? 'NLE' : currencyFilter,
     });
     setSavingSearch(false);
     if (error) {
@@ -127,7 +244,7 @@ export default function SearchScreen() {
           <Ionicons name="search" size={18} color={colors.textMuted} />
           <TextInput
             style={styles.searchInput}
-            placeholder="Search Goderich, Aberdeen, Lumley..."
+            placeholder="Search Bo, Freetown, Makeni..."
             placeholderTextColor={colors.textMuted}
             value={query}
             onChangeText={setQuery}
@@ -145,27 +262,50 @@ export default function SearchScreen() {
           )}
         </View>
 
+        <CurrencyFilterToggle value={currencyFilter} onChange={handleCurrencyChange} />
+
+        <Pressable
+          style={[styles.nearMeButton, nearMe && styles.nearMeButtonActive]}
+          onPress={toggleNearMe}
+          disabled={requestingLocation}
+          accessibilityRole="button"
+          accessibilityLabel="Sort by nearby listings"
+          accessibilityState={{ selected: nearMe }}
+        >
+          {requestingLocation ? (
+            <ActivityIndicator size="small" color={nearMe ? '#fff' : colors.accent} />
+          ) : (
+            <Ionicons name="navigate" size={14} color={nearMe ? '#fff' : colors.accent} />
+          )}
+          <Text style={[styles.nearMeButtonText, nearMe && styles.nearMeButtonTextActive]}>
+            {nearMe ? 'Near Me · On' : 'Near Me'}
+          </Text>
+        </Pressable>
+
         <View style={styles.filterRow}>
-          <View style={styles.budgetField}>
-            <Text style={styles.budgetPrefix}>NLE</Text>
+          <View style={[styles.budgetField, currencyFilter === 'ALL' && styles.budgetFieldDisabled]}>
+            <Text style={styles.budgetPrefix}>{currencyFilter === 'USD' ? '$' : 'NLe'}</Text>
             <TextInput
               style={styles.budgetInput}
-              placeholder="Budget"
+              placeholder={currencyFilter === 'ALL' ? 'Pick a currency to set a budget' : 'Budget'}
               placeholderTextColor={colors.textMuted}
               value={budget}
               onChangeText={setBudget}
               keyboardType="decimal-pad"
+              editable={currencyFilter !== 'ALL'}
               accessibilityLabel="Maximum budget"
+              accessibilityHint={currencyFilter === 'ALL' ? 'Select a currency above first' : undefined}
             />
           </View>
           <Pressable
-            style={styles.sortButton}
+            style={[styles.sortButton, nearMe && styles.sortButtonDisabled]}
             onPress={() => setSortMenuOpen(true)}
+            disabled={nearMe}
             accessibilityRole="button"
             accessibilityLabel="Sort results"
-            accessibilityHint={`Currently sorted by ${sortLabels[sortMode]}`}
+            accessibilityHint={nearMe ? 'Sorted by distance while Near Me is on' : `Currently sorted by ${sortLabels[sortMode]}`}
           >
-            <Ionicons name="swap-vertical-outline" size={20} color={colors.textPrimary} />
+            <Ionicons name="swap-vertical-outline" size={20} color={nearMe ? colors.textMuted : colors.textPrimary} />
           </Pressable>
           <Pressable
             style={[styles.sortButton, !canSaveSearch && styles.sortButtonDisabled]}
@@ -185,6 +325,7 @@ export default function SearchScreen() {
         </View>
 
         <Text style={styles.resultCount}>{loading ? 'Searching...' : resultCountLabel}</Text>
+        {understood && <Text style={styles.understoodText}>Understood as: {understood}</Text>}
       </View>
 
       {loading ? (
@@ -196,7 +337,12 @@ export default function SearchScreen() {
           data={results}
           keyExtractor={(item) => `${item.kind}-${item.id}`}
           contentContainerStyle={[styles.listContent, { paddingBottom: tabBarGap + spacing.lg }]}
-          renderItem={({ item }) => <ListingCard listing={item.data} />}
+          renderItem={({ item }) => (
+            <ListingCard
+              listing={item.data}
+              distanceLabel={nearMe && item.distanceKm != null ? formatDistance(item.distanceKm) : undefined}
+            />
+          )}
           ListEmptyComponent={
             <View style={styles.emptyState}>
               <Ionicons
@@ -207,8 +353,15 @@ export default function SearchScreen() {
               <Text style={styles.emptyStateText}>
                 {searchError
                   ? "Couldn't load results. Check your connection and try again."
-                  : 'No results. Try a different search or budget.'}
+                  : query.trim()
+                    ? `No listings found for "${query.trim()}" yet — check back soon, or be the first to list a property here!`
+                    : 'No results. Try a different search or budget.'}
               </Text>
+              {!searchError && (
+                <Pressable style={styles.emptyCta} onPress={() => router.push('/add')}>
+                  <Text style={styles.emptyCtaText}>List Your Property</Text>
+                </Pressable>
+              )}
             </View>
           }
         />
@@ -221,7 +374,9 @@ export default function SearchScreen() {
           accessibilityLabel="Close sort menu"
         >
           <View style={styles.sheet} accessibilityRole="menu">
-            {(Object.keys(sortLabels) as SortMode[]).map((mode) => (
+            {(Object.keys(sortLabels) as SortMode[])
+              .filter((mode) => currencyFilter !== 'ALL' || !priceSortModes.includes(mode))
+              .map((mode) => (
               <Pressable
                 key={mode}
                 style={styles.option}
@@ -260,6 +415,21 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   searchInput: { flex: 1, fontSize: fontSize.sm, color: colors.textPrimary },
+  nearMeButton: {
+    flexDirection: 'row',
+    alignSelf: 'flex-start',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 8,
+  },
+  nearMeButtonActive: { backgroundColor: colors.accent, borderColor: colors.accent },
+  nearMeButtonText: { fontSize: fontSize.xs, fontWeight: fontWeight.semibold, color: colors.accent },
+  nearMeButtonTextActive: { color: '#fff' },
   filterRow: { flexDirection: 'row', gap: spacing.sm },
   budgetField: {
     flex: 1,
@@ -272,6 +442,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
+  budgetFieldDisabled: { opacity: 0.5 },
   budgetPrefix: { fontSize: fontSize.sm, color: colors.textMuted, fontWeight: fontWeight.semibold },
   budgetInput: { flex: 1, fontSize: fontSize.sm, color: colors.textPrimary, paddingVertical: 12 },
   sortButton: {
@@ -286,10 +457,13 @@ const styles = StyleSheet.create({
   },
   sortButtonDisabled: { opacity: 0.5 },
   resultCount: { fontSize: fontSize.sm, color: colors.textSecondary, fontWeight: fontWeight.semibold, marginTop: 2 },
+  understoodText: { fontSize: fontSize.xs, color: colors.accentStrong, marginTop: 2 },
   loadingWrap: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   listContent: { padding: spacing.lg, paddingTop: spacing.md, gap: spacing.md },
-  emptyState: { paddingTop: spacing.xxl, alignItems: 'center', gap: spacing.sm, paddingHorizontal: spacing.xl },
+  emptyState: { paddingTop: spacing.xxl, alignItems: 'center', gap: spacing.md, paddingHorizontal: spacing.xl },
   emptyStateText: { color: colors.textMuted, fontSize: fontSize.sm, textAlign: 'center' },
+  emptyCta: { backgroundColor: colors.accent, borderRadius: radius.md, paddingHorizontal: spacing.xl, paddingVertical: spacing.md },
+  emptyCtaText: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: '#fff' },
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
   sheet: {
     backgroundColor: colors.card,

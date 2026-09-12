@@ -19,24 +19,34 @@ import { appAlert } from '../../lib/alert';
 import { shareText } from '../../lib/share';
 import { useBottomGap } from '../../lib/use-bottom-gap';
 import { getOrCreateConversation } from '../../lib/conversations';
-import { colors, fontSize, fontWeight, radius, shadow, spacing } from '../../constants/theme';
-import { Badge } from '../../components/Badge';
+import { colors, fontSize, radius, shadow, spacing } from '../../constants/theme';
+import { fontFamily, type } from '../../constants/typography';
 import { FavoriteButton } from '../../components/FavoriteButton';
-import { AmenityBar, type AmenityItem } from '../../components/AmenityBar';
 import { NoPhotoPlaceholder } from '../../components/NoPhotoPlaceholder';
 import { LazyPhoto } from '../../components/LazyPhoto';
-import { categoryBadgeLabel, formatListingAge, formatPrice, initialsFor, roleLabel } from '../../lib/format';
+import {
+  agentTenureLabel,
+  categoryLabel,
+  formatListingAge,
+  formatListingPlace,
+  formatPrice,
+  initialsFor,
+  roleLabel,
+  verificationBadgeLabel,
+} from '../../lib/format';
 import type { Listing, RateUnit } from '../../lib/types';
 
 const windowWidth = Dimensions.get('window').width;
-const HERO_MARGIN = spacing.lg;
-const heroWidth = windowWidth - HERO_MARGIN * 2;
+// Edge-to-edge, not the old margined/rounded hero card -- Airbnb's detail
+// carousel runs the full width of the screen, with the content below it
+// overlapping it in a rounded-top sheet (see `sheet` below).
+const heroHeight = windowWidth * 0.85;
 
 const priceUnitLabel: Record<Exclude<RateUnit, null>, string> = {
-  hour: 'Per Hour',
-  day: 'Per Day',
-  month: 'Per Month',
-  night: 'Per Night',
+  hour: 'per hour',
+  day: 'per day',
+  month: 'per month',
+  night: 'per night',
 };
 
 export default function ListingDetailScreen() {
@@ -55,7 +65,7 @@ export default function ListingDetailScreen() {
     let cancelled = false;
     supabase
       .from('listings')
-      .select('*, owner:profiles(full_name, avatar_url, role)')
+      .select('*, owner:profiles(full_name, avatar_url, role, created_at, verification_tier)')
       .eq('id', id)
       .eq('is_active', true)
       .single()
@@ -77,7 +87,7 @@ export default function ListingDetailScreen() {
   async function handleShare() {
     if (!listing) return;
     await shareText(
-      `${listing.title}\n${formatPrice(listing.price, listing.currency, listing.price_unit)} · ${listing.location}\n\nFound on Easyfen`
+      `${listing.title}\n${formatPrice(listing.price, listing.currency, listing.price_unit)} · ${formatListingPlace(listing)}\n\nFound on Easyfen`
     );
   }
 
@@ -152,54 +162,46 @@ export default function ListingDetailScreen() {
     );
   }
 
-  const amenities: AmenityItem[] = [
-    ...(listing.bedrooms != null
-      ? [{ icon: 'bed-outline' as const, label: `${listing.bedrooms} Bed${listing.bedrooms === 1 ? '' : 's'}` }]
-      : []),
-    { icon: 'pricetag-outline' as const, label: categoryBadgeLabel(listing.category) },
-    { icon: 'eye-outline' as const, label: `${listing.view_count} Views` },
-    { icon: 'camera-outline' as const, label: `${listing.photos.length} Photos` },
-  ];
+  const verifiedLabel = verificationBadgeLabel(listing.owner?.verification_tier, listing.owner?.role);
 
   return (
     <View style={styles.container}>
-      <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
-        <View style={[styles.heroCard, { marginTop: insets.top + spacing.sm }]}>
+      <ScrollView contentContainerStyle={{ paddingBottom: 120 }}>
+        <View style={styles.heroWrap}>
           {listing.photos.length > 0 ? (
-            <>
-              <FlatList
-                data={listing.photos}
-                keyExtractor={(url) => url}
-                horizontal
-                pagingEnabled
-                showsHorizontalScrollIndicator={false}
-                onMomentumScrollEnd={(e) =>
-                  setPhotoIndex(Math.round(e.nativeEvent.contentOffset.x / heroWidth))
-                }
-                renderItem={({ item, index }) => (
-                  <LazyPhoto
-                    uri={item}
-                    style={styles.photo}
-                    contentFit="cover"
-                    accessibilityLabel={`Photo ${index + 1} of ${listing.photos.length} of ${listing.title}`}
-                  />
-                )}
-              />
-              {listing.photos.length > 1 && (
-                <View style={styles.photoDots} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
-                  {listing.photos.map((url, i) => (
-                    <View key={url} style={[styles.dot, i === photoIndex && styles.dotActive]} />
-                  ))}
-                </View>
+            <FlatList
+              data={listing.photos}
+              keyExtractor={(url) => url}
+              horizontal
+              pagingEnabled
+              showsHorizontalScrollIndicator={false}
+              onMomentumScrollEnd={(e) =>
+                setPhotoIndex(Math.round(e.nativeEvent.contentOffset.x / windowWidth))
+              }
+              renderItem={({ item, index }) => (
+                <LazyPhoto
+                  uri={item}
+                  style={styles.photo}
+                  contentFit="cover"
+                  accessibilityLabel={`Photo ${index + 1} of ${listing.photos.length} of ${listing.title}`}
+                />
               )}
-            </>
+            />
           ) : (
             <View style={[styles.photo, styles.photoPlaceholder]}>
               <NoPhotoPlaceholder />
             </View>
           )}
 
-          <View style={styles.photoTopBar}>
+          {listing.photos.length > 1 && (
+            <View style={styles.pageIndicator}>
+              <Text style={styles.pageIndicatorText}>
+                {photoIndex + 1}/{listing.photos.length}
+              </Text>
+            </View>
+          )}
+
+          <View style={[styles.photoTopBar, { paddingTop: insets.top + spacing.xs }]}>
             <Pressable
               style={styles.roundButton}
               onPress={() => router.back()}
@@ -210,17 +212,6 @@ export default function ListingDetailScreen() {
               <Ionicons name="chevron-back" size={20} color={colors.textPrimary} />
             </Pressable>
             <View style={styles.topBarRight}>
-              {session?.user.id !== listing.owner_id && (
-                <Pressable
-                  style={styles.roundButton}
-                  onPress={handleReport}
-                  hitSlop={8}
-                  accessibilityRole="button"
-                  accessibilityLabel="Report this listing"
-                >
-                  <Ionicons name="flag-outline" size={18} color={colors.textPrimary} />
-                </Pressable>
-              )}
               <Pressable
                 style={styles.roundButton}
                 onPress={handleShare}
@@ -230,65 +221,118 @@ export default function ListingDetailScreen() {
               >
                 <Ionicons name="share-outline" size={18} color={colors.textPrimary} />
               </Pressable>
+              <View style={styles.roundButton}>
+                <FavoriteButton itemType="listing" itemId={listing.id} />
+              </View>
             </View>
           </View>
         </View>
 
-        <View style={styles.amenityWrap}>
-          <AmenityBar items={amenities} />
-        </View>
-
-        <View style={styles.body}>
-          <View style={styles.badgeRow}>
-            <Badge label={categoryBadgeLabel(listing.category)} variant="dark" />
-            {listing.is_premium && <Badge label="PREMIUM" variant="premium" />}
-            {listing.is_verified && (
-              <View style={styles.verifiedRow}>
-                <Ionicons name="checkmark-circle" size={14} color={colors.success} />
-                <Text style={styles.verifiedText}>Verified</Text>
-              </View>
-            )}
-          </View>
+        {/* Rounded-top sheet overlapping the photo, like an Airbnb listing
+            page's content card floating over its hero image. */}
+        <View style={styles.sheet}>
+          {(listing.is_premium || listing.is_verified) && (
+            <View style={styles.badgeRow}>
+              {listing.is_premium && (
+                <View style={styles.premiumChip}>
+                  <Ionicons name="star" size={11} color={colors.premiumText} />
+                  <Text style={styles.premiumChipText}>Featured</Text>
+                </View>
+              )}
+              {listing.is_verified && (
+                <View style={styles.verifiedRow}>
+                  <Ionicons name="checkmark-circle" size={14} color={colors.success} />
+                  <Text style={styles.verifiedText}>Verified</Text>
+                </View>
+              )}
+            </View>
+          )}
 
           <Text style={styles.title}>{listing.title}</Text>
-          <View style={styles.locationRow}>
-            <Ionicons name="location-outline" size={14} color={colors.textMuted} />
-            <Text style={styles.location}>{listing.location}</Text>
-          </View>
+          <Text style={styles.summaryLine}>
+            {categoryLabel(listing.category)} · {formatListingPlace(listing)}
+          </Text>
+          {listing.bedrooms != null && (
+            <Text style={styles.statsLine}>
+              {listing.bedrooms} Bedroom{listing.bedrooms === 1 ? '' : 's'}
+            </Text>
+          )}
           {listing.last_confirmed_at && (
             <Text style={styles.listingAge}>{formatListingAge(listing.last_confirmed_at)}</Text>
           )}
-
-          <Text style={styles.sectionTitle}>Pricing</Text>
-          <View style={styles.pricingCard}>
-            <Text style={styles.pricingLabel}>{listing.price_unit ? priceUnitLabel[listing.price_unit] : 'Pay Now'}</Text>
-            <Text style={styles.pricingAmount}>{formatPrice(listing.price, listing.currency, null)}</Text>
-          </View>
-
-          {listing.description && (
-            <>
-              <Text style={styles.sectionTitle}>Description</Text>
-              <Text style={styles.description}>{listing.description}</Text>
-            </>
+          {/* Understated, not the visual focus -- a small trust signal near
+              the other stats, not a headline number. Omitted entirely (not
+              a "0 people viewed" placeholder) when there's nothing to show. */}
+          {listing.view_count > 0 && (
+            <View style={styles.viewCountRow}>
+              <Ionicons name="eye-outline" size={13} color={colors.textMuted} />
+              <Text style={styles.viewCountText}>
+                {listing.view_count.toLocaleString()} {listing.view_count === 1 ? 'person' : 'people'} viewed this
+                property
+              </Text>
+            </View>
           )}
 
-          <Text style={styles.sectionTitle}>Listed By</Text>
+          <View style={styles.divider} />
+
           <Pressable style={styles.agentRow} onPress={() => router.push(`/user/${listing.owner_id}`)}>
             <View style={styles.agentAvatar}>
               <Text style={styles.agentAvatarText}>{initialsFor(listing.owner?.full_name ?? null)}</Text>
             </View>
             <View style={styles.agentBody}>
               <Text style={styles.agentName}>{listing.owner?.full_name ?? 'Easyfen User'}</Text>
-              {roleLabel(listing.owner?.role) && <Text style={styles.agentRole}>{roleLabel(listing.owner?.role)}</Text>}
+              <View style={styles.agentMetaRow}>
+                {roleLabel(listing.owner?.role) && <Text style={styles.agentRole}>{roleLabel(listing.owner?.role)}</Text>}
+                {verifiedLabel && (
+                  <View style={styles.agentVerifiedRow}>
+                    <Ionicons name="checkmark-circle" size={12} color={colors.success} />
+                    <Text style={styles.agentVerifiedText}>{verifiedLabel}</Text>
+                  </View>
+                )}
+              </View>
+              {listing.owner?.created_at && (
+                <Text style={styles.agentTenure}>{agentTenureLabel(listing.owner.created_at)}</Text>
+              )}
             </View>
             <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
           </Pressable>
+
+          {listing.description && (
+            <>
+              <View style={styles.divider} />
+              <Text style={styles.sectionTitle}>About this property</Text>
+              <Text style={styles.description}>{listing.description}</Text>
+            </>
+          )}
+
+          <View style={styles.divider} />
+
+          <Text style={styles.sectionTitle}>Location</Text>
+          <View style={styles.locationCard}>
+            <View style={styles.locationIcon}>
+              <Ionicons name="location" size={16} color={colors.accent} />
+            </View>
+            <Text style={styles.locationCardText}>
+              {formatListingPlace(listing)}
+            </Text>
+          </View>
+
+          {session?.user.id !== listing.owner_id && (
+            <Pressable onPress={handleReport} hitSlop={8} style={styles.reportLink}>
+              <Text style={styles.reportLinkText}>Report this listing</Text>
+            </Pressable>
+          )}
         </View>
       </ScrollView>
 
       <View style={[styles.footer, { paddingBottom: bottomGap + spacing.md }]}>
-        <View style={styles.favoriteFooterButton}>
-          <FavoriteButton itemType="listing" itemId={listing.id} />
+        <View style={styles.footerPrice}>
+          <Text style={styles.footerPriceAmount} numberOfLines={1}>
+            {formatPrice(listing.price, listing.currency, null)}
+          </Text>
+          <Text style={styles.footerPriceUnit} numberOfLines={1}>
+            {listing.price_note || (listing.price_unit ? priceUnitLabel[listing.price_unit] : 'Asking price')}
+          </Text>
         </View>
         <Pressable style={styles.messageButton} onPress={messageAgent} disabled={starting}>
           {starting ? (
@@ -296,7 +340,9 @@ export default function ListingDetailScreen() {
           ) : (
             <>
               <Ionicons name="chatbubble-outline" size={18} color="#fff" />
-              <Text style={styles.messageButtonText}>Message Agent</Text>
+              <Text style={styles.messageButtonText}>
+                Contact {listing.owner?.role === 'agency' ? 'Agency' : 'Agent'}
+              </Text>
             </>
           )}
         </Pressable>
@@ -308,31 +354,30 @@ export default function ListingDetailScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   centered: { alignItems: 'center', justifyContent: 'center' },
-  notFound: { fontSize: fontSize.md, color: colors.textSecondary, marginBottom: spacing.sm },
-  backLink: { fontSize: fontSize.md, color: colors.accent, fontWeight: fontWeight.semibold },
-  heroCard: {
-    marginHorizontal: HERO_MARGIN,
-    borderRadius: radius.xxl,
-    overflow: 'hidden',
-    backgroundColor: colors.border,
-    ...shadow.raised,
-  },
-  photo: { width: heroWidth, height: heroWidth * 0.85, backgroundColor: colors.border },
+  notFound: { ...type.body, fontSize: fontSize.md, color: colors.textSecondary, marginBottom: spacing.sm },
+  backLink: { ...type.button, fontSize: fontSize.md, color: colors.accent },
+  heroWrap: { backgroundColor: colors.border },
+  photo: { width: windowWidth, height: heroHeight, backgroundColor: colors.border },
   photoPlaceholder: { alignItems: 'center', justifyContent: 'center' },
-  photoDots: {
+  pageIndicator: {
     position: 'absolute',
-    bottom: spacing.md,
-    alignSelf: 'center',
-    flexDirection: 'row',
-    gap: 6,
+    right: spacing.md,
+    // Clears the rounded-top sheet below, which overlaps the last
+    // `radius.xxl` px of the image -- a plain `bottom: spacing.md` sat
+    // right underneath that curve and got visually clipped by it.
+    bottom: radius.xxl + spacing.sm,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 3,
   },
-  dot: { width: 7, height: 7, borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.5)' },
-  dotActive: { backgroundColor: '#fff' },
+  pageIndicatorText: { ...type.label, color: '#fff' },
   photoTopBar: {
     position: 'absolute',
-    top: spacing.sm,
-    left: spacing.sm,
-    right: spacing.sm,
+    top: 0,
+    left: 0,
+    right: 0,
+    paddingHorizontal: spacing.md,
     flexDirection: 'row',
     justifyContent: 'space-between',
   },
@@ -345,50 +390,76 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  amenityWrap: { marginHorizontal: HERO_MARGIN, marginTop: -radius.lg },
-  body: { padding: spacing.lg },
-  badgeRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  verifiedRow: { flexDirection: 'row', alignItems: 'center', gap: 3 },
-  verifiedText: { fontSize: fontSize.xs, color: colors.success, fontWeight: fontWeight.semibold },
-  title: { fontSize: fontSize.lg, fontWeight: fontWeight.semibold, color: colors.textPrimary, marginTop: spacing.sm },
-  locationRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 },
-  location: { fontSize: fontSize.sm, color: colors.textMuted },
-  listingAge: { fontSize: fontSize.xs, color: colors.textMuted, marginTop: 4 },
-  sectionTitle: { fontSize: fontSize.md, fontWeight: fontWeight.bold, color: colors.textPrimary, marginTop: spacing.xl, marginBottom: spacing.sm },
-  pricingCard: {
+  // Rounded top corners overlapping the hero photo -- the negative margin
+  // is what pulls it up over the image's bottom edge.
+  sheet: {
     backgroundColor: colors.card,
-    borderWidth: 1.5,
-    borderColor: colors.accent,
-    borderRadius: radius.lg,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.lg,
-    ...shadow.card,
+    borderTopLeftRadius: radius.xxl,
+    borderTopRightRadius: radius.xxl,
+    marginTop: -radius.xxl,
+    padding: spacing.lg,
+    ...shadow.raised,
   },
-  pricingLabel: { fontSize: fontSize.xs, fontWeight: fontWeight.semibold, color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.4 },
-  pricingAmount: { fontSize: fontSize.xxl, fontWeight: fontWeight.bold, color: colors.accent, marginTop: 2 },
-  description: { fontSize: fontSize.sm, color: colors.textSecondary, lineHeight: 22 },
-  agentRow: {
+  badgeRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.sm },
+  premiumChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.md,
-    backgroundColor: colors.card,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: spacing.md,
+    gap: 4,
+    backgroundColor: colors.premiumBg,
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 3,
   },
+  premiumChipText: { ...type.labelStrong, color: colors.premiumText },
+  verifiedRow: { flexDirection: 'row', alignItems: 'center', gap: 3 },
+  verifiedText: { ...type.labelStrong, color: colors.success },
+  // The page's headline -- Poppins, like every other title/section-header
+  // role, not the Inter cardTitle role used in the listing grid.
+  title: { ...type.screenTitle, fontSize: fontSize.xl, color: colors.textPrimary },
+  summaryLine: { ...type.body, fontSize: fontSize.sm, color: colors.textSecondary, marginTop: spacing.xs },
+  statsLine: { ...type.body, fontSize: fontSize.sm, color: colors.textSecondary, marginTop: 2 },
+  listingAge: { ...type.secondary, fontSize: fontSize.xs, color: colors.textMuted, marginTop: 4 },
+  viewCountRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 6 },
+  viewCountText: { ...type.secondary, fontSize: fontSize.xs, color: colors.textMuted },
+  divider: { height: 1, backgroundColor: colors.border, marginVertical: spacing.lg },
+  sectionTitle: { ...type.screenTitle, fontSize: fontSize.md, color: colors.textPrimary, marginBottom: spacing.sm },
+  agentRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   agentAvatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     backgroundColor: colors.accentSoft,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  agentAvatarText: { fontSize: fontSize.md, fontWeight: fontWeight.bold, color: colors.accent },
-  agentBody: { flex: 1 },
-  agentName: { fontSize: fontSize.md, fontWeight: fontWeight.semibold, color: colors.textPrimary },
-  agentRole: { fontSize: fontSize.xs, fontWeight: fontWeight.bold, color: colors.accent, letterSpacing: 0.4 },
+  agentAvatarText: { fontFamily: fontFamily.headlineSemibold, fontSize: fontSize.md, color: colors.accent },
+  agentBody: { flex: 1, gap: 2 },
+  agentName: { ...type.bodyMedium, fontSize: fontSize.md, color: colors.textPrimary },
+  agentMetaRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  agentRole: { ...type.labelStrong, color: colors.accent, letterSpacing: 0.4 },
+  agentVerifiedRow: { flexDirection: 'row', alignItems: 'center', gap: 3 },
+  agentVerifiedText: { ...type.label, color: colors.success },
+  agentTenure: { ...type.secondary, fontSize: fontSize.xs, color: colors.textMuted },
+  description: { ...type.body, fontSize: fontSize.sm, color: colors.textSecondary, lineHeight: 22 },
+  locationCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    backgroundColor: colors.accentSoft,
+    borderRadius: radius.md,
+    padding: spacing.md,
+  },
+  locationIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: colors.card,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  locationCardText: { ...type.bodyMedium, fontSize: fontSize.sm, color: colors.textPrimary, flex: 1 },
+  reportLink: { alignItems: 'center', marginTop: spacing.xl },
+  reportLinkText: { ...type.secondary, color: colors.textMuted, fontSize: fontSize.xs, textDecorationLine: 'underline' },
   footer: {
     position: 'absolute',
     left: 0,
@@ -402,15 +473,11 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: colors.border,
   },
-  favoriteFooterButton: {
-    width: 48,
-    height: 48,
-    borderRadius: radius.pill,
-    backgroundColor: colors.card,
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...shadow.card,
-  },
+  footerPrice: { flexShrink: 1 },
+  // Plain dark ink, not colors.accent -- same "price isn't a link/button
+  // color" discipline as the card price. The CTA button carries the blue.
+  footerPriceAmount: { ...type.priceLarge, fontSize: fontSize.xl, color: colors.textPrimary },
+  footerPriceUnit: { ...type.secondary, fontSize: fontSize.xs, color: colors.textMuted },
   messageButton: {
     flex: 1,
     flexDirection: 'row',
@@ -421,5 +488,5 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
     paddingVertical: spacing.md,
   },
-  messageButtonText: { color: '#fff', fontSize: fontSize.md, fontWeight: fontWeight.bold },
+  messageButtonText: { ...type.button, fontSize: fontSize.md, color: '#fff' },
 });

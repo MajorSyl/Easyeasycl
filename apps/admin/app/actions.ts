@@ -202,6 +202,20 @@ export async function hideReportedItem(
   revalidatePath('/');
 }
 
+export async function reviewUnmatchedLocation(id: string) {
+  const supabase = await createClient();
+  await requireAdmin(supabase);
+  await supabase.from('unmatched_locations').update({ reviewed: true }).eq('id', id);
+  revalidatePath('/unmatched-locations');
+}
+
+export async function dismissUnmatchedLocation(id: string) {
+  const supabase = await createClient();
+  await requireAdmin(supabase);
+  await supabase.from('unmatched_locations').delete().eq('id', id);
+  revalidatePath('/unmatched-locations');
+}
+
 export async function createLead(formData: FormData) {
   const supabase = await createClient();
   await requireAdmin(supabase);

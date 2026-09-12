@@ -1,10 +1,13 @@
 export type ListingCategory = 'for_rent' | 'for_sale' | 'land' | 'daily_hourly';
 export type RateUnit = 'hour' | 'day' | 'month' | 'night' | null;
+export type ListingCurrency = 'NLE' | 'USD';
 
 export type OwnerSummary = {
   full_name: string | null;
   avatar_url: string | null;
   role: string;
+  created_at?: string;
+  verification_tier?: string | null;
 };
 
 export type Listing = {
@@ -14,9 +17,18 @@ export type Listing = {
   description?: string | null;
   category: ListingCategory;
   price: number;
-  currency: string;
+  currency: ListingCurrency;
   price_unit: RateUnit;
+  // Free-text context for the price the structured currency/price_unit
+  // pair can't express -- "per town lot", "per acre", "negotiable". Kept
+  // separate from `price` (always a plain number, for sorting/filtering)
+  // and from `price_unit` (a fixed enum) rather than folded into either.
+  price_note?: string | null;
+  district: string;
+  city: string;
   location: string;
+  latitude?: number | null;
+  longitude?: number | null;
   bedrooms?: number | null;
   photos: string[];
   is_premium: boolean;

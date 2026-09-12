@@ -9,7 +9,7 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 90
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -51,24 +51,58 @@ jobs:
             echo "Nothing to save."
           fi
 
-      - name: Start Android APK build on EAS (no wait)
+      # No --no-wait here (unlike before) -- this step blocks until the
+      # cloud build finishes so the next steps can publish a stable
+      # download link. Expo's own artifact URL isn't a good permanent
+      # link to hand out (build artifacts get pruned after Expo's
+      # retention window), so this workflow re-hosts the APK as a fixed
+      # GitHub Release asset instead -- see the steps below.
+      - name: Build Android APK on EAS (waits for completion)
         run: |
-          npx eas-cli build --platform android --profile preview --non-interactive --no-wait --json > build.json
+          npx eas-cli build --platform android --profile preview --non-interactive --json > build.json
           cat build.json
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
 
-      - name: Write build page link to job summary
+      - name: Download the APK from Expo
+        run: |
+          ARTIFACT_URL=$(jq -r '.[0].artifacts.buildUrl' build.json)
+          if [ "$ARTIFACT_URL" = "null" ] || [ -z "$ARTIFACT_URL" ]; then
+            echo "Build did not produce an artifact URL -- check build.json above for the failure reason."
+            exit 1
+          fi
+          echo "ARTIFACT_URL=$ARTIFACT_URL" >> "$GITHUB_ENV"
+          curl -fL "$ARTIFACT_URL" -o easyfen.apk
+          ls -lh easyfen.apk
+
+      # Reuses the same tag every run, so this URL never changes between
+      # releases -- easyfen.com's download button links here once and
+      # never needs updating again. --clobber replaces the asset in
+      # place if the release already exists from a previous build.
+      - name: Publish APK to a stable GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view android-latest >/dev/null 2>&1; then
+            gh release upload android-latest easyfen.apk --clobber
+          else
+            gh release create android-latest easyfen.apk \
+              --title "Easyfen — Android APK" \
+              --notes "Automatically rebuilt from the latest push. Always the same download link: this release's asset is replaced on every build, not the release itself."
+          fi
+
+      - name: Write summary
         run: |
           BUILD_ID=$(jq -r '.[0].id' build.json)
           ACCOUNT=$(jq -r '.[0].project.ownerAccount.name' build.json)
           PROJECT=$(jq -r '.[0].project.name' build.json)
+          REPO_URL="https://github.com/${{ github.repository }}"
           {
-            echo "## Easyfen Android build started"
+            echo "## Easyfen Android build complete"
             echo ""
-            echo "The build is running on Expo's servers and usually takes 15-60 minutes on the free tier."
+            echo "**Stable download link (use this one on the website — never changes):**"
             echo ""
-            echo "**Open this page on your phone to watch progress and download the APK when it's done:**"
+            echo "${REPO_URL}/releases/download/android-latest/easyfen.apk"
             echo ""
-            echo "https://expo.dev/accounts/${ACCOUNT}/projects/${PROJECT}/builds/${BUILD_ID}"
+            echo "Expo build page (build logs, expires eventually): https://expo.dev/accounts/${ACCOUNT}/projects/${PROJECT}/builds/${BUILD_ID}"
           } >> "$GITHUB_STEP_SUMMARY"

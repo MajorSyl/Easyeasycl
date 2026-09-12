@@ -6,17 +6,45 @@ import { Badge } from './Badge';
 import { FavoriteButton } from './FavoriteButton';
 import { NoPhotoPlaceholder } from './NoPhotoPlaceholder';
 import { LazyPhoto } from './LazyPhoto';
-import { colors, fontSize, fontWeight, radius, shadow, spacing } from '../constants/theme';
-import { categoryBadgeLabel, formatListingAge, formatPrice, initialsFor } from '../lib/format';
+import { colors, fontSize, radius, spacing } from '../constants/theme';
+import { type } from '../constants/typography';
+import { daysSince, formatListingPlace, formatPrice } from '../lib/format';
 import type { Listing } from '../lib/types';
 
-export const ListingCard = memo(function ListingCard({ listing }: { listing: Listing }) {
+const NEW_WITHIN_DAYS = 7;
+
+// The one card design used everywhere a listing appears -- horizontal
+// "New Listings"/"Recommended" rows, the Search results list, neighborhood
+// grids, favorites, an agent's profile. Airbnb's listing-card pattern:
+// a full-bleed rounded photo (no card border/shadow around the whole
+// thing -- the image itself is the only "chrome"), a heart overlaid
+// top-right, one status badge top-left, then price -> title -> location
+// stacked below directly on the page background. Our blue stands in for
+// Airbnb's pink/red on the badge and the favorited heart; everything else
+// (spacing, corner radius, hierarchy) mirrors it closely.
+export const ListingCard = memo(function ListingCard({
+  listing,
+  distanceLabel,
+}: {
+  listing: Listing;
+  // Set only when the card is rendered inside a "Near Me" sorted list --
+  // omitted entirely elsewhere rather than showing a meaningless distance.
+  distanceLabel?: string;
+}) {
+  const badge = listing.is_premium
+    ? { label: 'Featured', variant: 'premium' as const }
+    : listing.is_verified
+      ? { label: 'Verified', variant: 'brand' as const }
+      : daysSince(listing.created_at) <= NEW_WITHIN_DAYS
+        ? { label: 'New', variant: 'brand' as const }
+        : null;
+
   return (
     <Pressable
       style={styles.card}
       onPress={() => router.push(`/listing/${listing.id}`)}
       accessibilityRole="button"
-      accessibilityLabel={`${listing.title}, ${formatPrice(listing.price, listing.currency, listing.price_unit)}, ${listing.location}`}
+      accessibilityLabel={`${listing.title}, ${formatPrice(listing.price, listing.currency, listing.price_unit)}, ${formatListingPlace(listing)}`}
     >
       <View style={styles.imageWrap}>
         {listing.photos[0] ? (
@@ -32,136 +60,60 @@ export const ListingCard = memo(function ListingCard({ listing }: { listing: Lis
           </View>
         )}
 
-        <View style={styles.topRow}>
-          <View style={styles.badgeRow}>
-            <Badge label={categoryBadgeLabel(listing.category)} variant="dark" />
-            {listing.is_premium && <Badge label="PREMIUM" variant="premium" />}
+        {badge && (
+          <View style={styles.badgeSlot}>
+            <Badge label={badge.label} variant={badge.variant} />
           </View>
+        )}
+        <View style={styles.favoriteSlot}>
           <FavoriteButton itemType="listing" itemId={listing.id} />
-        </View>
-
-        <View style={styles.bottomRow}>
-          <View style={styles.statPill} accessibilityLabel={`${listing.view_count} views`}>
-            <Ionicons name="eye-outline" size={12} color="#fff" />
-            <Text style={styles.statText}>{listing.view_count}</Text>
-          </View>
-          <View
-            style={styles.statPill}
-            accessibilityLabel={`${listing.photos.length} photo${listing.photos.length === 1 ? '' : 's'}`}
-          >
-            <Ionicons name="camera-outline" size={12} color="#fff" />
-            <Text style={styles.statText}>{listing.photos.length}</Text>
-          </View>
         </View>
       </View>
 
       <View style={styles.body}>
         <Text style={styles.price}>{formatPrice(listing.price, listing.currency, listing.price_unit)}</Text>
-        <Text style={styles.title} numberOfLines={2} ellipsizeMode="tail">
+        <Text style={styles.title} numberOfLines={1} ellipsizeMode="tail">
           {listing.title}
         </Text>
         <View style={styles.locationRow}>
           <Ionicons name="location-outline" size={12} color={colors.textMuted} />
           <Text style={styles.location} numberOfLines={1}>
-            {listing.location}
+            {formatListingPlace(listing)}
           </Text>
         </View>
-
-        <View style={styles.footerRow}>
-          {listing.last_confirmed_at ? (
-            <Text style={styles.age} numberOfLines={1}>
-              {formatListingAge(listing.last_confirmed_at)}
+        {distanceLabel && (
+          <View style={styles.locationRow}>
+            <Ionicons name="navigate-outline" size={12} color={colors.textMuted} />
+            <Text style={styles.location} numberOfLines={1}>
+              {distanceLabel}
             </Text>
-          ) : (
-            <View />
-          )}
-          <Pressable
-            style={styles.agentRow}
-            onPress={() => router.push(`/user/${listing.owner_id}`)}
-            hitSlop={6}
-            accessibilityRole="button"
-            accessibilityLabel={`View ${listing.owner?.full_name ?? 'agent'}'s profile`}
-          >
-            <View style={styles.avatar}>
-              <Text style={styles.avatarText}>{initialsFor(listing.owner?.full_name ?? null)}</Text>
-            </View>
-            <Text style={styles.agentName} numberOfLines={1}>
-              {listing.owner?.full_name ?? 'Unknown'}
-            </Text>
-          </Pressable>
-        </View>
+          </View>
+        )}
       </View>
     </Pressable>
   );
 });
 
 const styles = StyleSheet.create({
-  card: {
-    flex: 1,
-    backgroundColor: colors.card,
+  card: { flex: 1 },
+  imageWrap: {
+    aspectRatio: 1,
     borderRadius: radius.lg,
     overflow: 'hidden',
-    ...shadow.card,
+    backgroundColor: colors.border,
   },
-  imageWrap: { aspectRatio: 1.3, backgroundColor: colors.border },
   image: { width: '100%', height: '100%' },
   imagePlaceholder: { alignItems: 'center', justifyContent: 'center' },
-  topRow: {
-    position: 'absolute',
-    top: spacing.sm,
-    left: spacing.sm,
-    right: spacing.sm,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-  },
-  badgeRow: { flexDirection: 'row', gap: 6 },
-  bottomRow: {
-    position: 'absolute',
-    bottom: spacing.sm,
-    left: spacing.sm,
-    right: spacing.sm,
-    flexDirection: 'row',
-    gap: 6,
-  },
-  statPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-    backgroundColor: 'rgba(0,0,0,0.55)',
-    borderRadius: radius.pill,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-  },
-  statText: { color: '#fff', fontSize: 10, fontWeight: fontWeight.semibold },
-  body: { padding: spacing.md },
-  price: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: colors.accent },
-  title: {
-    fontSize: fontSize.sm,
-    lineHeight: 18,
-    fontWeight: fontWeight.semibold,
-    color: colors.textPrimary,
-    marginTop: 2,
-  },
-  locationRow: { flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 4 },
-  location: { fontSize: fontSize.xs, color: colors.textMuted, flexShrink: 1 },
-  age: { fontSize: fontSize.xs, color: colors.textMuted, flexShrink: 1 },
-  footerRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: spacing.sm,
-    gap: spacing.xs,
-  },
-  agentRow: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 6, marginVertical: -6 },
-  agentName: { fontSize: fontSize.xs, fontWeight: fontWeight.medium, color: colors.textSecondary, maxWidth: 70 },
-  avatar: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: colors.accentSoft,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarText: { fontSize: 10, fontWeight: fontWeight.bold, color: colors.accent },
+  badgeSlot: { position: 'absolute', top: spacing.sm, left: spacing.sm },
+  favoriteSlot: { position: 'absolute', top: spacing.sm, right: spacing.sm },
+  body: { paddingTop: spacing.sm },
+  // Plain dark ink, not colors.accent -- Airbnb's price is the boldest
+  // thing on the card by weight/size alone, not by color; blue stays
+  // reserved for the badge, the heart, and actionable elements.
+  price: { ...type.priceMedium, color: colors.textPrimary },
+  // Regular weight, secondary ink -- deliberately quieter than the price
+  // above it, matching Airbnb's hierarchy (bold price, plain title line).
+  title: { ...type.body, fontSize: fontSize.sm, color: colors.textSecondary, marginTop: 2 },
+  locationRow: { flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 2 },
+  location: { ...type.secondary, fontSize: fontSize.xs, color: colors.textMuted, flexShrink: 1 },
 });

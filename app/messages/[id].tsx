@@ -396,9 +396,12 @@ const styles = StyleSheet.create({
     backgroundColor: colors.card,
   },
   composerInputWrap: { flex: 1 },
+  // Plain white/card, not the page's blue background -- a field the user
+  // is actively typing into needs to read as its own clearly-bounded
+  // surface, not a same-toned patch of page.
   composerInput: {
     maxHeight: 100,
-    backgroundColor: colors.background,
+    backgroundColor: colors.card,
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: radius.md,

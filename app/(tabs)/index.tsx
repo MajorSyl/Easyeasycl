@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
@@ -9,11 +9,12 @@ import { useAuth } from '../../lib/auth-context';
 import { subscribeListingsChanged } from '../../lib/listings-cache-bus';
 import { readCache, writeCache } from '../../lib/offline-cache';
 import { colors, fontSize, fontWeight, radius, shadow, spacing } from '../../constants/theme';
+import { type } from '../../constants/typography';
 import { useTabBarGap } from '../../lib/use-bottom-gap';
 import { ListingCard } from '../../components/ListingCard';
-import { PropertyCard } from '../../components/PropertyCard';
 import { FilterPills, type PillOption } from '../../components/FilterPills';
 import { EdgeFade } from '../../components/EdgeFade';
+import { AppInstallPrompt } from '../../components/AppInstallPrompt';
 import { initialsFor } from '../../lib/format';
 import type { Listing, ListingCategory } from '../../lib/types';
 
@@ -66,7 +67,7 @@ export default function HomeScreen() {
       }
       let query = supabase
         .from('listings')
-        .select('id, title, price, currency, price_unit, location, category, photos, view_count, is_premium, owner_id, created_at, last_confirmed_at, owner:profiles(full_name, avatar_url, role)')
+        .select('id, title, price, currency, price_unit, district, city, location, latitude, longitude, category, photos, view_count, is_premium, is_verified, owner_id, created_at, last_confirmed_at, owner:profiles(full_name, avatar_url, role)')
         .eq('is_active', true)
         .order('created_at', { ascending: false });
       if (categoryFilter !== 'all') query = query.eq('category', categoryFilter);
@@ -197,19 +198,10 @@ export default function HomeScreen() {
 
   const firstName = profile?.full_name?.trim().split(' ')[0];
 
-  const renderFreshCard = useCallback(
+  const renderRowCard = useCallback(
     ({ item }: { item: Listing }) => (
-      <View style={styles.freshCard}>
+      <View style={styles.rowCard}>
         <ListingCard listing={item} />
-      </View>
-    ),
-    []
-  );
-
-  const renderRecommendedCard = useCallback(
-    ({ item }: { item: Listing }) => (
-      <View style={styles.recommendedCard}>
-        <PropertyCard listing={item} />
       </View>
     ),
     []
@@ -217,150 +209,161 @@ export default function HomeScreen() {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
-      <FlatList
-        data={recommended}
-        keyExtractor={(item) => item.id}
-        renderItem={renderRecommendedCard}
+      <AppInstallPrompt />
+      <ScrollView
         contentContainerStyle={[styles.listContent, { paddingBottom: tabBarGap + spacing.lg }]}
-        ItemSeparatorComponent={() => <View style={{ height: spacing.md }} />}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
-        ListHeaderComponent={
-          <View>
-            <View style={styles.headerRow}>
-              <View style={styles.greetingBlock}>
-                <Text style={styles.greeting}>{firstName ? `Hello ${firstName}!` : 'Hello!'}</Text>
-                <Text style={styles.headline}>Find Your{'\n'}Dream Home</Text>
-              </View>
-              <View style={styles.headerIcons}>
-                <Pressable
-                  style={styles.iconButton}
-                  onPress={() => router.push(session ? '/notifications' : '/auth')}
-                  hitSlop={8}
-                  accessibilityRole="button"
-                  accessibilityLabel="Notifications"
-                  accessibilityHint={unreadCount > 0 ? `${unreadCount} unread` : undefined}
-                >
-                  <Ionicons name="notifications-outline" size={18} color={colors.textPrimary} />
-                  {unreadCount > 0 && (
-                    <View style={styles.unreadBadge}>
-                      <Text style={styles.unreadBadgeText}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
-                    </View>
-                  )}
-                </Pressable>
-                <Pressable
-                  style={styles.iconButton}
-                  onPress={openMessages}
-                  hitSlop={8}
-                  accessibilityRole="button"
-                  accessibilityLabel="Messages"
-                  accessibilityHint={unreadCount > 0 ? 'You have unread messages' : undefined}
-                >
-                  <Ionicons name="chatbubble-outline" size={18} color={colors.textPrimary} />
-                  {unreadCount > 0 && <View style={styles.unreadDot} />}
-                </Pressable>
-                <Pressable
-                  style={styles.avatar}
-                  onPress={openProfile}
-                  hitSlop={8}
-                  accessibilityRole="button"
-                  accessibilityLabel="Your profile"
-                >
-                  {profile?.avatar_url ? (
-                    <Image
-                      source={{ uri: profile.avatar_url }}
-                      style={styles.avatarImage}
-                      contentFit="cover"
-                      accessible
-                      accessibilityLabel="Your profile photo"
-                    />
-                  ) : (
-                    <Text style={styles.avatarText}>{initialsFor(profile?.full_name ?? null)}</Text>
-                  )}
-                </Pressable>
-              </View>
+      >
+        <View>
+          <View style={styles.headerRow}>
+            <View style={styles.greetingBlock}>
+              <Text style={styles.greeting}>{firstName ? `Hello ${firstName}!` : 'Hello!'}</Text>
+              <Text style={styles.headline}>Find Your{'\n'}Dream Home</Text>
             </View>
-
-            {showingSavedData && (
-              <View style={styles.offlineBanner}>
-                <Ionicons name="cloud-offline-outline" size={16} color={colors.textMuted} />
-                <Text style={styles.offlineBannerText}>Showing saved listings — check your connection</Text>
-              </View>
-            )}
-
-            <Pressable
-              style={styles.searchBar}
-              onPress={() => router.push('/search')}
-              accessibilityRole="search"
-              accessibilityLabel="Search properties, land, and neighborhoods"
-            >
-              <Ionicons name="search" size={18} color={colors.textMuted} />
-              <Text style={styles.searchPlaceholder}>Search your location</Text>
-            </Pressable>
-
-            <Pressable style={styles.neighborhoodRow} onPress={() => router.push('/neighborhoods')}>
-              <View style={styles.neighborhoodIcon}>
-                <Ionicons name="location-outline" size={16} color={colors.accent} />
-              </View>
-              <Text style={styles.neighborhoodRowText}>Browse by Neighborhood</Text>
-              <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
-            </Pressable>
-
-            <View style={styles.pillsWrap}>
-              <FilterPills options={categoryOptions} value={categoryFilter} onChange={setCategoryFilter} />
+            <View style={styles.headerIcons}>
+              <Pressable
+                style={styles.iconButton}
+                onPress={() => router.push(session ? '/notifications' : '/auth')}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel="Notifications"
+                accessibilityHint={unreadCount > 0 ? `${unreadCount} unread` : undefined}
+              >
+                <Ionicons name="notifications-outline" size={18} color={colors.textPrimary} />
+                {unreadCount > 0 && (
+                  <View style={styles.unreadBadge}>
+                    <Text style={styles.unreadBadgeText}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
+                  </View>
+                )}
+              </Pressable>
+              <Pressable
+                style={styles.iconButton}
+                onPress={openMessages}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel="Messages"
+                accessibilityHint={unreadCount > 0 ? 'You have unread messages' : undefined}
+              >
+                <Ionicons name="chatbubble-outline" size={18} color={colors.textPrimary} />
+                {unreadCount > 0 && <View style={styles.unreadDot} />}
+              </Pressable>
+              <Pressable
+                style={styles.avatar}
+                onPress={openProfile}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel="Your profile"
+              >
+                {profile?.avatar_url ? (
+                  <Image
+                    source={{ uri: profile.avatar_url }}
+                    style={styles.avatarImage}
+                    contentFit="cover"
+                    accessible
+                    accessibilityLabel="Your profile photo"
+                  />
+                ) : (
+                  <Text style={styles.avatarText}>{initialsFor(profile?.full_name ?? null)}</Text>
+                )}
+              </Pressable>
             </View>
+          </View>
 
-            <Pressable
-              style={styles.sellBanner}
-              onPress={openAddListing}
-              accessibilityRole="button"
-              accessibilityLabel="List your property"
-              accessibilityHint="Opens the form to post a new listing for rent, sale, or land"
-            >
-              <View style={styles.sellBannerIcon}>
-                <Ionicons name="megaphone-outline" size={20} color="#fff" />
-              </View>
-              <View style={styles.sellBannerBody}>
-                <Text style={styles.sellBannerTitle}>List Your Property</Text>
-                <Text style={styles.sellBannerSubtitle}>Reach renters and buyers across Sierra Leone</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={18} color="#fff" />
-            </Pressable>
+          {showingSavedData && (
+            <View style={styles.offlineBanner}>
+              <Ionicons name="cloud-offline-outline" size={16} color={colors.textMuted} />
+              <Text style={styles.offlineBannerText}>Showing saved listings — check your connection</Text>
+            </View>
+          )}
 
+          <Pressable
+            style={styles.searchBar}
+            onPress={() => router.push('/search')}
+            accessibilityRole="search"
+            accessibilityLabel="Search properties, land, cities, and districts across Sierra Leone"
+          >
+            <Ionicons name="search" size={18} color={colors.textMuted} />
+            <Text style={styles.searchPlaceholder}>Search Freetown, Bo, Makeni...</Text>
+          </Pressable>
+
+          <Pressable style={styles.neighborhoodRow} onPress={() => router.push('/neighborhoods')}>
+            <View style={styles.neighborhoodIcon}>
+              <Ionicons name="location-outline" size={16} color={colors.accent} />
+            </View>
+            <Text style={styles.neighborhoodRowText}>Browse by Location</Text>
+            <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+          </Pressable>
+
+          <View style={styles.pillsWrap}>
+            <FilterPills options={categoryOptions} value={categoryFilter} onChange={setCategoryFilter} />
+          </View>
+
+          <Pressable
+            style={styles.sellBanner}
+            onPress={openAddListing}
+            accessibilityRole="button"
+            accessibilityLabel="List your property"
+            accessibilityHint="Opens the form to post a new listing for rent, sale, or land"
+          >
+            <View style={styles.sellBannerIcon}>
+              <Ionicons name="megaphone-outline" size={20} color="#fff" />
+            </View>
+            <View style={styles.sellBannerBody}>
+              <Text style={styles.sellBannerTitle}>List your property</Text>
+              <Text style={styles.sellBannerSubtitle}>It's free, and renters see it today</Text>
+            </View>
+          </Pressable>
+        </View>
+
+        {loading ? (
+          <View style={styles.loadingState}>
+            <ActivityIndicator color={colors.accent} />
+          </View>
+        ) : listings.length === 0 ? (
+          <EmptyState label={loadError ? "Couldn't load properties. Pull down to try again." : 'No properties yet'} />
+        ) : (
+          <>
             {freshListings.length > 0 && (
               <View style={styles.section}>
-                <Text style={styles.sectionTitle}>New Listings</Text>
-                <View style={styles.freshCarouselWrap}>
+                <Text style={[styles.sectionTitle, styles.sectionTitleStandalone]}>New Listings</Text>
+                <View style={styles.rowWrap}>
                   <FlatList
                     data={freshListings}
                     keyExtractor={(item) => item.id}
-                    renderItem={renderFreshCard}
+                    renderItem={renderRowCard}
                     horizontal
                     showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={styles.freshRow}
+                    contentContainerStyle={styles.row}
                   />
                   <EdgeFade />
                 </View>
               </View>
             )}
 
-            <View style={[styles.section, styles.recommendedHeader]}>
-              <Text style={styles.sectionTitle}>Recommended</Text>
-              <Pressable onPress={() => router.push('/search')} hitSlop={8}>
-                <Text style={styles.viewAll}>View All</Text>
-              </Pressable>
-            </View>
-          </View>
-        }
-        ListEmptyComponent={
-          loading ? (
-            <View style={styles.loadingState}>
-              <ActivityIndicator color={colors.accent} />
-            </View>
-          ) : (
-            <EmptyState label={loadError ? "Couldn't load properties. Pull down to try again." : 'No properties yet'} />
-          )
-        }
-      />
+            {recommended.length > 0 && (
+              <View style={styles.section}>
+                <View style={styles.recommendedHeader}>
+                  <Text style={styles.sectionTitle}>Recommended</Text>
+                  <Pressable onPress={() => router.push('/search')} hitSlop={8}>
+                    <Text style={styles.viewAll}>View All</Text>
+                  </Pressable>
+                </View>
+                <View style={styles.rowWrap}>
+                  <FlatList
+                    data={recommended}
+                    keyExtractor={(item) => item.id}
+                    renderItem={renderRowCard}
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.row}
+                  />
+                  <EdgeFade />
+                </View>
+              </View>
+            )}
+          </>
+        )}
+      </ScrollView>
     </View>
   );
 }
@@ -385,8 +388,8 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.lg,
   },
   greetingBlock: { flex: 1 },
-  greeting: { fontSize: fontSize.sm, color: colors.textMuted },
-  headline: { fontSize: fontSize.xxl, fontWeight: fontWeight.bold, color: colors.textPrimary, marginTop: 4, lineHeight: 32 },
+  greeting: { ...type.body, fontSize: fontSize.sm, color: colors.textMuted },
+  headline: { ...type.display, color: colors.textPrimary, marginTop: 4 },
   headerIcons: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   iconButton: {
     width: 36,
@@ -433,19 +436,22 @@ const styles = StyleSheet.create({
   },
   avatarImage: { width: '100%', height: '100%' },
   avatarText: { fontSize: fontSize.sm, fontWeight: fontWeight.bold, color: colors.accent },
+  // Flat, bordered chrome -- no shadow -- so this reads as structural
+  // navigation, not a competing "card" next to the listing grid below.
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
     backgroundColor: colors.card,
     borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.border,
     paddingHorizontal: spacing.lg,
     paddingVertical: 14,
     marginHorizontal: spacing.lg,
     marginBottom: spacing.md,
-    ...shadow.card,
   },
-  searchPlaceholder: { color: colors.textMuted, fontSize: fontSize.sm },
+  searchPlaceholder: { ...type.body, fontSize: fontSize.sm, color: colors.textMuted },
   offlineBanner: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -483,8 +489,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   sellBannerBody: { flex: 1 },
-  sellBannerTitle: { fontSize: fontSize.md, fontWeight: fontWeight.bold, color: '#fff' },
-  sellBannerSubtitle: { fontSize: fontSize.xs, color: 'rgba(255,255,255,0.92)', marginTop: 2 },
+  sellBannerTitle: { ...type.cardTitle, fontSize: fontSize.md, color: '#fff' },
+  sellBannerSubtitle: { ...type.secondary, color: 'rgba(255,255,255,0.92)', marginTop: 2 },
   neighborhoodRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -496,7 +502,8 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
     backgroundColor: colors.card,
     borderRadius: radius.lg,
-    ...shadow.card,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   neighborhoodIcon: {
     width: 30,
@@ -506,19 +513,27 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  neighborhoodRowText: { flex: 1, fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: colors.textPrimary },
+  neighborhoodRowText: { ...type.bodyMedium, fontSize: fontSize.sm, color: colors.textPrimary },
   pillsWrap: { paddingBottom: spacing.md },
-  section: { paddingHorizontal: spacing.lg, marginTop: spacing.sm, marginBottom: spacing.md },
-  sectionTitle: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: colors.textPrimary },
-  recommendedHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.sm },
-  viewAll: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: colors.accent },
+  section: { marginTop: spacing.sm, marginBottom: spacing.md },
+  sectionTitle: { ...type.sectionTitle, fontSize: fontSize.lg, color: colors.textPrimary },
+  sectionTitleStandalone: { paddingHorizontal: spacing.lg, marginBottom: spacing.sm },
+  recommendedHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.lg,
+    marginBottom: spacing.sm,
+  },
+  // accentStrong, not accent -- this link sits directly on `background`,
+  // where plain accent only clears 4.33:1 (fails AA's 4.5:1 text floor).
+  viewAll: { ...type.button, fontSize: fontSize.sm, color: colors.accentStrong },
   // No fixed height here — a card's text can grow taller under large
   // system font sizes (Dynamic Type), and a hard-clipped height would
   // truncate or overlap that content instead of just growing the row.
-  freshCarouselWrap: { position: 'relative' },
-  freshRow: { paddingLeft: spacing.lg, paddingRight: spacing.xxl, gap: spacing.md, alignItems: 'stretch' },
-  freshCard: { width: 190 },
-  recommendedCard: { paddingHorizontal: spacing.lg },
+  rowWrap: { position: 'relative' },
+  row: { paddingLeft: spacing.lg, paddingRight: spacing.xxl, gap: spacing.lg, alignItems: 'flex-start' },
+  rowCard: { width: 200 },
   listContent: { paddingBottom: spacing.xxl },
   loadingState: { paddingTop: spacing.xxl, alignItems: 'center' },
   emptyState: { paddingTop: spacing.xxl, alignItems: 'center', gap: spacing.sm },
