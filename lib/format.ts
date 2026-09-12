@@ -43,6 +43,15 @@ const currencyDisplay: Record<string, { symbol: string; spaced: boolean }> = {
   NLE: { symbol: 'NLe', spaced: true },
 };
 
+// formatPrice above renders with thousands-separator commas (12,500), so a
+// user editing a price field naturally types it back the same way -- this
+// strips those commas before parsing rather than silently producing NaN
+// (which read as "the Publish button just won't turn on" with no
+// explanation, since a NaN price fails the required-fields check).
+export function parsePriceInput(text: string): number {
+  return Number(text.replace(/,/g, '').trim());
+}
+
 export function formatPrice(price: number, currency: string, unit: RateUnit) {
   const amount = Math.round(price).toLocaleString('en-US');
   const display = currencyDisplay[currency] ?? { symbol: currency, spaced: true };

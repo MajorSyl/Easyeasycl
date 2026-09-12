@@ -14,7 +14,7 @@ import { CurrencyFilterToggle, type CurrencyFilter } from '../../components/Curr
 import { distanceKm, formatDistance } from '../../lib/geo';
 import { useDeviceLocation } from '../../lib/use-device-location';
 import { parseSearchQuery } from '../../lib/search-query-parser';
-import { categoryLabel } from '../../lib/format';
+import { categoryLabel, parsePriceInput } from '../../lib/format';
 import type { Listing } from '../../lib/types';
 
 type SearchResult = {
@@ -97,7 +97,7 @@ export default function SearchScreen() {
   ) {
     setLoading(true);
     const trimmed = text.trim();
-    const maxPrice = currency !== 'ALL' && budgetText.trim() ? Number(budgetText) : null;
+    const maxPrice = currency !== 'ALL' && budgetText.trim() ? parsePriceInput(budgetText) : null;
 
     let listingsQuery = supabase
       .from('listings')
@@ -218,7 +218,7 @@ export default function SearchScreen() {
       return;
     }
     setSavingSearch(true);
-    const maxPrice = currencyFilter !== 'ALL' && budget.trim() ? Number(budget) : null;
+    const maxPrice = currencyFilter !== 'ALL' && budget.trim() ? parsePriceInput(budget) : null;
     const { error } = await supabase.from('saved_searches').insert({
       user_id: session.user.id,
       query: query.trim() || null,

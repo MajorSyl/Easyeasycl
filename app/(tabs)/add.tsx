@@ -21,7 +21,7 @@ import { sanitizeText } from '../../lib/sanitize';
 import { useTabBarGap } from '../../lib/use-bottom-gap';
 import { colors, fontSize, radius, spacing } from '../../constants/theme';
 import { type } from '../../constants/typography';
-import { formatPrice } from '../../lib/format';
+import { formatPrice, parsePriceInput } from '../../lib/format';
 import { PhotoPicker } from '../../components/PhotoPicker';
 import { SelectField, type SelectOption } from '../../components/SelectField';
 import { LocationFields } from '../../components/LocationFields';
@@ -80,8 +80,8 @@ export default function AddListingScreen() {
   const requiredFieldsFilled =
     title.trim().length > 0 &&
     price.trim().length > 0 &&
-    !Number.isNaN(Number(price)) &&
-    Number(price) > 0 &&
+    !Number.isNaN(parsePriceInput(price)) &&
+    parsePriceInput(price) > 0 &&
     district.trim().length > 0 &&
     city.trim().length > 0 &&
     location.trim().length > 0 &&
@@ -102,7 +102,7 @@ export default function AddListingScreen() {
     category !== null;
   const currentStep = submitting ? 3 : requiredFieldsFilled ? 2 : photos.length > 0 || hasStartedDetails ? 1 : 0;
 
-  const priceNumber = Number(price);
+  const priceNumber = parsePriceInput(price);
   const pricePreview =
     price.trim().length > 0 && !Number.isNaN(priceNumber) && priceNumber > 0
       ? formatPrice(priceNumber, currency, null)
@@ -137,7 +137,7 @@ export default function AddListingScreen() {
         district,
         city,
         location,
-        price: price.trim() ? Number(price) : null,
+        price: price.trim() ? parsePriceInput(price) : null,
         currency,
         priceUnit: category === 'daily_hourly' ? rateUnit : null,
         amenities,
@@ -149,7 +149,7 @@ export default function AddListingScreen() {
     if (!requiredFieldsFilled || submitting || !session) return;
     setSubmitting(true);
 
-    const priceValue = Number(price);
+    const priceValue = parsePriceInput(price);
     const cleanTitle = sanitizeText(title);
     const cleanDescription = sanitizeText(description);
     const cleanLocation = sanitizeText(location);

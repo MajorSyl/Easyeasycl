@@ -36,8 +36,12 @@ export function LocationFields({
 
   function handleDistrictChange(next: string) {
     onDistrictChange(next);
-    // The previously picked city may not exist in the new district's list.
-    onCityChange('');
+    // Only clear the city if the district actually changed -- SelectField
+    // fires onChange even when re-tapping the option that's already
+    // selected, so without this guard, opening the District picker just to
+    // look and tapping the same value again would silently wipe out a
+    // City/Town the agent had already picked.
+    if (next !== district) onCityChange('');
   }
 
   function handleCitySelect(next: string) {

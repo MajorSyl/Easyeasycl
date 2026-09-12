@@ -25,6 +25,7 @@ import { SelectField, type SelectOption } from '../../../components/SelectField'
 import { LocationFields } from '../../../components/LocationFields';
 import { CurrencyToggle } from '../../../components/CurrencyToggle';
 import { coordsForCity } from '../../../constants/locations';
+import { parsePriceInput } from '../../../lib/format';
 import type { ListingCategory, ListingCurrency } from '../../../lib/types';
 
 type Kind = 'listing' | 'hotel' | 'service';
@@ -102,15 +103,15 @@ export default function EditListingScreen() {
   const canSave =
     title.trim().length > 0 &&
     price.trim().length > 0 &&
-    !Number.isNaN(Number(price)) &&
-    Number(price) > 0 &&
+    !Number.isNaN(parsePriceInput(price)) &&
+    parsePriceInput(price) > 0 &&
     location.trim().length > 0 &&
     (kind !== 'listing' || (district.trim().length > 0 && city.trim().length > 0));
 
   async function handleSave() {
     if (!canSave || saving || !session || !id) return;
     setSaving(true);
-    const priceValue = Number(price);
+    const priceValue = parsePriceInput(price);
     const cleanTitle = sanitizeText(title);
     const cleanDescription = sanitizeText(description);
     const cleanLocation = sanitizeText(location);
