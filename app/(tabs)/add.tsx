@@ -129,7 +129,6 @@ export default function AddListingScreen() {
       generateListingDescription({
         category,
         bedrooms,
-        district: locationMatch?.district ?? '',
         city: locationMatch?.city ?? '',
         location,
         price: price.trim() ? parsePriceInput(price) : null,
