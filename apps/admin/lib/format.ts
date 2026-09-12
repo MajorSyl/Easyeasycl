@@ -36,3 +36,16 @@ export function formatListingPrice(amount: number, currency: string): string {
   if (currency === 'NLE') return `NLe ${rounded}`;
   return `${currency} ${rounded}`;
 }
+
+// Mirrors lib/format.ts's formatListingPlace in the main app -- the Add
+// Listing "Location" field folds the city into what the agent typed (e.g.
+// "Goderich, Freetown"), so appending the stored `city` unconditionally
+// produced "Goderich, Freetown, Freetown" in this table. Only append it
+// when it isn't already part of the location text.
+export function formatListingPlace(listing: { location: string; city: string }): string {
+  const locationLower = listing.location.toLowerCase();
+  if (listing.city && !locationLower.includes(listing.city.toLowerCase())) {
+    return `${listing.location}, ${listing.city}`;
+  }
+  return listing.location;
+}

@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase-server';
 import { redirect } from 'next/navigation';
 import { toggleListingFlag, setListingModerationStatus } from '../actions';
+import { formatListingPlace } from '@/lib/format';
 
 type TableName = 'listings' | 'hotels' | 'services';
 
@@ -71,7 +72,7 @@ export default async function ContentPage() {
                     <tr key={l.id}>
                       <td className="truncate" style={{ fontWeight: 600 }}>{l.title}</td>
                       <td><span className="badge badge-gray">{l.category}</span></td>
-                      <td className="muted truncate">{l.location}, {l.city}</td>
+                      <td className="muted truncate">{formatListingPlace(l)}</td>
                       <td className="muted">{(l.owner as any)?.full_name ?? '—'}</td>
                       <td>
                         <div style={{ display: 'flex', gap: 6 }}>
@@ -107,7 +108,7 @@ export default async function ContentPage() {
                   <tr key={l.id}>
                     <td className="truncate" style={{ fontWeight: 600 }}>{l.title}</td>
                     <td><span className="badge badge-gray">{l.category}</span></td>
-                    <td className="muted truncate">{l.location}, {l.city}</td>
+                    <td className="muted truncate">{formatListingPlace(l)}</td>
                     <td className="muted">{(l.owner as any)?.full_name ?? '—'}</td>
                     <td>
                       {l.moderation_status === 'pending' ? (

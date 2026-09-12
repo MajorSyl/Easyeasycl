@@ -416,12 +416,16 @@ export default function ProfileScreen() {
                   </Pressable>
                 ) : null}
 
-                {(profile?.role === 'agent' || profile?.role === 'landlord') &&
+                {(profile?.role === 'agent' || profile?.role === 'landlord' || profile?.role === 'agency') &&
                   profile?.verification_tier !== 'agent_verified' &&
                   profile?.verification_tier !== 'id_verified' && (
                     <Pressable style={styles.verifyButton} onPress={() => router.push('/pay?purpose=agent_verification')}>
                       <Text style={styles.verifyButtonText}>
-                        {profile?.role === 'landlord' ? 'Become a Verified Property Owner' : 'Become a Verified Agent'}
+                        {profile?.role === 'landlord'
+                          ? 'Become a Verified Property Owner'
+                          : profile?.role === 'agency'
+                            ? 'Become a Verified Agency'
+                            : 'Become a Verified Agent'}
                       </Text>
                     </Pressable>
                   )}

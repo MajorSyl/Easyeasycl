@@ -59,6 +59,27 @@ export function formatPrice(price: number, currency: string, unit: RateUnit) {
   return unit ? `${amountWithSymbol} / ${rateUnitAbbreviation[unit]}` : amountWithSymbol;
 }
 
+// Renders a listing's place as a single display string, without repeating
+// the city. Since the redesigned Add Listing "Location" field folds the
+// city into what the agent types (e.g. "Goderich, Freetown"), `location`
+// alone already reads as a complete place for most listings; naively
+// appending the stored `city` on top of that produced "Goderich, Freetown,
+// Freetown". Older listings from before that redesign still have a bare
+// specific-area `location` ("Wilberforce") with `city` stored separately,
+// so this only appends city/district when they aren't already part of the
+// location text.
+export function formatListingPlace(listing: { location: string; city: string; district?: string }): string {
+  const parts = [listing.location];
+  const locationLower = listing.location.toLowerCase();
+  if (listing.city && !locationLower.includes(listing.city.toLowerCase())) {
+    parts.push(listing.city);
+  }
+  if (listing.district && !locationLower.includes(listing.district.toLowerCase())) {
+    parts.push(listing.district);
+  }
+  return parts.filter((part) => part.trim().length > 0).join(', ');
+}
+
 export function initialsFor(name: string | null) {
   if (!name) return '?';
   return name.trim().charAt(0).toUpperCase();
@@ -102,7 +123,10 @@ const verificationLabels: Record<string, string> = {
 // read correctly for whichever role holds it.
 export function verificationBadgeLabel(tier: string | null | undefined, role?: string | null) {
   if (!tier) return null;
-  if (tier === 'agent_verified' && role === 'landlord') return 'Verified Property Owner';
+  if (tier === 'agent_verified') {
+    if (role === 'landlord') return 'Verified Property Owner';
+    if (role === 'agency') return 'Verified Agency';
+  }
   return verificationLabels[tier] ?? null;
 }
 

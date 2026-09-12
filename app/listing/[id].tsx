@@ -24,7 +24,16 @@ import { fontFamily, type } from '../../constants/typography';
 import { FavoriteButton } from '../../components/FavoriteButton';
 import { NoPhotoPlaceholder } from '../../components/NoPhotoPlaceholder';
 import { LazyPhoto } from '../../components/LazyPhoto';
-import { agentTenureLabel, categoryLabel, formatListingAge, formatPrice, initialsFor, roleLabel, verificationBadgeLabel } from '../../lib/format';
+import {
+  agentTenureLabel,
+  categoryLabel,
+  formatListingAge,
+  formatListingPlace,
+  formatPrice,
+  initialsFor,
+  roleLabel,
+  verificationBadgeLabel,
+} from '../../lib/format';
 import type { Listing, RateUnit } from '../../lib/types';
 
 const windowWidth = Dimensions.get('window').width;
@@ -78,7 +87,7 @@ export default function ListingDetailScreen() {
   async function handleShare() {
     if (!listing) return;
     await shareText(
-      `${listing.title}\n${formatPrice(listing.price, listing.currency, listing.price_unit)} · ${listing.location}, ${listing.city}\n\nFound on Easyfen`
+      `${listing.title}\n${formatPrice(listing.price, listing.currency, listing.price_unit)} · ${formatListingPlace(listing)}\n\nFound on Easyfen`
     );
   }
 
@@ -241,7 +250,7 @@ export default function ListingDetailScreen() {
 
           <Text style={styles.title}>{listing.title}</Text>
           <Text style={styles.summaryLine}>
-            {categoryLabel(listing.category)} · {listing.location}, {listing.city}
+            {categoryLabel(listing.category)} · {formatListingPlace(listing)}
           </Text>
           {listing.bedrooms != null && (
             <Text style={styles.statsLine}>
@@ -304,7 +313,7 @@ export default function ListingDetailScreen() {
               <Ionicons name="location" size={16} color={colors.accent} />
             </View>
             <Text style={styles.locationCardText}>
-              {listing.location}, {listing.city}, {listing.district}
+              {formatListingPlace(listing)}
             </Text>
           </View>
 
@@ -331,7 +340,9 @@ export default function ListingDetailScreen() {
           ) : (
             <>
               <Ionicons name="chatbubble-outline" size={18} color="#fff" />
-              <Text style={styles.messageButtonText}>Contact Agent</Text>
+              <Text style={styles.messageButtonText}>
+                Contact {listing.owner?.role === 'agency' ? 'Agency' : 'Agent'}
+              </Text>
             </>
           )}
         </Pressable>

@@ -8,7 +8,7 @@ import { NoPhotoPlaceholder } from './NoPhotoPlaceholder';
 import { LazyPhoto } from './LazyPhoto';
 import { colors, fontSize, radius, spacing } from '../constants/theme';
 import { type } from '../constants/typography';
-import { daysSince, formatPrice } from '../lib/format';
+import { daysSince, formatListingPlace, formatPrice } from '../lib/format';
 import type { Listing } from '../lib/types';
 
 const NEW_WITHIN_DAYS = 7;
@@ -44,7 +44,7 @@ export const ListingCard = memo(function ListingCard({
       style={styles.card}
       onPress={() => router.push(`/listing/${listing.id}`)}
       accessibilityRole="button"
-      accessibilityLabel={`${listing.title}, ${formatPrice(listing.price, listing.currency, listing.price_unit)}, ${listing.location}, ${listing.city}`}
+      accessibilityLabel={`${listing.title}, ${formatPrice(listing.price, listing.currency, listing.price_unit)}, ${formatListingPlace(listing)}`}
     >
       <View style={styles.imageWrap}>
         {listing.photos[0] ? (
@@ -78,7 +78,7 @@ export const ListingCard = memo(function ListingCard({
         <View style={styles.locationRow}>
           <Ionicons name="location-outline" size={12} color={colors.textMuted} />
           <Text style={styles.location} numberOfLines={1}>
-            {listing.location}, {listing.city}
+            {formatListingPlace(listing)}
           </Text>
         </View>
         {distanceLabel && (
