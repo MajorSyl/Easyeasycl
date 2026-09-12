@@ -24,11 +24,14 @@ const HOME_FEED_CACHE_KEY = 'easyfen_home_feed_cache_v1';
 // Mirrors the "New" badge threshold on ListingCard, so a listing counted as
 // "new" here is the same one that gets the "New" badge on its own card.
 const NEW_WITHIN_DAYS = 7;
-// Below this many distinct listings left over after New Listings has taken
-// its share, a "Recommended" row would just be reshuffling 1-2 of the same
-// listings under a different heading -- indistinguishable from a bug to a
-// user. Hide the section rather than show that.
-const MIN_RECOMMENDED_POOL = 6;
+// Below this many distinct listings, a themed row beyond "New Listings"
+// would just be reshuffling a couple of the same listings under a new
+// heading -- indistinguishable from a bug to a user. Every row after the
+// first has to clear this bar on its own leftover pool, or it's hidden
+// entirely rather than shown thin or duplicated -- the same way Airbnb
+// quietly omits a row like "Great hotels for your next trip" in a market
+// with nothing to fill it.
+const MIN_SECTION_POOL = 6;
 
 const categoryOptions: PillOption<CategoryFilter>[] = [
   { value: 'all', label: 'All Properties' },
@@ -37,6 +40,18 @@ const categoryOptions: PillOption<CategoryFilter>[] = [
   { value: 'land', label: 'Land' },
   { value: 'daily_hourly', label: 'Daily/Hourly' },
 ];
+
+// Friendlier row titles than the filter-pill labels above, so a "browse by
+// type" row reads as its own themed section rather than an echo of the
+// pills higher up the page.
+const CATEGORY_ROW_TITLES: Record<ListingCategory, string> = {
+  for_rent: 'Homes for Rent',
+  for_sale: 'Homes for Sale',
+  land: 'Land for Sale',
+  daily_hourly: 'Daily & Hourly Rentals',
+};
+
+type HomeSection = { key: string; title: string; listings: Listing[]; showViewAll: boolean };
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
@@ -193,29 +208,82 @@ export default function HomeScreen() {
     router.push(session ? '/add' : '/auth');
   }
 
-  // "New Listings" — genuinely recent listings (last 7 days), not just "the
-  // 10 most recent regardless of age," and not a fake proximity search (the
-  // app has no geolocation data to actually rank by "near you"). `listings`
-  // is already ordered newest-first by the query.
-  const freshListings = useMemo(
-    () => listings.filter((l) => daysSince(l.created_at) <= NEW_WITHIN_DAYS).slice(0, 10),
-    [listings]
-  );
-  // "Recommended" needs to read as an actually different section, not the
-  // same 1-2 listings reshuffled under a new heading -- so it draws only
-  // from whatever New Listings didn't already use, ranked by boost status
-  // then view count (real product purpose for the paid boost feature), and
-  // disappears entirely rather than duplicate New Listings when that
-  // remaining pool is too thin to look like a real second section.
-  const recommended = useMemo(() => {
-    const shownIds = new Set(freshListings.map((l) => l.id));
-    const pool = listings.filter((l) => !shownIds.has(l.id));
-    if (pool.length < MIN_RECOMMENDED_POOL) return [];
-    return [...pool].sort((a, b) => {
-      if (a.is_premium !== b.is_premium) return a.is_premium ? -1 : 1;
-      return (b.view_count ?? 0) - (a.view_count ?? 0);
-    }).slice(0, 10);
-  }, [listings, freshListings]);
+  // Airbnb-style themed rows: each pulls from a genuinely different
+  // criterion (recency, boost/views, property type, ...) and only ever
+  // draws from whatever no earlier row on this same page load has already
+  // claimed, so the same listing can't turn up twice under two headings.
+  // A row that can't clear MIN_SECTION_POOL from what's left just doesn't
+  // get added -- there's no "fallback to the full feed" that would make it
+  // duplicate another row.
+  const homeSections = useMemo<HomeSection[]>(() => {
+    const shown = new Set<string>();
+    const built: HomeSection[] = [];
+
+    function addSection(
+      key: string,
+      title: string,
+      showViewAll: boolean,
+      rank: (pool: Listing[]) => Listing[],
+      minPool: number
+    ) {
+      const pool = listings.filter((l) => !shown.has(l.id));
+      if (pool.length < minPool) return;
+      const ranked = rank(pool).slice(0, 10);
+      if (ranked.length === 0) return;
+      ranked.forEach((l) => shown.add(l.id));
+      built.push({ key, title, listings: ranked, showViewAll });
+    }
+
+    // Always leads, and with a much lower bar than the rows below it --
+    // every market has a "what's new" row from day one, even with a
+    // single listing, so it doesn't need to look like a curated shelf yet.
+    addSection(
+      'new',
+      'New Listings',
+      false,
+      (pool) => pool.filter((l) => daysSince(l.created_at) <= NEW_WITHIN_DAYS),
+      1
+    );
+
+    // Boosted listings first (real product purpose for the paid boost
+    // feature), then by view count, from whatever New Listings left behind.
+    addSection(
+      'recommended',
+      'Recommended',
+      true,
+      (pool) =>
+        [...pool].sort((a, b) =>
+          a.is_premium !== b.is_premium ? (a.is_premium ? -1 : 1) : (b.view_count ?? 0) - (a.view_count ?? 0)
+        ),
+      MIN_SECTION_POOL
+    );
+
+    // "Browse by type" rows -- an Airbnb-style category shelf cut through
+    // whatever's left. Each category only gets its own row once there's
+    // enough of that type specifically to fill one.
+    for (const option of categoryOptions) {
+      if (option.value === 'all') continue;
+      const category = option.value;
+      addSection(
+        `category-${category}`,
+        CATEGORY_ROW_TITLES[category],
+        true,
+        (pool) => pool.filter((l) => l.category === category),
+        MIN_SECTION_POOL
+      );
+    }
+
+    // Every row above has a real minimum bar to clear, which is correct for
+    // avoiding thin/duplicate rows -- but it means an inventory that's both
+    // small AND mostly older than a week (no "New Listings") could clear
+    // zero of them, leaving the page with listings but nothing rendered.
+    // Guarantee there's always at least one row whenever there's inventory.
+    if (built.length === 0 && listings.length > 0) {
+      built.push({ key: 'all', title: 'Available Now', listings: listings.slice(0, 10), showViewAll: false });
+    }
+
+    return built;
+  }, [listings]);
 
   const firstName = profile?.full_name?.trim().split(' ')[0];
 
@@ -343,46 +411,31 @@ export default function HomeScreen() {
         ) : listings.length === 0 ? (
           <EmptyState label={loadError ? "Couldn't load properties. Pull down to try again." : 'No properties yet'} />
         ) : (
-          <>
-            {freshListings.length > 0 && (
-              <View style={styles.section}>
-                <Text style={[styles.sectionTitle, styles.sectionTitleStandalone]}>New Listings</Text>
-                <View style={styles.rowWrap}>
-                  <FlatList
-                    data={freshListings}
-                    keyExtractor={(item) => item.id}
-                    renderItem={renderRowCard}
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={styles.row}
-                  />
-                  <EdgeFade />
-                </View>
-              </View>
-            )}
-
-            {recommended.length > 0 && (
-              <View style={styles.section}>
+          homeSections.map((section) => (
+            <View key={section.key} style={styles.section}>
+              {section.showViewAll ? (
                 <View style={styles.recommendedHeader}>
-                  <Text style={styles.sectionTitle}>Recommended</Text>
+                  <Text style={styles.sectionTitle}>{section.title}</Text>
                   <Pressable onPress={() => router.push('/search')} hitSlop={8}>
                     <Text style={styles.viewAll}>View All</Text>
                   </Pressable>
                 </View>
-                <View style={styles.rowWrap}>
-                  <FlatList
-                    data={recommended}
-                    keyExtractor={(item) => item.id}
-                    renderItem={renderRowCard}
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={styles.row}
-                  />
-                  <EdgeFade />
-                </View>
+              ) : (
+                <Text style={[styles.sectionTitle, styles.sectionTitleStandalone]}>{section.title}</Text>
+              )}
+              <View style={styles.rowWrap}>
+                <FlatList
+                  data={section.listings}
+                  keyExtractor={(item) => item.id}
+                  renderItem={renderRowCard}
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.row}
+                />
+                <EdgeFade />
               </View>
-            )}
-          </>
+            </View>
+          ))
         )}
       </ScrollView>
     </View>
