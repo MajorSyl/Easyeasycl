@@ -28,22 +28,19 @@ export function useTabBarGap() {
   return useBottomGap() + TAB_BAR_CONTENT_HEIGHT;
 }
 
-// Routes that render the bottom tab bar -- any fixed/floating element
-// (HelpWidget, SupportButton) needs extra bottom clearance above it there,
-// and less everywhere else. Shared so the two floating buttons agree on
-// exactly which screens need that extra clearance.
+// Routes that render the bottom tab bar -- the floating SupportButton needs
+// extra bottom clearance above it there, and less everywhere else.
 export const TAB_ROUTES = new Set(['/', '/search', '/add', '/profile']);
 
 // The Property Detail screen's own sticky footer (price + Contact Agent),
 // measured on-screen -- app/listing/[id].tsx's footer isn't a fixed
 // constant like the tab bar, but this is close enough that a floating
-// button stacked above it never sits on top of that bar's content.
+// button above it never sits on top of that bar's content.
 const DETAIL_FOOTER_HEIGHT = 74;
 
-// How far above the true bottom edge a floating action button (HelpWidget,
-// SupportButton) needs to sit on the current screen, so it never overlaps
-// the bottom tab bar or a screen's own sticky footer bar. Centralized here
-// so both buttons agree on exactly the same clearance per route.
+// How far above the true bottom edge the floating SupportButton needs to
+// sit on the current screen, so it never overlaps the bottom tab bar or a
+// screen's own sticky footer bar.
 export function useFabClearance() {
   const pathname = usePathname();
   const bottomGap = useBottomGap();

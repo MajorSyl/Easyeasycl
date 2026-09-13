@@ -11,16 +11,15 @@ import { StatusBar } from 'expo-status-bar';
 import { AuthProvider } from '../lib/auth-context';
 import { FavoritesProvider } from '../lib/favorites-context';
 import { AlertProvider } from '../lib/alert';
-import { HelpWidget } from '../components/HelpWidget';
 import { SupportButton } from '../components/SupportButton';
 import { colors, fontSize, fontWeight, spacing } from '../constants/theme';
 import { fontsToLoad } from '../constants/typography';
 
-// Screens where the floating Help/Support buttons would be noise, not a
-// first-run flow to interrupt with them -- also hidden on the Contact
+// Screens where the floating Support button would be noise, not a
+// first-run flow to interrupt with it -- also hidden on the Contact
 // Support screen itself, since a shortcut to a screen shouldn't float on
 // top of that same screen.
-const HELP_HIDDEN_ROUTES = new Set(['/splash', '/onboarding', '/auth', '/auth-callback', '/contact-support']);
+const SUPPORT_HIDDEN_ROUTES = new Set(['/splash', '/onboarding', '/auth', '/auth-callback', '/contact-support']);
 
 // Data Saver was removed entirely (it's no longer a setting anywhere in the
 // app) -- this clears the one AsyncStorage/localStorage key it used to
@@ -148,12 +147,7 @@ export default function RootLayout() {
                   <Stack screenOptions={{ headerShown: false }}>
                     <Stack.Screen name="auth" options={{ presentation: 'modal' }} />
                   </Stack>
-                  {!booting && !HELP_HIDDEN_ROUTES.has(pathname) && (
-                    <>
-                      <HelpWidget />
-                      <SupportButton />
-                    </>
-                  )}
+                  {!booting && !SUPPORT_HIDDEN_ROUTES.has(pathname) && <SupportButton />}
                   {booting && (
                     <View style={StyleSheet.absoluteFill} pointerEvents="auto">
                       <View style={{ flex: 1, backgroundColor: colors.background }} />

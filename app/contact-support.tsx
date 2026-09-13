@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../lib/auth-context';
@@ -13,8 +13,14 @@ import { type } from '../constants/typography';
 export default function ContactSupportScreen() {
   const insets = useSafeAreaInsets();
   const { session, profile } = useAuth();
-  const [subject, setSubject] = useState('');
-  const [message, setMessage] = useState('');
+  // Set when arriving from the FAQ panel's "Still need help?" -- which FAQ
+  // question the person was reading, so the message doesn't land with no
+  // context at all. Read once at mount: this screen doesn't need to react
+  // to the param changing later, and useState's lazy initializer form
+  // avoids re-computing these on every render.
+  const { topic } = useLocalSearchParams<{ topic?: string }>();
+  const [subject, setSubject] = useState(() => topic ?? '');
+  const [message, setMessage] = useState(() => (topic ? `Re: "${topic}"\n\n` : ''));
   const [requestCall, setRequestCall] = useState(false);
   const [callbackPhone, setCallbackPhone] = useState(profile?.phone ?? '');
   const [sending, setSending] = useState(false);
