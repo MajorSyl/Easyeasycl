@@ -128,7 +128,17 @@ export default function RootLayout() {
     if (ranOnce.current) return;
     if (!fontsLoaded && !fontError) return;
     ranOnce.current = true;
-    if (pathname === '/') {
+    // usePathname() resolves the initial URL via expo-linking's
+    // getInitialURL(), which returns a Promise even on web -- so it can
+    // still be reporting the default '/' here if that resolution loses
+    // the race against font loading. window.location.pathname has no such
+    // race (it's synchronously correct the instant JS runs), so a fresh
+    // web page load -- e.g. a password-reset or email-confirmation link
+    // landing on /reset-password#access_token=... -- can't get misread as
+    // the bare root and hijacked into /splash, which would go on to
+    // discard the URL (and any recovery tokens in it) entirely.
+    const actualPath = Platform.OS === 'web' ? window.location.pathname : pathname;
+    if (actualPath === '/') {
       router.replace('/splash');
     }
     setBooting(false);
