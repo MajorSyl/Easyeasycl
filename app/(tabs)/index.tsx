@@ -374,25 +374,6 @@ export default function HomeScreen() {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
-      {/* Search bar + filter pills live OUTSIDE the ScrollView so they stick
-          to the top while the greeting, Browse by Location, and sell banner
-          scroll away naturally below them. */}
-      <View style={styles.stickyBar}>
-        <Pressable
-          style={styles.searchBar}
-          onPress={() => router.push('/search')}
-          accessibilityRole="search"
-          accessibilityLabel="Search properties, land, cities, and districts across Sierra Leone"
-        >
-          <Ionicons name="search" size={18} color={colors.textMuted} />
-          <Text style={styles.searchPlaceholder}>Search Freetown, Bo, Makeni...</Text>
-        </Pressable>
-
-        <View style={styles.pillsWrap}>
-          <FilterPills options={categoryOptions} value={categoryFilter} onChange={setCategoryFilter} />
-        </View>
-      </View>
-
       <ScrollView
         contentContainerStyle={[styles.listContent, { paddingBottom: tabBarGap + spacing.lg }]}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
@@ -460,6 +441,16 @@ export default function HomeScreen() {
             </View>
           )}
 
+          <Pressable
+            style={styles.searchBar}
+            onPress={() => router.push('/search')}
+            accessibilityRole="search"
+            accessibilityLabel="Search properties, land, cities, and districts across Sierra Leone"
+          >
+            <Ionicons name="search" size={18} color={colors.textMuted} />
+            <Text style={styles.searchPlaceholder}>Search Freetown, Bo, Makeni...</Text>
+          </Pressable>
+
           <Pressable style={styles.neighborhoodRow} onPress={() => router.push('/neighborhoods')}>
             <View style={styles.neighborhoodIcon}>
               <Ionicons name="location-outline" size={16} color={colors.accent} />
@@ -467,6 +458,10 @@ export default function HomeScreen() {
             <Text style={styles.neighborhoodRowText}>Browse by Location</Text>
             <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
           </Pressable>
+
+          <View style={styles.pillsWrap}>
+            <FilterPills options={categoryOptions} value={categoryFilter} onChange={setCategoryFilter} />
+          </View>
 
           <Pressable
             style={styles.sellBanner}
@@ -551,7 +546,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     justifyContent: 'space-between',
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md,
+    paddingTop: spacing.sm,
     paddingBottom: spacing.lg,
   },
   greetingBlock: { flex: 1 },
@@ -603,30 +598,20 @@ const styles = StyleSheet.create({
   },
   avatarImage: { width: '100%', height: '100%' },
   avatarText: { fontSize: fontSize.sm, fontWeight: fontWeight.bold, color: colors.accent },
-  stickyBar: {
-    backgroundColor: colors.card,
-    shadowColor: '#2B2620',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 4,
-    zIndex: 10,
-    paddingTop: spacing.sm,
-  },
   // Flat, bordered chrome -- no shadow -- so this reads as structural
   // navigation, not a competing "card" next to the listing grid below.
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    backgroundColor: colors.background,
+    backgroundColor: colors.card,
     borderRadius: radius.pill,
     borderWidth: 1,
     borderColor: colors.border,
     paddingHorizontal: spacing.lg,
     paddingVertical: 14,
     marginHorizontal: spacing.lg,
-    marginBottom: spacing.sm,
+    marginBottom: spacing.md,
   },
   searchPlaceholder: { ...type.body, fontSize: fontSize.sm, color: colors.textMuted },
   offlineBanner: {
@@ -691,7 +676,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   neighborhoodRowText: { ...type.bodyMedium, fontSize: fontSize.sm, color: colors.textPrimary },
-  pillsWrap: { paddingBottom: spacing.sm },
+  pillsWrap: { paddingBottom: spacing.md },
   section: { marginTop: spacing.sm, marginBottom: spacing.md },
   sectionTitle: { ...type.sectionTitle, fontSize: fontSize.lg, color: colors.textPrimary },
   sectionTitleStandalone: { paddingHorizontal: spacing.lg, marginBottom: spacing.sm },
