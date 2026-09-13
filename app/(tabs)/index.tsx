@@ -16,6 +16,7 @@ import { FilterPills, type PillOption } from '../../components/FilterPills';
 import { EdgeFade } from '../../components/EdgeFade';
 import { AppInstallPrompt } from '../../components/AppInstallPrompt';
 import { daysSince, initialsFor } from '../../lib/format';
+import { getRecentlyViewedIds } from '../../lib/recently-viewed';
 import type { Listing, ListingCategory } from '../../lib/types';
 
 type CategoryFilter = 'all' | ListingCategory;
@@ -24,14 +25,19 @@ const HOME_FEED_CACHE_KEY = 'easyfen_home_feed_cache_v1';
 // Mirrors the "New" badge threshold on ListingCard, so a listing counted as
 // "new" here is the same one that gets the "New" badge on its own card.
 const NEW_WITHIN_DAYS = 7;
-// Below this many distinct listings, a themed row beyond "New Listings"
-// would just be reshuffling a couple of the same listings under a new
-// heading -- indistinguishable from a bug to a user. Every row after the
-// first has to clear this bar on its own leftover pool, or it's hidden
-// entirely rather than shown thin or duplicated -- the same way Airbnb
-// quietly omits a row like "Great hotels for your next trip" in a market
-// with nothing to fill it.
-const MIN_SECTION_POOL = 6;
+// Recommended draws on the whole leftover pool (any category), so it can
+// afford a higher bar before it's worth its own row -- a thin one here
+// would just be reshuffling whatever New Listings didn't already take.
+const MIN_RECOMMENDED_POOL = 6;
+// The "browse by type" rows and Recently Viewed are each scoped to a single
+// category (or a single person's history), where inventory is naturally
+// much thinner -- clearing 6 the same way Recommended does would hide, say,
+// For Sale until there are 6 for-sale listings specifically, which is a
+// much higher bar than "does this row have anything genuinely browsable."
+// A 2-card row still scrolls and still reads as a real shelf, just a short
+// one, the same way Airbnb doesn't wait for a market to have 6 boutique
+// hotels before giving it a row.
+const MIN_CATEGORY_POOL = 2;
 
 const categoryOptions: PillOption<CategoryFilter>[] = [
   { value: 'all', label: 'All Properties' },
@@ -41,17 +47,38 @@ const categoryOptions: PillOption<CategoryFilter>[] = [
   { value: 'daily_hourly', label: 'Daily/Hourly' },
 ];
 
-// Friendlier row titles than the filter-pill labels above, so a "browse by
-// type" row reads as its own themed section rather than an echo of the
-// pills higher up the page.
+// Order and short, Airbnb-style titles for the "browse by type" rows --
+// deliberately shorter than the filter-pill labels above (which double as
+// accessibility labels needing more context) since these sit directly
+// under their own row of cards, where "Land for Sale" next to a Land badge
+// on every card underneath is redundant.
+const HOME_CATEGORY_ORDER: ListingCategory[] = ['for_sale', 'for_rent', 'land', 'daily_hourly'];
 const CATEGORY_ROW_TITLES: Record<ListingCategory, string> = {
-  for_rent: 'Homes for Rent',
-  for_sale: 'Homes for Sale',
-  land: 'Land for Sale',
+  for_sale: 'For Sale',
+  for_rent: 'For Rent',
+  land: 'Land',
   daily_hourly: 'Daily & Hourly Rentals',
 };
+// Plain text handed to Search's existing free-text query parser (see
+// lib/search-query-parser.ts), which already recognizes each of these as a
+// category filter -- reusing that instead of building a second, parallel
+// category-filter mechanism just for this deep link.
+const CATEGORY_SEARCH_QUERY: Record<ListingCategory, string> = {
+  for_sale: 'for sale',
+  for_rent: 'for rent',
+  land: 'land',
+  daily_hourly: 'daily',
+};
 
-type HomeSection = { key: string; title: string; listings: Listing[]; showViewAll: boolean };
+type HomeSection = {
+  key: string;
+  title: string;
+  listings: Listing[];
+  showViewAll: boolean;
+  // Search query text to deep-link "View All" to a pre-filtered list;
+  // omitted means "View All" goes to a plain, unfiltered Search.
+  viewAllQuery?: string;
+};
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
@@ -64,6 +91,7 @@ export default function HomeScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [showingSavedData, setShowingSavedData] = useState(false);
+  const [recentlyViewedIds, setRecentlyViewedIds] = useState<string[]>([]);
 
   // Switching category filters shouldn't re-hit the network every time if we
   // already have recent data for that filter — only refetch once the cached
@@ -190,6 +218,24 @@ export default function HomeScreen() {
     }, [loadUnreadCount])
   );
 
+  // Re-read on every focus, not just mount -- the whole point of this row
+  // is to reflect a listing the person just came back from viewing.
+  useFocusEffect(
+    useCallback(() => {
+      if (!session) {
+        setRecentlyViewedIds([]);
+        return;
+      }
+      let cancelled = false;
+      getRecentlyViewedIds().then((ids) => {
+        if (!cancelled) setRecentlyViewedIds(ids);
+      });
+      return () => {
+        cancelled = true;
+      };
+    }, [session])
+  );
+
   async function handleRefresh() {
     setRefreshing(true);
     await Promise.all([load(true), loadUnreadCount()]);
@@ -212,9 +258,10 @@ export default function HomeScreen() {
   // criterion (recency, boost/views, property type, ...) and only ever
   // draws from whatever no earlier row on this same page load has already
   // claimed, so the same listing can't turn up twice under two headings.
-  // A row that can't clear MIN_SECTION_POOL from what's left just doesn't
-  // get added -- there's no "fallback to the full feed" that would make it
-  // duplicate another row.
+  // A row that can't clear its minPool from what's left just doesn't get
+  // added -- there's no "fallback to the full feed" that would make it
+  // duplicate another row. Recently Viewed (added after this loop) is the
+  // one deliberate exception -- see its own comment below for why.
   const homeSections = useMemo<HomeSection[]>(() => {
     const shown = new Set<string>();
     const built: HomeSection[] = [];
@@ -224,14 +271,26 @@ export default function HomeScreen() {
       title: string,
       showViewAll: boolean,
       rank: (pool: Listing[]) => Listing[],
-      minPool: number
+      minPool: number,
+      options?: { viewAllQuery?: string; excludeShown?: boolean }
     ) {
-      const pool = listings.filter((l) => !shown.has(l.id));
+      // New Listings and Recommended stay mutually exclusive (the whole
+      // point of task #133's fix: a boosted listing shouldn't just be
+      // "New Listings" restated under a different heading). A "browse by
+      // type" row is a genuinely different axis -- what KIND of property,
+      // not how recent it is -- so category rows deliberately opt out of
+      // this and pull from the full list: on a young/small inventory where
+      // almost everything still counts as "new," excluding already-shown
+      // listings would starve every category row down to nothing, which is
+      // exactly backwards for a page whose job is helping someone browse by
+      // type in the first place.
+      const excludeShown = options?.excludeShown ?? true;
+      const pool = excludeShown ? listings.filter((l) => !shown.has(l.id)) : listings;
       if (pool.length < minPool) return;
       const ranked = rank(pool).slice(0, 10);
       if (ranked.length === 0) return;
-      ranked.forEach((l) => shown.add(l.id));
-      built.push({ key, title, listings: ranked, showViewAll });
+      if (excludeShown) ranked.forEach((l) => shown.add(l.id));
+      built.push({ key, title, listings: ranked, showViewAll, viewAllQuery: options?.viewAllQuery });
     }
 
     // Always leads, and with a much lower bar than the rows below it --
@@ -255,22 +314,39 @@ export default function HomeScreen() {
         [...pool].sort((a, b) =>
           a.is_premium !== b.is_premium ? (a.is_premium ? -1 : 1) : (b.view_count ?? 0) - (a.view_count ?? 0)
         ),
-      MIN_SECTION_POOL
+      MIN_RECOMMENDED_POOL
     );
 
-    // "Browse by type" rows -- an Airbnb-style category shelf cut through
-    // whatever's left. Each category only gets its own row once there's
-    // enough of that type specifically to fill one.
-    for (const option of categoryOptions) {
-      if (option.value === 'all') continue;
-      const category = option.value;
+    // "Browse by type" rows -- an Airbnb-style category shelf. Each
+    // category only gets its own row once there's enough of that type
+    // specifically to fill one (see the excludeShown note in addSection
+    // for why these draw from the full list, not just what's left over).
+    for (const category of HOME_CATEGORY_ORDER) {
       addSection(
         `category-${category}`,
         CATEGORY_ROW_TITLES[category],
         true,
         (pool) => pool.filter((l) => l.category === category),
-        MIN_SECTION_POOL
+        MIN_CATEGORY_POOL,
+        { viewAllQuery: CATEGORY_SEARCH_QUERY[category], excludeShown: false }
       );
+    }
+
+    // Personalization row, built from device-local view history (see
+    // lib/recently-viewed.ts) rather than any category -- deliberately NOT
+    // filtered against `shown`, since a listing someone actually looked at
+    // is exactly as relevant here as it is under whatever category row it
+    // also appears in. Real Airbnb rows work the same way: Recently Viewed
+    // routinely repeats a listing also shown elsewhere on the same page.
+    if (session && recentlyViewedIds.length > 0) {
+      const byId = new Map(listings.map((l) => [l.id, l]));
+      const recentlyViewed = recentlyViewedIds
+        .map((id) => byId.get(id))
+        .filter((l): l is Listing => Boolean(l))
+        .slice(0, 10);
+      if (recentlyViewed.length >= MIN_CATEGORY_POOL) {
+        built.push({ key: 'recently-viewed', title: 'Recently Viewed', listings: recentlyViewed, showViewAll: false });
+      }
     }
 
     // Every row above has a real minimum bar to clear, which is correct for
@@ -283,7 +359,7 @@ export default function HomeScreen() {
     }
 
     return built;
-  }, [listings]);
+  }, [listings, session, recentlyViewedIds]);
 
   const firstName = profile?.full_name?.trim().split(' ')[0];
 
@@ -416,8 +492,20 @@ export default function HomeScreen() {
               {section.showViewAll ? (
                 <View style={styles.recommendedHeader}>
                   <Text style={styles.sectionTitle}>{section.title}</Text>
-                  <Pressable onPress={() => router.push('/search')} hitSlop={8}>
-                    <Text style={styles.viewAll}>View All</Text>
+                  <Pressable
+                    style={styles.viewAllButton}
+                    onPress={() =>
+                      router.push(
+                        section.viewAllQuery
+                          ? { pathname: '/search', params: { q: section.viewAllQuery } }
+                          : '/search'
+                      )
+                    }
+                    hitSlop={8}
+                    accessibilityRole="button"
+                    accessibilityLabel={`View all ${section.title}`}
+                  >
+                    <Ionicons name="arrow-forward" size={16} color={colors.accent} />
                   </Pressable>
                 </View>
               ) : (
@@ -599,9 +687,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     marginBottom: spacing.sm,
   },
-  // accentStrong, not accent -- this link sits directly on `background`,
-  // where plain accent only clears 4.33:1 (fails AA's 4.5:1 text floor).
-  viewAll: { ...type.button, fontSize: fontSize.sm, color: colors.accentStrong },
+  // A small round icon button, Airbnb-row-header style, rather than a
+  // "View All" text link -- icon-only, so it needs a real hit target
+  // (32px, plus hitSlop above) rather than relying on text line-height.
+  viewAllButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: colors.accentSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   // No fixed height here — a card's text can grow taller under large
   // system font sizes (Dynamic Type), and a hard-clipped height would
   // truncate or overlap that content instead of just growing the row.

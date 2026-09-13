@@ -19,6 +19,7 @@ import { appAlert } from '../../lib/alert';
 import { shareText } from '../../lib/share';
 import { useBottomGap } from '../../lib/use-bottom-gap';
 import { getOrCreateConversation } from '../../lib/conversations';
+import { recordListingViewed } from '../../lib/recently-viewed';
 import { colors, fontSize, radius, shadow, spacing } from '../../constants/theme';
 import { fontFamily, type } from '../../constants/typography';
 import { FavoriteButton } from '../../components/FavoriteButton';
@@ -80,6 +81,7 @@ export default function ListingDetailScreen() {
     if (!viewCounted.current) {
       viewCounted.current = true;
       supabase.rpc('increment_listing_views', { listing_id: id }).then();
+      recordListingViewed(id);
     }
     return () => {
       cancelled = true;

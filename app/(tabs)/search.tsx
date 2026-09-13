@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, FlatList, Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, fontSize, fontWeight, radius, spacing } from '../../constants/theme';
 import { useTabBarGap } from '../../lib/use-bottom-gap';
@@ -48,7 +48,12 @@ export default function SearchScreen() {
   const insets = useSafeAreaInsets();
   const tabBarGap = useTabBarGap();
   const { session } = useAuth();
-  const [query, setQuery] = useState('');
+  // Lets Home's category rows (For Sale, For Rent, ...) deep-link straight
+  // into a pre-filtered result list by handing off plain text -- reusing
+  // parseSearchQuery's existing category-word matching below rather than a
+  // second, parallel category-filter mechanism.
+  const { q } = useLocalSearchParams<{ q?: string }>();
+  const [query, setQuery] = useState(() => q ?? '');
   const [budget, setBudget] = useState('');
   const [currencyFilter, setCurrencyFilter] = useState<CurrencyFilter>('ALL');
   const [sortMode, setSortMode] = useState<SortMode>('newest');
