@@ -228,6 +228,30 @@ export async function dismissUnmatchedLocation(id: string) {
   revalidatePath('/unmatched-locations');
 }
 
+const DICTIONARY_TYPES = ['category', 'bedrooms', 'price_intent', 'type_keyword', 'stopword'];
+
+export async function addDictionaryTerm(term: string, language: string, mapsToType: string, mapsToValue: string | null) {
+  const supabase = await createClient();
+  await requireAdmin(supabase);
+  if (!term.trim()) throw new Error('Term is required');
+  if (!['en', 'kri'].includes(language)) throw new Error('Invalid language');
+  if (!DICTIONARY_TYPES.includes(mapsToType)) throw new Error('Invalid type');
+  await supabase.from('search_dictionary').insert({
+    term: term.trim().toLowerCase(),
+    language,
+    maps_to_type: mapsToType,
+    maps_to_value: mapsToValue?.trim() || null,
+  });
+  revalidatePath('/search-dictionary');
+}
+
+export async function deleteDictionaryTerm(id: string) {
+  const supabase = await createClient();
+  await requireAdmin(supabase);
+  await supabase.from('search_dictionary').delete().eq('id', id);
+  revalidatePath('/search-dictionary');
+}
+
 export async function resolveSupportRequest(id: string) {
   const supabase = await createClient();
   await requireAdmin(supabase);
