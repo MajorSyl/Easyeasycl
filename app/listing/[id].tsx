@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Dimensions,
   FlatList,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -36,12 +36,6 @@ import {
 } from '../../lib/format';
 import type { Listing, RateUnit } from '../../lib/types';
 
-const windowWidth = Dimensions.get('window').width;
-// Edge-to-edge, not the old margined/rounded hero card -- Airbnb's detail
-// carousel runs the full width of the screen, with the content below it
-// overlapping it in a rounded-top sheet (see `sheet` below).
-const heroHeight = windowWidth * 0.85;
-
 const priceUnitLabel: Record<Exclude<RateUnit, null>, string> = {
   hour: 'per hour',
   day: 'per day',
@@ -52,6 +46,14 @@ const priceUnitLabel: Record<Exclude<RateUnit, null>, string> = {
 export default function ListingDetailScreen() {
   const insets = useSafeAreaInsets();
   const bottomGap = useBottomGap();
+  // Read live on every render, not captured once at module load -- a
+  // standalone/installed PWA on Android can report a transient, too-small
+  // width during its first paint (before the launch resize settles), and a
+  // one-time `Dimensions.get('window')` snapshot at module scope would
+  // freeze that wrong value into this fixed-pixel hero size for the rest of
+  // the session. `useWindowDimensions` re-renders when the real size lands.
+  const { width: windowWidth } = useWindowDimensions();
+  const heroHeight = windowWidth * 0.85;
   const { id } = useLocalSearchParams<{ id: string }>();
   const { session } = useAuth();
   const [listing, setListing] = useState<Listing | null>(null);
@@ -181,14 +183,14 @@ export default function ListingDetailScreen() {
               renderItem={({ item, index }) => (
                 <LazyPhoto
                   uri={item}
-                  style={styles.photo}
+                  style={[styles.photo, { width: windowWidth, height: heroHeight }]}
                   contentFit="cover"
                   accessibilityLabel={`Photo ${index + 1} of ${listing.photos.length} of ${listing.title}`}
                 />
               )}
             />
           ) : (
-            <View style={[styles.photo, styles.photoPlaceholder]}>
+            <View style={[styles.photo, styles.photoPlaceholder, { width: windowWidth, height: heroHeight }]}>
               <NoPhotoPlaceholder />
             </View>
           )}
@@ -357,7 +359,7 @@ const styles = StyleSheet.create({
   notFound: { ...type.body, fontSize: fontSize.md, color: colors.textSecondary, marginBottom: spacing.sm },
   backLink: { ...type.button, fontSize: fontSize.md, color: colors.accent },
   heroWrap: { backgroundColor: colors.border },
-  photo: { width: windowWidth, height: heroHeight, backgroundColor: colors.border },
+  photo: { backgroundColor: colors.border },
   photoPlaceholder: { alignItems: 'center', justifyContent: 'center' },
   pageIndicator: {
     position: 'absolute',
