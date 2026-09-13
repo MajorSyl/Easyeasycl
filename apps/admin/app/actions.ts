@@ -71,6 +71,18 @@ export async function setVerificationTier(userId: string, tier: string) {
   revalidatePath('/users');
 }
 
+const USER_ROLES = ['user', 'landlord', 'agent', 'agency'];
+
+export async function setUserRole(userId: string, role: string) {
+  const supabase = await createClient();
+  await requireAdmin(supabase);
+  if (!USER_ROLES.includes(role)) throw new Error('Invalid role');
+  const { error } = await supabase.rpc('admin_set_user_role', { target_user_id: userId, new_role: role });
+  if (error) throw error;
+  revalidatePath('/users');
+  revalidatePath(`/users/${userId}`);
+}
+
 export async function setUserSuspended(userId: string, suspended: boolean, reason?: string | null) {
   const supabase = await createClient();
   await requireAdmin(supabase);

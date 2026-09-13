@@ -1,7 +1,9 @@
 import { createClient } from '@/lib/supabase-server';
 import { redirect, notFound } from 'next/navigation';
 import Link from 'next/link';
-import { setUserSuspended, setVerificationTier } from '../../actions';
+import { setUserRole, setUserSuspended, setVerificationTier } from '../../actions';
+
+const USER_ROLES = ['user', 'landlord', 'agent', 'agency'];
 import { formatListingPrice } from '@/lib/format';
 
 const VERIFICATION_LABELS: Record<string, string> = {
@@ -68,7 +70,28 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
             {user.suspended_at ? <span className="badge badge-red">Suspended</span> : <span className="badge badge-green">Active</span>}
           </div>
           <div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 10, fontSize: 13 }}>
-            <Row label="Role" value={<span className={`badge ${roleBadge(user.role)}`}>{user.role}</span>} />
+            <Row
+              label="Role"
+              value={
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <span className={`badge ${roleBadge(user.role)}`}>{user.role}</span>
+                  <form
+                    action={async (fd: FormData) => {
+                      'use server';
+                      await setUserRole(user.id, fd.get('role') as string);
+                    }}
+                    style={{ display: 'flex', gap: 6, alignItems: 'center' }}
+                  >
+                    <select name="role" defaultValue={user.role} className="form-select" style={{ padding: '4px 8px' }}>
+                      {USER_ROLES.map((r) => (
+                        <option key={r} value={r}>{r}</option>
+                      ))}
+                    </select>
+                    <button type="submit" className="btn btn-sm">Change</button>
+                  </form>
+                </div>
+              }
+            />
             <Row label="Business name" value={user.business_name ?? '—'} />
             <Row label="Phone" value={phone ?? '—'} />
             <Row label="Joined" value={new Date(user.created_at).toLocaleDateString('en-GB')} />

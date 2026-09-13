@@ -33,7 +33,7 @@ export default function PublicProfileScreen() {
       const [profileRes, listings] = await Promise.all([
         supabase
           .from('profiles')
-          .select('id, full_name, avatar_url, role, business_name, created_at, verification_tier, is_founder, public_email')
+          .select('id, full_name, avatar_url, role, business_name, created_at, verification_tier, is_founder, public_email, location, bio')
           .eq('id', id)
           .single(),
         supabase
@@ -185,6 +185,8 @@ export default function PublicProfileScreen() {
               </Text>
             )}
             {profile.business_name && <Text style={styles.business}>{profile.business_name}</Text>}
+            {profile.location && <Text style={styles.business}>{profile.location}</Text>}
+            {profile.bio && <Text style={styles.bio}>{profile.bio}</Text>}
             {verificationBadgeLabel(profile.verification_tier, profile.role) && (
               <View style={styles.verifiedRow}>
                 <Ionicons name="checkmark-circle" size={14} color={colors.success} />
@@ -251,6 +253,7 @@ const styles = StyleSheet.create({
   name: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: colors.textPrimary },
   role: { fontSize: fontSize.xs, fontWeight: fontWeight.bold, color: colors.accent, letterSpacing: 0.4, marginTop: 2 },
   business: { fontSize: fontSize.sm, color: colors.textSecondary, marginTop: 2 },
+  bio: { fontSize: fontSize.sm, color: colors.textSecondary, marginTop: spacing.sm, textAlign: 'center' },
   verifiedRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 },
   verifiedText: { fontSize: fontSize.xs, fontWeight: fontWeight.bold, color: colors.success },
   messageButton: {

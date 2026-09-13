@@ -26,7 +26,6 @@ import { sanitizeText } from '../../lib/sanitize';
 import { colors, fontSize, radius, spacing } from '../../constants/theme';
 import { fontFamily, type } from '../../constants/typography';
 import { daysSince, formatPrice, initialsFor, roleLabel, verificationBadgeLabel } from '../../lib/format';
-import { SelectField, type SelectOption } from '../../components/SelectField';
 import { WebFooter } from '../../components/WebFooter';
 import { VerifiedBadge } from '../../components/VerifiedBadge';
 import type { Profile } from '../../lib/auth-context';
@@ -53,13 +52,6 @@ type MyListing = {
 
 const STALE_AFTER_DAYS = 30;
 
-const roleOptions: SelectOption<Profile['role']>[] = [
-  { value: 'user', label: 'Regular User' },
-  { value: 'landlord', label: 'Landlord' },
-  { value: 'agent', label: 'Agent' },
-  { value: 'agency', label: 'Real Estate Agency' },
-];
-
 // Only these roles run a listing/rental business under a named entity --
 // 'user' and 'landlord' (a private individual renting out their own place)
 // have no business to name.
@@ -84,7 +76,8 @@ export default function ProfileScreen() {
   const [editing, setEditing] = useState(false);
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
-  const [role, setRole] = useState<Profile['role']>('user');
+  const [location, setLocation] = useState('');
+  const [bio, setBio] = useState('');
   const [businessName, setBusinessName] = useState('');
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [avatarUploading, setAvatarUploading] = useState(false);
@@ -191,7 +184,8 @@ export default function ProfileScreen() {
   function startEditing() {
     setFullName(profile?.full_name ?? '');
     setPhone(profile?.phone ?? '');
-    setRole(profile?.role ?? 'user');
+    setLocation(profile?.location ?? '');
+    setBio(profile?.bio ?? '');
     setBusinessName(profile?.business_name ?? '');
     setAvatarUrl(profile?.avatar_url ?? null);
     setEditing(true);
@@ -224,9 +218,12 @@ export default function ProfileScreen() {
 
   async function saveProfile() {
     if (!session || saving) return;
+    const currentRole = profile?.role ?? 'user';
     const cleanFullName = sanitizeText(fullName);
     const cleanBusinessName = sanitizeText(businessName);
-    if (role === 'agency' && !cleanBusinessName) {
+    const cleanLocation = sanitizeText(location);
+    const cleanBio = sanitizeText(bio).slice(0, 300);
+    if (currentRole === 'agency' && !cleanBusinessName) {
       appAlert('Business name required', 'Real Estate Agency accounts need a business name.');
       return;
     }
@@ -236,8 +233,9 @@ export default function ProfileScreen() {
       .update({
         full_name: cleanFullName || null,
         phone: phone.trim() || null,
-        role,
-        business_name: BUSINESS_NAME_ROLES.includes(role) ? cleanBusinessName || null : null,
+        location: cleanLocation || null,
+        bio: cleanBio || null,
+        business_name: BUSINESS_NAME_ROLES.includes(currentRole) ? cleanBusinessName || null : null,
         avatar_url: avatarUrl || null,
       })
       .eq('id', session.user.id);
@@ -248,6 +246,7 @@ export default function ProfileScreen() {
     }
     await refreshProfile();
     setEditing(false);
+    appAlert('Profile updated', 'Your changes have been saved successfully.');
   }
 
   function confirmDelete(item: MyListing) {
@@ -402,6 +401,8 @@ export default function ProfileScreen() {
                 {profile?.business_name && <Text style={styles.businessName}>{profile.business_name}</Text>}
                 <Text style={styles.contactText}>{profile?.public_email ?? session.user.email}</Text>
                 {profile?.phone && <Text style={styles.contactText}>{profile.phone}</Text>}
+                {profile?.location && <Text style={styles.contactText}>{profile.location}</Text>}
+                {profile?.bio && <Text style={styles.bioText}>{profile.bio}</Text>}
 
                 {verificationBadgeLabel(profile?.verification_tier, profile?.role) ? (
                   <View style={styles.verifiedBadge}>
@@ -458,9 +459,28 @@ export default function ProfileScreen() {
                     keyboardType="phone-pad"
                   />
                 </Field>
-                <SelectField label="I am a..." placeholder="Select role" value={role} options={roleOptions} onChange={setRole} />
-                {BUSINESS_NAME_ROLES.includes(role) && (
-                  <Field label={role === 'agency' ? 'Business Name (required)' : 'Business Name'}>
+                <Field label="Location">
+                  <TextInput
+                    style={styles.input}
+                    value={location}
+                    onChangeText={setLocation}
+                    placeholder="e.g. Freetown"
+                    placeholderTextColor={colors.textMuted}
+                  />
+                </Field>
+                <Field label="Bio">
+                  <TextInput
+                    style={[styles.input, styles.bioInput]}
+                    value={bio}
+                    onChangeText={(text) => setBio(text.slice(0, 300))}
+                    placeholder="Introduce yourself to buyers and renters"
+                    placeholderTextColor={colors.textMuted}
+                    multiline
+                    numberOfLines={3}
+                  />
+                </Field>
+                {BUSINESS_NAME_ROLES.includes(profile?.role ?? 'user') && (
+                  <Field label={profile?.role === 'agency' ? 'Agency Name (required)' : 'Business Name'}>
                     <TextInput
                       style={styles.input}
                       value={businessName}
@@ -470,6 +490,11 @@ export default function ProfileScreen() {
                     />
                   </Field>
                 )}
+                <Pressable style={styles.changePasswordRow} onPress={() => router.push('/change-password')}>
+                  <Ionicons name="lock-closed-outline" size={16} color={colors.accent} />
+                  <Text style={styles.changePasswordText}>Change Password</Text>
+                  <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
+                </Pressable>
                 <View style={styles.editActions}>
                   <Pressable style={styles.cancelButton} onPress={() => setEditing(false)}>
                     <Text style={styles.cancelButtonText}>Cancel</Text>
@@ -807,6 +832,7 @@ const styles = StyleSheet.create({
   roleBadge: { ...type.labelStrong, color: colors.accent, letterSpacing: 0.4, marginTop: 4 },
   businessName: { ...type.body, fontSize: fontSize.sm, color: colors.textSecondary, marginTop: 2 },
   contactText: { ...type.body, fontSize: fontSize.sm, color: colors.textMuted, marginTop: 2 },
+  bioText: { ...type.body, fontSize: fontSize.sm, color: colors.textSecondary, marginTop: spacing.sm, textAlign: 'center' },
   verifiedBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: spacing.sm },
   verifiedBadgeText: { ...type.labelStrong, color: colors.success },
   verificationPending: { ...type.secondary, fontSize: fontSize.xs, color: colors.textMuted, marginTop: spacing.sm, fontStyle: 'italic' },
@@ -838,6 +864,18 @@ const styles = StyleSheet.create({
     fontSize: fontSize.md,
     color: colors.textPrimary,
   },
+  bioInput: { minHeight: 72, textAlignVertical: 'top' },
+  changePasswordRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
+  },
+  changePasswordText: { ...type.bodyMedium, flex: 1, fontSize: fontSize.sm, color: colors.textPrimary },
   editActions: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.xs },
   cancelButton: {
     flex: 1,
