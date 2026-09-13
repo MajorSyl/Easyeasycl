@@ -13,6 +13,8 @@ export type Profile = {
   business_name: string | null;
   verification_tier: VerificationTier;
   phone_verification_requested_at: string | null;
+  is_founder: boolean;
+  public_email: string | null;
 };
 
 type AuthContextValue = {
@@ -61,7 +63,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const [{ data, error }, { data: phone }] = await Promise.all([
       supabase
         .from('profiles')
-        .select('id, full_name, avatar_url, role, business_name, verification_tier, phone_verification_requested_at')
+        .select('id, full_name, avatar_url, role, business_name, verification_tier, phone_verification_requested_at, is_founder, public_email')
         .eq('id', userId)
         .single(),
       supabase.rpc('get_profile_phone', { profile_id: userId }),

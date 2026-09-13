@@ -11,6 +11,7 @@ import { colors, fontSize, fontWeight, spacing } from '../../constants/theme';
 import { ListingCard } from '../../components/ListingCard';
 import { getOrCreateConversation } from '../../lib/conversations';
 import { initialsFor, roleLabel, verificationBadgeLabel } from '../../lib/format';
+import { VerifiedBadge } from '../../components/VerifiedBadge';
 import type { Profile } from '../../lib/auth-context';
 import type { Listing } from '../../lib/types';
 
@@ -32,7 +33,7 @@ export default function PublicProfileScreen() {
       const [profileRes, listings] = await Promise.all([
         supabase
           .from('profiles')
-          .select('id, full_name, avatar_url, role, business_name, created_at, verification_tier')
+          .select('id, full_name, avatar_url, role, business_name, created_at, verification_tier, is_founder, public_email')
           .eq('id', id)
           .single(),
         supabase
@@ -174,8 +175,15 @@ export default function PublicProfileScreen() {
               </View>
               {isOnline && <View style={styles.onlineDot} />}
             </View>
-            <Text style={styles.name}>{profile.full_name ?? 'Easyfen User'}</Text>
-            {roleLabel(profile.role) && <Text style={styles.role}>{roleLabel(profile.role)}</Text>}
+            <View style={styles.nameRow}>
+              <Text style={styles.name}>{profile.full_name ?? 'Easyfen User'}</Text>
+              {profile.is_founder && <VerifiedBadge size={18} />}
+            </View>
+            {(profile.is_founder || roleLabel(profile.role)) && (
+              <Text style={styles.role}>
+                {profile.is_founder ? 'Systems Developer / Founder' : roleLabel(profile.role)}
+              </Text>
+            )}
             {profile.business_name && <Text style={styles.business}>{profile.business_name}</Text>}
             {verificationBadgeLabel(profile.verification_tier, profile.role) && (
               <View style={styles.verifiedRow}>
@@ -239,6 +247,7 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: colors.background,
   },
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   name: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: colors.textPrimary },
   role: { fontSize: fontSize.xs, fontWeight: fontWeight.bold, color: colors.accent, letterSpacing: 0.4, marginTop: 2 },
   business: { fontSize: fontSize.sm, color: colors.textSecondary, marginTop: 2 },

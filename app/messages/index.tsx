@@ -7,6 +7,7 @@ import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../lib/auth-context';
 import { colors, fontSize, fontWeight, radius, spacing } from '../../constants/theme';
 import { formatMessageTimestamp, initialsFor, roleLabel } from '../../lib/format';
+import { VerifiedBadge } from '../../components/VerifiedBadge';
 import type { OwnerSummary } from '../../lib/types';
 
 type ConversationRow = {
@@ -46,7 +47,7 @@ export default function MessagesScreen() {
     const { data: convRows, error: convError } = await supabase
       .from('conversations')
       .select(
-        'id, participant_one, participant_two, last_message_at, one:profiles!conversations_participant_one_fkey(id, full_name, avatar_url, role), two:profiles!conversations_participant_two_fkey(id, full_name, avatar_url, role)'
+        'id, participant_one, participant_two, last_message_at, one:profiles!conversations_participant_one_fkey(id, full_name, avatar_url, role, is_founder), two:profiles!conversations_participant_two_fkey(id, full_name, avatar_url, role, is_founder)'
       )
       .or(`participant_one.eq.${uid},participant_two.eq.${uid}`)
       .order('last_message_at', { ascending: false });
@@ -166,12 +167,19 @@ export default function MessagesScreen() {
 
             <View style={styles.rowBody}>
               <View style={styles.rowTop}>
-                <Text style={styles.name} numberOfLines={1}>
-                  {item.other.full_name ?? 'Easyfen User'}
-                </Text>
+                <View style={styles.nameRow}>
+                  <Text style={styles.name} numberOfLines={1}>
+                    {item.other.full_name ?? 'Easyfen User'}
+                  </Text>
+                  {item.other.is_founder && <VerifiedBadge size={14} />}
+                </View>
                 <Text style={styles.timestamp}>{formatMessageTimestamp(item.lastMessageAt)}</Text>
               </View>
-              {roleLabel(item.other.role) && <Text style={styles.roleLabel}>{roleLabel(item.other.role)}</Text>}
+              {(item.other.is_founder || roleLabel(item.other.role)) && (
+                <Text style={styles.roleLabel}>
+                  {item.other.is_founder ? 'Systems Developer / Founder' : roleLabel(item.other.role)}
+                </Text>
+              )}
               <Text style={styles.preview} numberOfLines={1}>
                 {item.lastMessage ? `${item.lastMessageIsMine ? 'You: ' : ''}${item.lastMessage}` : 'Say hello 👋'}
               </Text>
@@ -266,7 +274,8 @@ const styles = StyleSheet.create({
   },
   rowBody: { flex: 1 },
   rowTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  name: { flex: 1, fontSize: fontSize.md, fontWeight: fontWeight.bold, color: colors.textPrimary },
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 4, flex: 1 },
+  name: { fontSize: fontSize.md, fontWeight: fontWeight.bold, color: colors.textPrimary },
   timestamp: { fontSize: fontSize.xs, color: colors.textMuted },
   roleLabel: { fontSize: fontSize.xs, fontWeight: fontWeight.bold, color: colors.accent, letterSpacing: 0.4, marginTop: 1 },
   preview: { fontSize: fontSize.sm, color: colors.textSecondary, marginTop: 2 },

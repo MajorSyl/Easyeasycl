@@ -23,6 +23,7 @@ import { recordListingViewed } from '../../lib/recently-viewed';
 import { colors, fontSize, radius, shadow, spacing } from '../../constants/theme';
 import { fontFamily, type } from '../../constants/typography';
 import { FavoriteButton } from '../../components/FavoriteButton';
+import { VerifiedBadge } from '../../components/VerifiedBadge';
 import { NoPhotoPlaceholder } from '../../components/NoPhotoPlaceholder';
 import { LazyPhoto } from '../../components/LazyPhoto';
 import {
@@ -68,7 +69,7 @@ export default function ListingDetailScreen() {
     let cancelled = false;
     supabase
       .from('listings')
-      .select('*, owner:profiles(full_name, avatar_url, role, created_at, verification_tier)')
+      .select('*, owner:profiles(full_name, avatar_url, role, created_at, verification_tier, is_founder)')
       .eq('id', id)
       .eq('is_active', true)
       .single()
@@ -284,9 +285,16 @@ export default function ListingDetailScreen() {
               <Text style={styles.agentAvatarText}>{initialsFor(listing.owner?.full_name ?? null)}</Text>
             </View>
             <View style={styles.agentBody}>
-              <Text style={styles.agentName}>{listing.owner?.full_name ?? 'Easyfen User'}</Text>
+              <View style={styles.agentNameRow}>
+                <Text style={styles.agentName}>{listing.owner?.full_name ?? 'Easyfen User'}</Text>
+                {listing.owner?.is_founder && <VerifiedBadge size={16} />}
+              </View>
               <View style={styles.agentMetaRow}>
-                {roleLabel(listing.owner?.role) && <Text style={styles.agentRole}>{roleLabel(listing.owner?.role)}</Text>}
+                {(listing.owner?.is_founder || roleLabel(listing.owner?.role)) && (
+                  <Text style={styles.agentRole}>
+                    {listing.owner?.is_founder ? 'Systems Developer / Founder' : roleLabel(listing.owner?.role)}
+                  </Text>
+                )}
                 {verifiedLabel && (
                   <View style={styles.agentVerifiedRow}>
                     <Ionicons name="checkmark-circle" size={12} color={colors.success} />
@@ -438,6 +446,7 @@ const styles = StyleSheet.create({
   },
   agentAvatarText: { fontFamily: fontFamily.headlineSemibold, fontSize: fontSize.md, color: colors.accent },
   agentBody: { flex: 1, gap: 2 },
+  agentNameRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   agentName: { ...type.bodyMedium, fontSize: fontSize.md, color: colors.textPrimary },
   agentMetaRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   agentRole: { ...type.labelStrong, color: colors.accent, letterSpacing: 0.4 },

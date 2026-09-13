@@ -28,6 +28,7 @@ import { fontFamily, type } from '../../constants/typography';
 import { daysSince, formatPrice, initialsFor, roleLabel, verificationBadgeLabel } from '../../lib/format';
 import { SelectField, type SelectOption } from '../../components/SelectField';
 import { WebFooter } from '../../components/WebFooter';
+import { VerifiedBadge } from '../../components/VerifiedBadge';
 import type { Profile } from '../../lib/auth-context';
 
 type ListingKind = 'listing';
@@ -389,10 +390,17 @@ export default function ProfileScreen() {
             </Pressable>
             {!editing ? (
               <>
-                <Text style={styles.name}>{profile?.full_name ?? 'Easyfen User'}</Text>
-                {roleLabel(profile?.role) && <Text style={styles.roleBadge}>{roleLabel(profile?.role)}</Text>}
+                <View style={styles.nameRow}>
+                  <Text style={styles.name}>{profile?.full_name ?? 'Easyfen User'}</Text>
+                  {profile?.is_founder && <VerifiedBadge size={18} />}
+                </View>
+                {(profile?.is_founder || roleLabel(profile?.role)) && (
+                  <Text style={styles.roleBadge}>
+                    {profile?.is_founder ? 'Systems Developer / Founder' : roleLabel(profile?.role)}
+                  </Text>
+                )}
                 {profile?.business_name && <Text style={styles.businessName}>{profile.business_name}</Text>}
-                <Text style={styles.contactText}>{session.user.email}</Text>
+                <Text style={styles.contactText}>{profile?.public_email ?? session.user.email}</Text>
                 {profile?.phone && <Text style={styles.contactText}>{profile.phone}</Text>}
 
                 {verificationBadgeLabel(profile?.verification_tier, profile?.role) ? (
@@ -794,6 +802,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   name: { ...type.sectionTitle, fontSize: fontSize.xl, color: colors.textPrimary },
   roleBadge: { ...type.labelStrong, color: colors.accent, letterSpacing: 0.4, marginTop: 4 },
   businessName: { ...type.body, fontSize: fontSize.sm, color: colors.textSecondary, marginTop: 2 },
