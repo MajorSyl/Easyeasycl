@@ -22,7 +22,12 @@ import { sanitizeText } from '../../../lib/sanitize';
 import { colors, fontSize, radius, spacing } from '../../../constants/theme';
 import { PhotoPicker } from '../../../components/PhotoPicker';
 import { SelectField, type SelectOption } from '../../../components/SelectField';
-import type { ListingCategory } from '../../../lib/types';
+import { LocationFields } from '../../../components/LocationFields';
+import { CurrencyToggle } from '../../../components/CurrencyToggle';
+import { coordsForCity } from '../../../constants/locations';
+import { parsePriceInput, sanitizePriceInput } from '../../../lib/format';
+import type { LocationMatch } from '../../../lib/location-match';
+import type { ListingCategory, ListingCurrency } from '../../../lib/types';
 
 type Kind = 'listing' | 'hotel' | 'service';
 
@@ -46,7 +51,10 @@ export default function EditListingScreen() {
   const [loading, setLoading] = useState(true);
   const [title, setTitle] = useState('');
   const [price, setPrice] = useState('');
+  const [priceNote, setPriceNote] = useState('');
+  const [currency, setCurrency] = useState<ListingCurrency>('NLE');
   const [location, setLocation] = useState('');
+  const [locationMatch, setLocationMatch] = useState<LocationMatch | null>(null);
   const [description, setDescription] = useState('');
   const [bedrooms, setBedrooms] = useState('');
   const [category, setCategory] = useState<ListingCategory | null>(null);
@@ -55,6 +63,13 @@ export default function EditListingScreen() {
   const [photos, setPhotos] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [notOwner, setNotOwner] = useState(false);
+  // Baseline captured on load -- if the agent never touches the Location
+  // text, a re-save shouldn't blank out a District/City that was set some
+  // other way before this auto-match feature existed (e.g. a custom "Other"
+  // city typed under the old picker that isn't in today's lookup list).
+  const [initialLocation, setInitialLocation] = useState('');
+  const [initialDistrict, setInitialDistrict] = useState('');
+  const [initialCity, setInitialCity] = useState('');
 
   useEffect(() => {
     if (!id || !kind || !session) return;
@@ -76,7 +91,14 @@ export default function EditListingScreen() {
         }
         setTitle(data.title ?? data.name ?? data.business_name ?? '');
         setPrice(String(data.price ?? data.rate ?? ''));
+        if (kind === 'listing') setPriceNote(data.price_note ?? '');
+        if (kind === 'listing' && (data.currency === 'NLE' || data.currency === 'USD')) setCurrency(data.currency);
+        if (kind === 'listing') {
+          setInitialDistrict(data.district ?? '');
+          setInitialCity(data.city ?? '');
+        }
         setLocation(data.location ?? '');
+        setInitialLocation(data.location ?? '');
         setDescription(data.description ?? '');
         setBedrooms(data.bedrooms != null ? String(data.bedrooms) : '');
         setCategory((data.category as ListingCategory) ?? null);
@@ -91,14 +113,14 @@ export default function EditListingScreen() {
   const canSave =
     title.trim().length > 0 &&
     price.trim().length > 0 &&
-    !Number.isNaN(Number(price)) &&
-    Number(price) > 0 &&
+    !Number.isNaN(parsePriceInput(price)) &&
+    parsePriceInput(price) > 0 &&
     location.trim().length > 0;
 
   async function handleSave() {
     if (!canSave || saving || !session || !id) return;
     setSaving(true);
-    const priceValue = Number(price);
+    const priceValue = parsePriceInput(price);
     const cleanTitle = sanitizeText(title);
     const cleanDescription = sanitizeText(description);
     const cleanLocation = sanitizeText(location);
@@ -106,6 +128,14 @@ export default function EditListingScreen() {
     let error;
 
     if (kind === 'listing') {
+      // Location unchanged + no fresh match -- keep whatever District/City
+      // was already stored rather than blanking it (see initialDistrict/
+      // initialCity comment above). Only flag for admin review when the
+      // agent actually typed something new that still didn't resolve.
+      const locationUnchanged = location.trim() === initialLocation.trim();
+      const resolvedDistrict = locationMatch?.district ?? (locationUnchanged ? initialDistrict : '');
+      const cleanCity = sanitizeText(locationMatch?.city ?? (locationUnchanged ? initialCity : ''));
+      const cityCoords = coordsForCity(cleanCity);
       ({ error } = await supabase
         .from('listings')
         .update({
@@ -113,13 +143,23 @@ export default function EditListingScreen() {
           description: cleanDescription || null,
           category: category ?? undefined,
           price: priceValue,
+          currency,
           price_unit: category === 'daily_hourly' ? rateUnit : null,
+          price_note: priceNote.trim() ? sanitizeText(priceNote) : null,
+          district: resolvedDistrict,
+          city: cleanCity,
           location: cleanLocation,
-          bedrooms: bedrooms.trim() ? Number(bedrooms) : null,
+          latitude: cityCoords?.lat ?? null,
+          longitude: cityCoords?.lng ?? null,
+          bedrooms: category === 'land' ? null : bedrooms.trim() ? Number(bedrooms) : null,
           photos,
         })
         .eq('id', id)
         .eq('owner_id', session.user.id));
+
+      if (!error && !locationMatch && !locationUnchanged) {
+        supabase.from('unmatched_locations').insert({ listing_id: id, location_text: cleanLocation });
+      }
     } else if (kind === 'hotel') {
       ({ error } = await supabase
         .from('hotels')
@@ -207,19 +247,55 @@ export default function EditListingScreen() {
           </Field>
 
           <View style={styles.row}>
-            <Field label="Price (NLE)" style={styles.flex1}>
+            {kind === 'listing' ? (
+              <View style={styles.flex1}>
+                <Text style={styles.fieldLabel}>Price</Text>
+                <View style={styles.priceRow}>
+                  <TextInput
+                    style={[styles.input, styles.priceInput]}
+                    value={price}
+                    onChangeText={(text) => setPrice(sanitizePriceInput(text))}
+                    keyboardType="decimal-pad"
+                    placeholderTextColor={colors.textMuted}
+                  />
+                  <View style={styles.currencyToggleWrap}>
+                    <CurrencyToggle value={currency} onChange={setCurrency} />
+                  </View>
+                </View>
+              </View>
+            ) : (
+              <Field label="Price (NLE)" style={styles.flex1}>
+                <TextInput
+                  style={styles.input}
+                  value={price}
+                  onChangeText={(text) => setPrice(sanitizePriceInput(text))}
+                  keyboardType="decimal-pad"
+                  placeholderTextColor={colors.textMuted}
+                />
+              </Field>
+            )}
+            {kind !== 'listing' && (
+              <Field label="Location" style={styles.flex1}>
+                <TextInput style={styles.input} value={location} onChangeText={setLocation} placeholderTextColor={colors.textMuted} />
+              </Field>
+            )}
+          </View>
+
+          {kind === 'listing' && (
+            <Field label="Price Note (optional)">
               <TextInput
                 style={styles.input}
-                value={price}
-                onChangeText={setPrice}
-                keyboardType="decimal-pad"
+                placeholder="e.g. per town lot, per acre, negotiable"
+                value={priceNote}
+                onChangeText={setPriceNote}
                 placeholderTextColor={colors.textMuted}
               />
             </Field>
-            <Field label="Location" style={styles.flex1}>
-              <TextInput style={styles.input} value={location} onChangeText={setLocation} placeholderTextColor={colors.textMuted} />
-            </Field>
-          </View>
+          )}
+
+          {kind === 'listing' && (
+            <LocationFields location={location} onLocationChange={setLocation} onResolvedChange={setLocationMatch} />
+          )}
 
           {kind === 'listing' && (
             <View style={styles.row}>
@@ -232,15 +308,17 @@ export default function EditListingScreen() {
                   onChange={setCategory}
                 />
               </View>
-              <Field label="Bedrooms" style={styles.flex1}>
-                <TextInput
-                  style={styles.input}
-                  value={bedrooms}
-                  onChangeText={setBedrooms}
-                  keyboardType="number-pad"
-                  placeholderTextColor={colors.textMuted}
-                />
-              </Field>
+              {category !== 'land' && (
+                <Field label="Bedrooms" style={styles.flex1}>
+                  <TextInput
+                    style={styles.input}
+                    value={bedrooms}
+                    onChangeText={setBedrooms}
+                    keyboardType="number-pad"
+                    placeholderTextColor={colors.textMuted}
+                  />
+                </Field>
+              )}
             </View>
           )}
 
@@ -319,8 +397,11 @@ const styles = StyleSheet.create({
     marginBottom: 6,
     textTransform: 'uppercase',
   },
+  // Plain white/card, not the page's blue background -- a form field the
+  // user is actively typing into needs to read as its own clearly-bounded
+  // surface, not a same-toned patch of page.
   input: {
-    backgroundColor: colors.background,
+    backgroundColor: colors.card,
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: radius.md,
@@ -330,6 +411,14 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
   },
   textArea: { minHeight: 90 },
+  priceRow: { flexDirection: 'row', gap: spacing.sm, alignItems: 'flex-start' },
+  // minWidth: 0 overrides the flex item default of min-width: auto -- on
+  // web that sizes a TextInput to its content instead of letting it shrink,
+  // so without it the input claims the row's full width and pushes the
+  // currency toggle out of the visible layout. flexShrink: 0 on the toggle
+  // keeps its fixed width rather than being squeezed toward zero.
+  priceInput: { flex: 1, minWidth: 0 },
+  currencyToggleWrap: { width: 84, flexShrink: 0 },
   saveButton: { backgroundColor: colors.accent, borderRadius: radius.md, paddingVertical: spacing.md, alignItems: 'center' },
   saveButtonDisabled: { backgroundColor: colors.border },
   saveButtonText: { color: '#fff', fontSize: fontSize.md, fontWeight: '700' },

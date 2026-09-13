@@ -21,6 +21,7 @@ import { appAlert } from '../../lib/alert';
 import { sanitizeText } from '../../lib/sanitize';
 import { colors, fontSize, fontWeight, radius, spacing } from '../../constants/theme';
 import { initialsFor, roleLabel } from '../../lib/format';
+import { VerifiedBadge } from '../../components/VerifiedBadge';
 import type { OwnerSummary } from '../../lib/types';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 
@@ -76,7 +77,7 @@ export default function ChatThreadScreen() {
     const { data: conv } = await supabase
       .from('conversations')
       .select(
-        'participant_one, participant_two, one:profiles!conversations_participant_one_fkey(id, full_name, avatar_url, role), two:profiles!conversations_participant_two_fkey(id, full_name, avatar_url, role)'
+        'participant_one, participant_two, one:profiles!conversations_participant_one_fkey(id, full_name, avatar_url, role, is_founder), two:profiles!conversations_participant_two_fkey(id, full_name, avatar_url, role, is_founder)'
       )
       .eq('id', id)
       .single();
@@ -226,10 +227,17 @@ export default function ChatThreadScreen() {
             {otherUser && onlineUserIds.has(otherUser.id) && <View style={styles.onlineDot} />}
           </View>
           <View style={styles.headerBody}>
-            <Text style={styles.headerName} numberOfLines={1}>
-              {otherUser?.full_name ?? 'Easyfen User'}
-            </Text>
-            {roleLabel(otherUser?.role) && <Text style={styles.headerRole}>{roleLabel(otherUser?.role)}</Text>}
+            <View style={styles.headerNameRow}>
+              <Text style={styles.headerName} numberOfLines={1}>
+                {otherUser?.full_name ?? 'Easyfen User'}
+              </Text>
+              {otherUser?.is_founder && <VerifiedBadge size={15} />}
+            </View>
+            {(otherUser?.is_founder || roleLabel(otherUser?.role)) && (
+              <Text style={styles.headerRole}>
+                {otherUser?.is_founder ? 'Systems Developer / Founder' : roleLabel(otherUser?.role)}
+              </Text>
+            )}
           </View>
         </Pressable>
       </View>
@@ -358,6 +366,7 @@ const styles = StyleSheet.create({
     borderColor: colors.card,
   },
   headerBody: { flex: 1 },
+  headerNameRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   headerName: { fontSize: fontSize.md, fontWeight: fontWeight.bold, color: colors.textPrimary },
   headerRole: { fontSize: fontSize.xs, fontWeight: fontWeight.bold, color: colors.accent, letterSpacing: 0.4 },
   listContent: { padding: spacing.lg, gap: spacing.sm, flexGrow: 1 },
@@ -396,9 +405,12 @@ const styles = StyleSheet.create({
     backgroundColor: colors.card,
   },
   composerInputWrap: { flex: 1 },
+  // Plain white/card, not the page's blue background -- a field the user
+  // is actively typing into needs to read as its own clearly-bounded
+  // surface, not a same-toned patch of page.
   composerInput: {
     maxHeight: 100,
-    backgroundColor: colors.background,
+    backgroundColor: colors.card,
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: radius.md,

@@ -2,6 +2,7 @@ import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
 import { colors, fontSize, radius, spacing } from '../constants/theme';
+import { type } from '../constants/typography';
 
 export type SelectOption<T extends string> = { value: T; label: string };
 
@@ -57,9 +58,11 @@ export function SelectField<T extends string>({
 }
 
 const styles = StyleSheet.create({
+  // Uppercase + letter-spacing kept as-is -- matches the field-label
+  // convention used across the Add Listing / Profile forms; only the font
+  // family changes here.
   label: {
-    fontSize: fontSize.xs,
-    fontWeight: '600',
+    ...type.labelStrong,
     color: colors.textMuted,
     letterSpacing: 0.4,
     marginBottom: 6,
@@ -76,8 +79,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.md,
   },
-  valueText: { fontSize: fontSize.md, color: colors.textPrimary },
-  placeholderText: { fontSize: fontSize.md, color: colors.textMuted },
+  valueText: { ...type.body, fontSize: fontSize.md, color: colors.textPrimary },
+  placeholderText: { ...type.body, fontSize: fontSize.md, color: colors.textMuted },
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
   sheet: {
     backgroundColor: colors.card,
@@ -93,6 +96,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xl,
     paddingVertical: spacing.md,
   },
-  optionText: { fontSize: fontSize.md, color: colors.textPrimary },
-  optionTextActive: { color: colors.accent, fontWeight: '600' },
+  optionText: { ...type.body, fontSize: fontSize.md, color: colors.textPrimary },
+  optionTextActive: { ...type.bodyMedium, fontSize: fontSize.md, color: colors.accent },
 });

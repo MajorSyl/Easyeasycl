@@ -1,6 +1,7 @@
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, fontSize, radius, spacing } from '../constants/theme';
+import { colors, radius, spacing } from '../constants/theme';
+import { type } from '../constants/typography';
 import { EdgeFade } from './EdgeFade';
 
 export type PillOption<T extends string> = { value: T; label: string };
@@ -60,6 +61,6 @@ const styles = StyleSheet.create({
   },
   pillActive: { backgroundColor: colors.accent, borderColor: colors.accent },
   pillCheck: { marginRight: 4 },
-  pillText: { fontSize: fontSize.sm, color: colors.textSecondary, fontWeight: '600' },
-  pillTextActive: { color: '#fff', fontWeight: '700' },
+  pillText: { ...type.labelStrong, fontSize: 13, color: colors.textSecondary },
+  pillTextActive: { color: '#fff' },
 });

@@ -1,15 +1,25 @@
 import { Component, useEffect, useRef, useState, type ReactNode } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Stack, router, usePathname } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
+import * as Updates from 'expo-updates';
+import { useFonts } from 'expo-font';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { AuthProvider } from '../lib/auth-context';
 import { FavoritesProvider } from '../lib/favorites-context';
 import { AlertProvider } from '../lib/alert';
+import { SupportButton } from '../components/SupportButton';
 import { colors, fontSize, fontWeight, spacing } from '../constants/theme';
+import { fontsToLoad } from '../constants/typography';
+
+// Screens where the floating Support button would be noise, not a
+// first-run flow to interrupt with it -- also hidden on the Contact
+// Support screen itself, since a shortcut to a screen shouldn't float on
+// top of that same screen.
+const SUPPORT_HIDDEN_ROUTES = new Set(['/splash', '/onboarding', '/auth', '/auth-callback', '/contact-support']);
 
 // Data Saver was removed entirely (it's no longer a setting anywhere in the
 // app) -- this clears the one AsyncStorage/localStorage key it used to
@@ -23,6 +33,38 @@ AsyncStorage.removeItem('easyfen_data_lite_mode').catch(() => {});
 // No-ops safely on web (there's no native splash there to hold open).
 SplashScreen.preventAutoHideAsync().catch(() => {});
 SplashScreen.setOptions({ duration: 400, fade: true });
+
+// expo-updates' own default behavior only *applies* a downloaded update on
+// the *next* cold launch after the one that found it -- from a user's
+// perspective that reads as "it never updates," since force-quitting and
+// reopening once isn't something most people think to do. This checks for
+// and applies a pending update immediately instead, so the newest bundle
+// is live the same time a user opens the app after a new release, not two
+// launches later. No-ops safely on web (there's no update channel there --
+// Vercel just serves the latest build) and in a dev client (no update
+// server configured), and never blocks the UI: a failed check (offline,
+// timeout) just leaves the app running on whatever bundle it already has.
+function useApplyPendingUpdate() {
+  useEffect(() => {
+    if (Platform.OS === 'web' || __DEV__) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const result = await Updates.checkForUpdateAsync();
+        if (cancelled || !result.isAvailable) return;
+        await Updates.fetchUpdateAsync();
+        if (cancelled) return;
+        await Updates.reloadAsync();
+      } catch {
+        // Offline, or the update check/fetch failed -- fine, just keep
+        // running on the currently embedded/cached bundle.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+}
 
 // Shows the actual error on screen instead of silently crash-looping the app,
 // so problems in release builds can be diagnosed from a screenshot.
@@ -76,16 +118,32 @@ export default function RootLayout() {
   const pathname = usePathname();
   const [booting, setBooting] = useState(true);
   const ranOnce = useRef(false);
+  // Errors (a font failing to fetch) still resolve this to a settled state --
+  // falling back to the system font is far better than holding the splash
+  // screen forever.
+  const [fontsLoaded, fontError] = useFonts(fontsToLoad);
+  useApplyPendingUpdate();
 
   useEffect(() => {
     if (ranOnce.current) return;
+    if (!fontsLoaded && !fontError) return;
     ranOnce.current = true;
-    if (pathname === '/') {
+    // usePathname() resolves the initial URL via expo-linking's
+    // getInitialURL(), which returns a Promise even on web -- so it can
+    // still be reporting the default '/' here if that resolution loses
+    // the race against font loading. window.location.pathname has no such
+    // race (it's synchronously correct the instant JS runs), so a fresh
+    // web page load -- e.g. a password-reset or email-confirmation link
+    // landing on /reset-password#access_token=... -- can't get misread as
+    // the bare root and hijacked into /splash, which would go on to
+    // discard the URL (and any recovery tokens in it) entirely.
+    const actualPath = Platform.OS === 'web' ? window.location.pathname : pathname;
+    if (actualPath === '/') {
       router.replace('/splash');
     }
     setBooting(false);
     SplashScreen.hideAsync().catch(() => {});
-  }, [pathname]);
+  }, [pathname, fontsLoaded, fontError]);
 
   return (
     <RootErrorBoundary>
@@ -99,6 +157,7 @@ export default function RootLayout() {
                   <Stack screenOptions={{ headerShown: false }}>
                     <Stack.Screen name="auth" options={{ presentation: 'modal' }} />
                   </Stack>
+                  {!booting && !SUPPORT_HIDDEN_ROUTES.has(pathname) && <SupportButton />}
                   {booting && (
                     <View style={StyleSheet.absoluteFill} pointerEvents="auto">
                       <View style={{ flex: 1, backgroundColor: colors.background }} />

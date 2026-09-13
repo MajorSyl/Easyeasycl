@@ -71,6 +71,18 @@ export async function setVerificationTier(userId: string, tier: string) {
   revalidatePath('/users');
 }
 
+const USER_ROLES = ['user', 'landlord', 'agent', 'agency'];
+
+export async function setUserRole(userId: string, role: string) {
+  const supabase = await createClient();
+  await requireAdmin(supabase);
+  if (!USER_ROLES.includes(role)) throw new Error('Invalid role');
+  const { error } = await supabase.rpc('admin_set_user_role', { target_user_id: userId, new_role: role });
+  if (error) throw error;
+  revalidatePath('/users');
+  revalidatePath(`/users/${userId}`);
+}
+
 export async function setUserSuspended(userId: string, suspended: boolean, reason?: string | null) {
   const supabase = await createClient();
   await requireAdmin(supabase);
@@ -200,6 +212,58 @@ export async function hideReportedItem(
   revalidatePath('/reports');
   revalidatePath('/listings');
   revalidatePath('/');
+}
+
+export async function reviewUnmatchedLocation(id: string) {
+  const supabase = await createClient();
+  await requireAdmin(supabase);
+  await supabase.from('unmatched_locations').update({ reviewed: true }).eq('id', id);
+  revalidatePath('/unmatched-locations');
+}
+
+export async function dismissUnmatchedLocation(id: string) {
+  const supabase = await createClient();
+  await requireAdmin(supabase);
+  await supabase.from('unmatched_locations').delete().eq('id', id);
+  revalidatePath('/unmatched-locations');
+}
+
+const DICTIONARY_TYPES = ['category', 'bedrooms', 'price_intent', 'type_keyword', 'stopword'];
+
+export async function addDictionaryTerm(term: string, language: string, mapsToType: string, mapsToValue: string | null) {
+  const supabase = await createClient();
+  await requireAdmin(supabase);
+  if (!term.trim()) throw new Error('Term is required');
+  if (!['en', 'kri'].includes(language)) throw new Error('Invalid language');
+  if (!DICTIONARY_TYPES.includes(mapsToType)) throw new Error('Invalid type');
+  await supabase.from('search_dictionary').insert({
+    term: term.trim().toLowerCase(),
+    language,
+    maps_to_type: mapsToType,
+    maps_to_value: mapsToValue?.trim() || null,
+  });
+  revalidatePath('/search-dictionary');
+}
+
+export async function deleteDictionaryTerm(id: string) {
+  const supabase = await createClient();
+  await requireAdmin(supabase);
+  await supabase.from('search_dictionary').delete().eq('id', id);
+  revalidatePath('/search-dictionary');
+}
+
+export async function resolveSupportRequest(id: string) {
+  const supabase = await createClient();
+  await requireAdmin(supabase);
+  await supabase.from('support_requests').update({ status: 'resolved', resolved_at: new Date().toISOString() }).eq('id', id);
+  revalidatePath('/support-requests');
+}
+
+export async function reopenSupportRequest(id: string) {
+  const supabase = await createClient();
+  await requireAdmin(supabase);
+  await supabase.from('support_requests').update({ status: 'open', resolved_at: null }).eq('id', id);
+  revalidatePath('/support-requests');
 }
 
 export async function createLead(formData: FormData) {

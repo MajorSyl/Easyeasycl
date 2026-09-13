@@ -33,8 +33,8 @@ export default function PrivacyPolicyScreen() {
             `• Messages: the content of messages you send other users through the Platform's chat.\n` +
             `• Payment verification: if you purchase a paid feature (a featured listing, an agent subscription, or agent verification), we collect the mobile money reference code and a screenshot of your payment confirmation, which you submit for an admin to manually verify. This screenshot may show details from your mobile money app, such as your phone number or account balance — only upload what's needed to confirm the transaction (you can crop the screenshot first).\n` +
             `• Usage data: listings viewed, favorites, saved searches, and interactions on the Platform.\n` +
-            `• Device information: device type, operating system, and unique device identifiers.\n\n` +
-            `We do not collect your location. The Platform does not use GPS or any other location service — "near you" or distance-based results are not currently a feature.`}
+            `• Device information: device type, operating system, and unique device identifiers.\n` +
+            `• Location (optional): if you turn on "Near Me" or tap "Use my location" while browsing, we request your device's GPS coordinates through your device's own permission prompt. This is used only on your device to sort listings by distance and to suggest your city — it is not stored on our servers or shared with other users, and browsing and searching work the same without it.`}
         </Section>
 
         <Section title="3. How We Use Your Information">

@@ -1,14 +1,14 @@
 # Easyfen
 
-A marketplace app for finding and listing properties in Freetown, Sierra Leone. Mobile + web app built with React Native (Expo), backed by Supabase; a separate Next.js dashboard for moderation and admin tasks.
+A nationwide marketplace app for finding and listing properties across Sierra Leone. Mobile + web app built with React Native (Expo), backed by Supabase; a separate Next.js dashboard for moderation and admin tasks.
 
 > The app previously also covered hotels and local services. It's now focused entirely on properties (rent/sale/land). The underlying `hotels`/`services` tables and code still exist but are no longer reachable from the app's UI — see "Where the data lives" below.
 
 ## What's in the app
 
-- **Home** — browse property listings; filter by For Rent / For Sale / Land / Daily-Hourly; save favorites with the heart icon; "Listed X days ago" freshness signal on every card; "Browse by Neighborhood" entry point
-- **Search** — search by name or neighborhood, with an NLE budget filter and price sorting; save a search to get notified when a new listing matches it
-- **Neighborhood browsing** — active listings grouped by known Freetown areas (Aberdeen, Wilberforce, Congo Cross, Lumley, Goderich, and others), each showing a live count
+- **Home** — browse property listings; filter by For Rent / For Sale / Land / Daily-Hourly; save favorites with the heart icon; "Listed X days ago" freshness signal on every card; "Browse by Location" entry point
+- **Search** — search by name, city, or district, with an NLE budget filter, price sorting, and a "Near Me" mode that sorts by distance from your device location; save a search to get notified when a new listing matches it
+- **Browse by Location** — every District → City/Town in Sierra Leone is browsable (not just ones with listings), defaulting to the user's own city when location permission is granted; drilling into a city further filters by the specific Location within it
 - **Saved Searches** — manage your saved searches from Profile; delete ones you no longer want
 - **Notifications** — unread messages and new saved-search matches in one feed; tapping a match opens the listing and marks it read
 - **Add Listing** — post a property with up to 10 compressed photos
@@ -37,7 +37,7 @@ app/                    Expo Router screens (the mobile + web app)
 components/              Shared UI (ListingCard, Logo, PhotoPicker, ...)
 lib/                     Supabase client, auth context, upload, sanitize, errors
 constants/theme.ts       Design tokens (colors, spacing, type scale, shadows)
-constants/neighborhoods.ts  Known Freetown neighborhood names used for browsing
+constants/locations.ts   Sierra Leone District -> City/Town hierarchy + town-centroid coordinates
 assets/                  App icon, adaptive icon layers, favicon, splash
 assets/brand/            Source SVGs + exported sizes for the logo/icon
 apps/admin/               Separate Next.js app — moderation dashboard (its own package.json)
