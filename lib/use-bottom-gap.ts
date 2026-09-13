@@ -1,4 +1,5 @@
 import { Platform } from 'react-native';
+import { usePathname } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // Bottom padding that stays above the Android system navigation bar even on
@@ -25,4 +26,28 @@ export const TAB_BAR_CONTENT_HEIGHT = 58;
 // never renders underneath the fixed tab bar.
 export function useTabBarGap() {
   return useBottomGap() + TAB_BAR_CONTENT_HEIGHT;
+}
+
+// Routes that render the bottom tab bar -- any fixed/floating element
+// (HelpWidget, SupportButton) needs extra bottom clearance above it there,
+// and less everywhere else. Shared so the two floating buttons agree on
+// exactly which screens need that extra clearance.
+export const TAB_ROUTES = new Set(['/', '/search', '/add', '/profile']);
+
+// The Property Detail screen's own sticky footer (price + Contact Agent),
+// measured on-screen -- app/listing/[id].tsx's footer isn't a fixed
+// constant like the tab bar, but this is close enough that a floating
+// button stacked above it never sits on top of that bar's content.
+const DETAIL_FOOTER_HEIGHT = 74;
+
+// How far above the true bottom edge a floating action button (HelpWidget,
+// SupportButton) needs to sit on the current screen, so it never overlaps
+// the bottom tab bar or a screen's own sticky footer bar. Centralized here
+// so both buttons agree on exactly the same clearance per route.
+export function useFabClearance() {
+  const pathname = usePathname();
+  const bottomGap = useBottomGap();
+  if (TAB_ROUTES.has(pathname)) return bottomGap + TAB_BAR_CONTENT_HEIGHT;
+  if (pathname.startsWith('/listing/')) return bottomGap + DETAIL_FOOTER_HEIGHT;
+  return bottomGap;
 }

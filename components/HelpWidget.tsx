@@ -1,27 +1,27 @@
 import { useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { usePathname } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, fontSize, radius, shadow, spacing } from '../constants/theme';
 import { type } from '../constants/typography';
-import { useBottomGap, TAB_BAR_CONTENT_HEIGHT } from '../lib/use-bottom-gap';
+import { useFabClearance } from '../lib/use-bottom-gap';
 import { FAQ_ENTRIES, type FaqEntry } from '../constants/faq';
 
-// Routes that render the bottom tab bar -- the floating button needs extra
-// clearance above it there, and less everywhere else.
-const TAB_ROUTES = new Set(['/', '/search', '/add', '/profile']);
+// Stacked directly above SupportButton (components/SupportButton.tsx), which
+// occupies the standard bottom-right FAB slot -- this widget sits higher and
+// slightly further from the edge so the two floating buttons never touch.
+const FAB_SIZE = 52;
+const STACK_OFFSET = FAB_SIZE + spacing.md;
 
 // Decision-tree Help widget: tappable pre-written questions, never a free
 // text box and never a network call -- see constants/faq.ts for the actual
 // content, which is the only file that needs touching to add a question.
+// Deliberately separate from SupportButton's direct-to-a-human shortcut --
+// this stays self-serve only, see SupportButton.tsx for why they're split.
 export function HelpWidget() {
-  const pathname = usePathname();
-  const bottomGap = useBottomGap();
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<FaqEntry | null>(null);
 
-  const fabBottom = bottomGap + (TAB_ROUTES.has(pathname) ? TAB_BAR_CONTENT_HEIGHT : 0) + spacing.lg;
+  const fabBottom = useFabClearance() + spacing.lg + STACK_OFFSET;
 
   function openWidget() {
     setSelected(null);
@@ -35,7 +35,7 @@ export function HelpWidget() {
   return (
     <>
       <Pressable
-        style={[styles.fab, { bottom: fabBottom }]}
+        style={[styles.fab, { bottom: fabBottom, right: spacing.lg + spacing.sm }]}
         onPress={openWidget}
         accessibilityRole="button"
         accessibilityLabel="Help"

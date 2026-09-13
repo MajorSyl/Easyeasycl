@@ -216,6 +216,20 @@ export async function dismissUnmatchedLocation(id: string) {
   revalidatePath('/unmatched-locations');
 }
 
+export async function resolveSupportRequest(id: string) {
+  const supabase = await createClient();
+  await requireAdmin(supabase);
+  await supabase.from('support_requests').update({ status: 'resolved', resolved_at: new Date().toISOString() }).eq('id', id);
+  revalidatePath('/support-requests');
+}
+
+export async function reopenSupportRequest(id: string) {
+  const supabase = await createClient();
+  await requireAdmin(supabase);
+  await supabase.from('support_requests').update({ status: 'open', resolved_at: null }).eq('id', id);
+  revalidatePath('/support-requests');
+}
+
 export async function createLead(formData: FormData) {
   const supabase = await createClient();
   await requireAdmin(supabase);
