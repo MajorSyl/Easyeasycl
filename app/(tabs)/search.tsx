@@ -11,16 +11,9 @@ import { friendlyErrorMessage } from '../../lib/errors';
 import { appAlert } from '../../lib/alert';
 import { ListingCard } from '../../components/ListingCard';
 import { CurrencyFilterToggle, type CurrencyFilter } from '../../components/CurrencyFilterToggle';
-import { VoiceSearchButton, isVoiceSearchSupported, type SearchLanguage } from '../../components/VoiceSearchButton';
-import { LanguageToggle } from '../../components/LanguageToggle';
 import { distanceKm, formatDistance } from '../../lib/geo';
 import { useDeviceLocation } from '../../lib/use-device-location';
-import { parseSearchQuery, type ParsedSearchQuery } from '../../lib/search-query-parser';
-import { refreshDictionary } from '../../lib/search-dictionary';
-import { detectLanguage } from '../../lib/lang-detect';
-import { matchLocationText } from '../../lib/location-match';
-import { resolvePriceBand, findAlternatives, type AlternativeSuggestion } from '../../lib/search-stats';
-import { FOLLOW_UP_SCRIPT, nextFollowUp, type FollowUpKey } from '../../lib/search-followup';
+import { parseSearchQuery } from '../../lib/search-query-parser';
 import { categoryLabel, parsePriceInput } from '../../lib/format';
 import type { Listing } from '../../lib/types';
 
@@ -34,7 +27,6 @@ type SearchResult = {
 };
 
 type SortMode = 'newest' | 'price_asc' | 'price_desc';
-type FilterKey = 'category' | 'bedrooms' | 'locationTerm' | 'priceIntent';
 
 const sortLabels: Record<SortMode, string> = {
   newest: 'Newest',
@@ -50,14 +42,6 @@ const priceSortModes: SortMode[] = ['price_asc', 'price_desc'];
 
 function escapeForFilter(text: string) {
   return text.replace(/[,()%]/g, '');
-}
-
-function filterChipLabel(key: FilterKey, parsed: ParsedSearchQuery): string {
-  if (key === 'category' && parsed.category) return categoryLabel(parsed.category);
-  if (key === 'bedrooms' && parsed.bedrooms != null) return `${parsed.bedrooms} bed`;
-  if (key === 'locationTerm' && parsed.locationTerm) return parsed.locationTerm;
-  if (key === 'priceIntent' && parsed.priceIntent) return parsed.priceIntent === 'asc' ? 'Affordable' : 'Premium';
-  return '';
 }
 
 export default function SearchScreen() {
@@ -79,38 +63,16 @@ export default function SearchScreen() {
   const [searchError, setSearchError] = useState(false);
   const [savingSearch, setSavingSearch] = useState(false);
   const [nearMe, setNearMe] = useState(false);
-  const [parsed, setParsed] = useState<ParsedSearchQuery | null>(null);
-  const [unsupportedLanguageNotice, setUnsupportedLanguageNotice] = useState(false);
-  const [language, setLanguage] = useState<SearchLanguage>('en');
-  const [clearedFilters, setClearedFilters] = useState<Set<FilterKey>>(new Set());
-  const [manualMode, setManualMode] = useState(false);
-  const [skippedFollowUps, setSkippedFollowUps] = useState<Set<FollowUpKey>>(new Set());
-  const [alternative, setAlternative] = useState<AlternativeSuggestion>(null);
-  const [notifyRequested, setNotifyRequested] = useState(false);
+  const [understood, setUnderstood] = useState<string | null>(null);
   const { coords, requesting: requestingLocation, request: requestLocation } = useDeviceLocation();
-
-  // Loads the admin-editable English/Krio synonym dictionary from Supabase
-  // in the background -- search keeps working on the bundled defaults
-  // (lib/search-dictionary.ts) until this lands, and never blocks on it.
-  useEffect(() => {
-    refreshDictionary();
-  }, []);
-
-  useEffect(() => {
-    // A fresh query invalidates any filter the user removed by tapping a
-    // chip's X on the *previous* result set, and re-opens the follow-up
-    // conversation for the new question.
-    setClearedFilters(new Set());
-    setSkippedFollowUps(new Set());
-  }, [query]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      runSearch(query, budget, currencyFilter, sortMode, nearMe ? coords : null, clearedFilters);
+      runSearch(query, budget, currencyFilter, sortMode, nearMe ? coords : null);
     }, 300);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query, budget, currencyFilter, sortMode, nearMe, coords, clearedFilters]);
+  }, [query, budget, currencyFilter, sortMode, nearMe, coords]);
 
   async function toggleNearMe() {
     if (nearMe) {
@@ -131,55 +93,16 @@ export default function SearchScreen() {
     }
   }
 
-  function handleVoiceResult(text: string) {
-    setQuery((prev) => (prev.trim() ? `${prev.trim()} ${text}` : text));
-  }
-
-  function handleQuickReply(value: string, key: FollowUpKey) {
-    if (value) setQuery((prev) => (prev.trim() ? `${prev.trim()} ${value}` : value));
-    else setSkippedFollowUps((prev) => new Set(prev).add(key));
-  }
-
-  function dismissConversation() {
-    setManualMode(true);
-    setSkippedFollowUps(new Set(FOLLOW_UP_SCRIPT.map((s) => s.key)));
-  }
-
-  function removeChip(key: FilterKey) {
-    setClearedFilters((prev) => new Set(prev).add(key));
-  }
-
   async function runSearch(
     text: string,
     budgetText: string,
     currency: CurrencyFilter,
     sort: SortMode,
-    nearCoords: { lat: number; lng: number } | null,
-    cleared: Set<FilterKey>
+    nearCoords: { lat: number; lng: number } | null
   ) {
     setLoading(true);
-    setAlternative(null);
-    setNotifyRequested(false);
     const trimmed = text.trim();
     const maxPrice = currency !== 'ALL' && budgetText.trim() ? parsePriceInput(budgetText) : null;
-
-    // Rule-based language check (Phase 2/6): franc + a Krio marker-word
-    // heuristic, not an AI call. A clearly-unsupported language shows a
-    // friendly notice and skips running a nonsensical search rather than
-    // silently returning garbage results.
-    if (trimmed) {
-      const detected = detectLanguage(trimmed);
-      supabase
-        .from('search_query_logs')
-        .insert({ user_id: session?.user.id ?? null, raw_query: trimmed, detected_language: detected, matched_filter_count: 0, result_count: 0 })
-        .then(() => {});
-      if (detected === 'other') {
-        setUnsupportedLanguageNotice(true);
-        setLoading(false);
-        return;
-      }
-    }
-    setUnsupportedLanguageNotice(false);
 
     let listingsQuery = supabase
       .from('listings')
@@ -192,57 +115,49 @@ export default function SearchScreen() {
     // maps to category/bedrooms/location filters plus a price sort, all
     // from a lookup table + regex -- see lib/search-query-parser.ts. Falls
     // straight back to the old plain-text search when nothing matches.
-    const parsedQuery = trimmed ? parseSearchQuery(trimmed) : null;
-    setParsed(parsedQuery);
+    const parsed = trimmed ? parseSearchQuery(trimmed) : null;
 
-    const useCategory = parsedQuery?.category && !cleared.has('category') ? parsedQuery.category : null;
-    const useBedrooms = parsedQuery?.bedrooms != null && !cleared.has('bedrooms') ? parsedQuery.bedrooms : null;
-    const useLocation = parsedQuery?.locationTerm && !cleared.has('locationTerm') ? parsedQuery.locationTerm : null;
-    const usePriceIntent = parsedQuery?.priceIntent && !cleared.has('priceIntent') ? parsedQuery.priceIntent : null;
+    if (parsed?.matchedAnything) {
+      const summaryParts: string[] = [];
+      if (parsed.category) summaryParts.push(categoryLabel(parsed.category));
+      for (const kw of parsed.keywordTerms) summaryParts.push(kw.charAt(0).toUpperCase() + kw.slice(1));
+      if (parsed.bedrooms != null) summaryParts.push(`${parsed.bedrooms} bed`);
+      if (parsed.locationTerm) summaryParts.push(parsed.locationTerm);
+      if (parsed.priceIntent) summaryParts.push(parsed.priceIntent === 'asc' ? 'lowest price first' : 'highest price first');
+      setUnderstood(summaryParts.join(' · '));
 
-    if (parsedQuery?.matchedAnything) {
-      if (useCategory) listingsQuery = listingsQuery.eq('category', useCategory);
-      if (useBedrooms != null) listingsQuery = listingsQuery.eq('bedrooms', useBedrooms);
-      if (useLocation) {
-        const loc = escapeForFilter(useLocation);
+      if (parsed.category) listingsQuery = listingsQuery.eq('category', parsed.category);
+      if (parsed.bedrooms != null) listingsQuery = listingsQuery.eq('bedrooms', parsed.bedrooms);
+      if (parsed.locationTerm) {
+        const loc = escapeForFilter(parsed.locationTerm);
         listingsQuery = listingsQuery.or(`city.ilike.%${loc}%,district.ilike.%${loc}%,location.ilike.%${loc}%`);
       }
-      for (const kw of parsedQuery.keywordTerms) {
+      for (const kw of parsed.keywordTerms) {
         const safe = escapeForFilter(kw);
         listingsQuery = listingsQuery.or(`title.ilike.%${safe}%,description.ilike.%${safe}%`);
       }
-      if (parsedQuery.leftoverText) {
-        const safe = escapeForFilter(parsedQuery.leftoverText);
+      if (parsed.leftoverText) {
+        const safe = escapeForFilter(parsed.leftoverText);
         listingsQuery = listingsQuery.or(
           `title.ilike.%${safe}%,location.ilike.%${safe}%,city.ilike.%${safe}%,district.ilike.%${safe}%`
         );
       }
-    } else if (trimmed) {
-      const term = escapeForFilter(trimmed);
-      // Nationwide: a district or city name (e.g. "Bo") matches just as
-      // well as a neighborhood-level location or a title keyword.
-      listingsQuery = listingsQuery.or(
-        `title.ilike.%${term}%,location.ilike.%${term}%,city.ilike.%${term}%,district.ilike.%${term}%`
-      );
+    } else {
+      setUnderstood(null);
+      if (trimmed) {
+        const term = escapeForFilter(trimmed);
+        // Nationwide: a district or city name (e.g. "Bo") matches just as
+        // well as a neighborhood-level location or a title keyword.
+        listingsQuery = listingsQuery.or(
+          `title.ilike.%${term}%,location.ilike.%${term}%,city.ilike.%${term}%,district.ilike.%${term}%`
+        );
+      }
     }
     if (currency !== 'ALL') {
       listingsQuery = listingsQuery.eq('currency', currency);
     }
     if (maxPrice && !Number.isNaN(maxPrice)) {
       listingsQuery = listingsQuery.lte('price', maxPrice);
-    } else if (usePriceIntent && currency !== 'ALL') {
-      // "Affordable"/"cheap"/"luxury" resolve to a real calculated price
-      // band from this platform's own listing_stats (Phase 5), not a fixed
-      // guess -- scoped to the matched district/category when known.
-      const resolvedLoc = useLocation ? matchLocationText(useLocation) : null;
-      const band = await resolvePriceBand(usePriceIntent, {
-        district: resolvedLoc?.district ?? null,
-        category: useCategory,
-        currency,
-      });
-      if (band != null) {
-        listingsQuery = usePriceIntent === 'asc' ? listingsQuery.lte('price', band) : listingsQuery.gte('price', band);
-      }
     }
 
     // Near Me re-sorts by distance client-side, so pull a bigger pool than
@@ -276,7 +191,7 @@ export default function SearchScreen() {
     // currency is selected -- same rule as the manual sort menu, comparing
     // raw price numbers across currencies is meaningless.
     const effectiveSort: SortMode =
-      usePriceIntent && currency !== 'ALL' ? (usePriceIntent === 'asc' ? 'price_asc' : 'price_desc') : sort;
+      parsed?.priceIntent && currency !== 'ALL' ? (parsed.priceIntent === 'asc' ? 'price_asc' : 'price_desc') : sort;
 
     if (nearCoords) {
       // Near Me overrides the picked sort mode -- closest first, listings
@@ -292,44 +207,6 @@ export default function SearchScreen() {
 
     setResults(combined);
     setLoading(false);
-
-    // Zero results never end at a bare dead end (Phase 6.22): try nearby
-    // locations with the same type/bedrooms, then the same location with
-    // different type/bedrooms, before falling back to the "notify me" capture.
-    if (combined.length === 0 && trimmed && parsedQuery?.matchedAnything) {
-      const resolvedLoc = useLocation ? matchLocationText(useLocation) : null;
-      const alt = await findAlternatives({
-        district: resolvedLoc?.district ?? null,
-        category: useCategory,
-        bedrooms: useBedrooms,
-        currency: currency === 'ALL' ? 'NLE' : currency,
-      });
-      setAlternative(alt);
-    }
-  }
-
-  async function requestNotify() {
-    if (!session) {
-      router.push('/auth');
-      return;
-    }
-    const resolvedLoc = parsed?.locationTerm ? matchLocationText(parsed.locationTerm) : null;
-    const { error } = await supabase.from('search_notify_requests').insert({
-      user_id: session.user.id,
-      contact: session.user.email,
-      category: parsed?.category ?? null,
-      bedrooms: parsed?.bedrooms ?? null,
-      district: resolvedLoc?.district ?? null,
-      city: resolvedLoc?.city || null,
-      max_price: budget.trim() ? parsePriceInput(budget) : null,
-      currency: currencyFilter === 'ALL' ? null : currencyFilter,
-    });
-    if (error) {
-      appAlert('Could not save', friendlyErrorMessage(error));
-      return;
-    }
-    setNotifyRequested(true);
-    appAlert("You're on the list", "We'll notify you when a matching listing is posted.");
   }
 
   const resultCountLabel = useMemo(
@@ -365,30 +242,6 @@ export default function SearchScreen() {
     appAlert('Search saved', "We'll notify you when a new listing matches this search.");
   }
 
-  const filterChips: FilterKey[] = parsed
-    ? (['category', 'bedrooms', 'locationTerm', 'priceIntent'] as FilterKey[]).filter((key) => {
-        if (clearedFilters.has(key)) return false;
-        if (key === 'category') return !!parsed.category;
-        if (key === 'bedrooms') return parsed.bedrooms != null;
-        if (key === 'locationTerm') return !!parsed.locationTerm;
-        if (key === 'priceIntent') return !!parsed.priceIntent;
-        return false;
-      })
-    : [];
-
-  const followUp =
-    !manualMode && query.trim() && parsed
-      ? nextFollowUp(
-          {
-            category: clearedFilters.has('category') ? null : parsed.category,
-            locationTerm: clearedFilters.has('locationTerm') ? null : parsed.locationTerm,
-            bedrooms: clearedFilters.has('bedrooms') ? null : parsed.bedrooms,
-            priceIntent: clearedFilters.has('priceIntent') ? null : parsed.priceIntent,
-          },
-          skippedFollowUps
-        )
-      : null;
-
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.header}>
@@ -396,7 +249,7 @@ export default function SearchScreen() {
           <Ionicons name="search" size={18} color={colors.textMuted} />
           <TextInput
             style={styles.searchInput}
-            placeholder="Try 'cheap 2 bedroom in Bo' or voice search"
+            placeholder="Search Bo, Freetown, Makeni..."
             placeholderTextColor={colors.textMuted}
             value={query}
             onChangeText={setQuery}
@@ -412,14 +265,6 @@ export default function SearchScreen() {
               <Ionicons name="close-circle" size={18} color={colors.textMuted} />
             </Pressable>
           )}
-          {isVoiceSearchSupported() && <VoiceSearchButton language={language} onResult={handleVoiceResult} />}
-        </View>
-
-        <View style={styles.langRow}>
-          <LanguageToggle value={language} onChange={setLanguage} />
-          <Pressable onPress={() => setManualMode((m) => !m)} hitSlop={8}>
-            <Text style={styles.manualLink}>{manualMode ? 'Show smart search' : 'Switch to manual filters'}</Text>
-          </Pressable>
         </View>
 
         <CurrencyFilterToggle value={currencyFilter} onChange={handleCurrencyChange} />
@@ -484,55 +329,8 @@ export default function SearchScreen() {
           </Pressable>
         </View>
 
-        {unsupportedLanguageNotice && (
-          <View style={styles.noticeBox}>
-            <Ionicons name="information-circle-outline" size={16} color={colors.accent} />
-            <Text style={styles.noticeText}>
-              Easyfen currently supports English and Krio. Please try rephrasing your search.
-            </Text>
-          </View>
-        )}
-
-        {!manualMode && followUp && (
-          <View style={styles.followUpCard}>
-            <Text style={styles.followUpQuestion}>{followUp.question}</Text>
-            <View style={styles.quickReplyRow}>
-              {followUp.quickReplies.map((qr) => (
-                <Pressable
-                  key={qr.label}
-                  style={styles.quickReplyChip}
-                  onPress={() => handleQuickReply(qr.value, followUp.key)}
-                >
-                  <Text style={styles.quickReplyText}>{qr.label}</Text>
-                </Pressable>
-              ))}
-            </View>
-            <Pressable style={styles.showResultsButton} onPress={dismissConversation}>
-              <Text style={styles.showResultsButtonText}>Just show me results</Text>
-            </Pressable>
-          </View>
-        )}
-
-        {query.trim().length > 0 && (
-          <Text style={styles.searchForText} numberOfLines={1}>
-            Search results for: "{query.trim()}"
-          </Text>
-        )}
-
-        {filterChips.length > 0 && (
-          <View style={styles.chipsRow}>
-            {filterChips.map((key) => (
-              <View key={key} style={styles.chip}>
-                <Text style={styles.chipText}>{filterChipLabel(key, parsed!)}</Text>
-                <Pressable onPress={() => removeChip(key)} hitSlop={8} accessibilityRole="button" accessibilityLabel={`Remove ${filterChipLabel(key, parsed!)} filter`}>
-                  <Ionicons name="close" size={13} color={colors.accent} />
-                </Pressable>
-              </View>
-            ))}
-          </View>
-        )}
-
         <Text style={styles.resultCount}>{loading ? 'Searching...' : resultCountLabel}</Text>
+        {understood && <Text style={styles.understoodText}>Understood as: {understood}</Text>}
       </View>
 
       {loading ? (
@@ -557,45 +355,14 @@ export default function SearchScreen() {
                 size={36}
                 color={colors.textMuted}
               />
-              {searchError ? (
-                <Text style={styles.emptyStateText}>Couldn't load results. Check your connection and try again.</Text>
-              ) : alternative?.kind === 'other_location' ? (
-                <>
-                  <Text style={styles.emptyStateText}>
-                    No exact matches yet, but there are listings in {alternative.locations.join(', ')}.
-                  </Text>
-                  <Pressable style={styles.emptyCta} onPress={() => setQuery(alternative.locations[0])}>
-                    <Text style={styles.emptyCtaText}>Show {alternative.locations[0]} listings</Text>
-                  </Pressable>
-                </>
-              ) : alternative?.kind === 'other_filters' ? (
-                <>
-                  <Text style={styles.emptyStateText}>
-                    No exact match, but {alternative.district} has {categoryLabel(alternative.category as any)}
-                    {alternative.bedrooms != null ? ` (${alternative.bedrooms} bed)` : ''} listings.
-                  </Text>
-                  <Pressable
-                    style={styles.emptyCta}
-                    onPress={() => setQuery(`${alternative.category} in ${alternative.district}`)}
-                  >
-                    <Text style={styles.emptyCtaText}>Show those instead</Text>
-                  </Pressable>
-                </>
-              ) : query.trim() ? (
-                <>
-                  <Text style={styles.emptyStateText}>No matches yet for "{query.trim()}".</Text>
-                  {notifyRequested ? (
-                    <Text style={styles.emptyStateText}>We'll let you know when something matches.</Text>
-                  ) : (
-                    <Pressable style={styles.emptyCta} onPress={requestNotify}>
-                      <Text style={styles.emptyCtaText}>Notify me when available</Text>
-                    </Pressable>
-                  )}
-                </>
-              ) : (
-                <Text style={styles.emptyStateText}>No results. Try a different search or budget.</Text>
-              )}
-              {!searchError && !alternative && !query.trim() && (
+              <Text style={styles.emptyStateText}>
+                {searchError
+                  ? "Couldn't load results. Check your connection and try again."
+                  : query.trim()
+                    ? `No listings found for "${query.trim()}" yet — check back soon, or be the first to list a property here!`
+                    : 'No results. Try a different search or budget.'}
+              </Text>
+              {!searchError && (
                 <Pressable style={styles.emptyCta} onPress={() => router.push('/add')}>
                   <Text style={styles.emptyCtaText}>List Your Property</Text>
                 </Pressable>
@@ -653,48 +420,6 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   searchInput: { flex: 1, fontSize: fontSize.sm, color: colors.textPrimary },
-  langRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  manualLink: { fontSize: fontSize.xs, color: colors.accent, fontWeight: fontWeight.semibold, textDecorationLine: 'underline' },
-  noticeBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    backgroundColor: colors.accentSoft,
-    borderRadius: radius.md,
-    padding: spacing.sm,
-  },
-  noticeText: { flex: 1, fontSize: fontSize.xs, color: colors.textSecondary },
-  followUpCard: {
-    backgroundColor: colors.card,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: spacing.md,
-    gap: spacing.sm,
-  },
-  followUpQuestion: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: colors.textPrimary },
-  quickReplyRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  quickReplyChip: {
-    backgroundColor: colors.accentSoft,
-    borderRadius: radius.pill,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 6,
-  },
-  quickReplyText: { fontSize: fontSize.xs, fontWeight: fontWeight.semibold, color: colors.accent },
-  showResultsButton: { alignSelf: 'flex-start' },
-  showResultsButtonText: { fontSize: fontSize.xs, color: colors.textMuted, textDecorationLine: 'underline' },
-  searchForText: { fontSize: fontSize.xs, color: colors.textSecondary, fontStyle: 'italic' },
-  chipsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-  chip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: colors.accentSoft,
-    borderRadius: radius.pill,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-  },
-  chipText: { fontSize: fontSize.xs, fontWeight: fontWeight.semibold, color: colors.accent },
   nearMeButton: {
     flexDirection: 'row',
     alignSelf: 'flex-start',
@@ -737,6 +462,7 @@ const styles = StyleSheet.create({
   },
   sortButtonDisabled: { opacity: 0.5 },
   resultCount: { fontSize: fontSize.sm, color: colors.textSecondary, fontWeight: fontWeight.semibold, marginTop: 2 },
+  understoodText: { fontSize: fontSize.xs, color: colors.accentStrong, marginTop: 2 },
   loadingWrap: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   listContent: { padding: spacing.lg, paddingTop: spacing.md, gap: spacing.md },
   emptyState: { paddingTop: spacing.xxl, alignItems: 'center', gap: spacing.md, paddingHorizontal: spacing.xl },

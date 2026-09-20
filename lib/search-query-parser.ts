@@ -1,5 +1,4 @@
 import { SIERRA_LEONE_DISTRICTS } from '../constants/locations';
-import { getDictionarySync } from './search-dictionary';
 import type { ListingCategory } from './types';
 
 export type PriceIntent = 'asc' | 'desc' | null;
@@ -21,13 +20,41 @@ export type ParsedSearchQuery = {
   // True once any rule below actually matched something. When false, the
   // caller should fall back to today's plain "search everything" behavior.
   matchedAnything: boolean;
-  // How many distinct filter categories matched (category, bedrooms,
-  // location, price intent, >=1 keyword each count once) -- used for
-  // ranking near-matches and for the missing-filter follow-up flow.
-  matchedFilterCount: number;
 };
 
-const BEDROOM_PATTERN = /(\d+)\s*[- ]?\s*(?:bed(?:room)?s?|rum)\b/i;
+// Cheap/expensive intent -- combined with an already-selected currency
+// (comparing raw price numbers across currencies is meaningless, same rule
+// the rest of Search already follows), this becomes a price sort.
+const CHEAP_WORDS = ['cheap', 'affordable', 'budget', 'low cost', 'low-cost', 'inexpensive'];
+const LUXURY_WORDS = ['luxury', 'luxurious', 'high end', 'high-end', 'premium', 'expensive', 'upscale'];
+
+// Transaction-type words -> the real `category` column.
+const CATEGORY_WORDS: { words: string[]; category: ListingCategory }[] = [
+  { words: ['for rent', 'to rent', 'to let', 'rent', 'rental'], category: 'for_rent' },
+  { words: ['for sale', 'to buy', 'sale', 'buy'], category: 'for_sale' },
+  { words: ['land', 'plot', 'plot of land'], category: 'land' },
+  { words: ['daily', 'hourly', 'per day', 'per hour', 'short stay', 'short let'], category: 'daily_hourly' },
+];
+
+// Physical-type words -- there's no dedicated column for these, so they're
+// matched against title/description instead of a filter column.
+const TYPE_KEYWORDS = [
+  'apartment',
+  'flat',
+  'house',
+  'bungalow',
+  'duplex',
+  'self contained',
+  'self-contained',
+  'studio',
+  'bedsitter',
+  'room',
+  'compound',
+  'mansion',
+  'townhouse',
+];
+
+const BEDROOM_PATTERN = /(\d+)\s*[- ]?\s*bed(?:room)?s?\b/i;
 
 function escapeRegExp(text: string) {
   return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -56,28 +83,12 @@ function stripFirstMatch(text: string, pattern: RegExp): { text: string; match: 
   return { text: (text.slice(0, m.index) + ' ' + text.slice((m.index ?? 0) + m[0].length)).replace(/\s+/g, ' ').trim(), match: m[0] };
 }
 
-// Rule-based, no AI/API involved -- maps common natural phrasing (English or
-// Krio, including mixed sentences) onto the app's real filters, falling back
-// to plain text search when nothing recognizable is found. The word lists
-// driving category/price-intent/type-keyword matching come from
-// search-dictionary.ts (Supabase-backed, admin-editable); only the
-// bedroom-count regex and location-alias list are structural and stay here.
+// Rule-based, no AI/API involved -- maps common natural phrasing ("cheap 2
+// bedroom house in Bo") onto the app's real filters, falling back to plain
+// text search when nothing recognizable is found.
 export function parseSearchQuery(rawText: string): ParsedSearchQuery {
   let working = ` ${rawText.toLowerCase()} `;
   let matchedAnything = false;
-  let matchedFilterCount = 0;
-
-  const dictionary = getDictionarySync();
-  const categoryTerms = dictionary
-    .filter((e) => e.mapsToType === 'category' && e.mapsToValue)
-    .sort((a, b) => b.term.length - a.term.length);
-  const priceIntentTerms = dictionary
-    .filter((e) => e.mapsToType === 'price_intent' && e.mapsToValue)
-    .sort((a, b) => b.term.length - a.term.length);
-  const typeKeywordTerms = dictionary
-    .filter((e) => e.mapsToType === 'type_keyword')
-    .map((e) => e.term)
-    .sort((a, b) => b.length - a.length);
 
   // Bedrooms
   let bedrooms: number | null = null;
@@ -87,49 +98,57 @@ export function parseSearchQuery(rawText: string): ParsedSearchQuery {
       bedrooms = parseInt(match, 10);
       working = ` ${text} `;
       matchedAnything = true;
-      matchedFilterCount++;
     }
   }
 
-  // Price intent (cheap/affordable -> asc, luxury/expensive -> desc) --
-  // English + Krio terms from the dictionary.
+  // Price intent
   let priceIntent: PriceIntent = null;
-  for (const entry of priceIntentTerms) {
-    const pattern = new RegExp(`\\b${escapeRegExp(entry.term)}\\b`, 'i');
+  for (const word of CHEAP_WORDS) {
+    const pattern = new RegExp(`\\b${escapeRegExp(word)}\\b`, 'i');
     if (pattern.test(working)) {
-      priceIntent = entry.mapsToValue as PriceIntent;
+      priceIntent = 'asc';
       working = working.replace(pattern, ' ');
       matchedAnything = true;
-      matchedFilterCount++;
       break;
     }
   }
+  if (!priceIntent) {
+    for (const word of LUXURY_WORDS) {
+      const pattern = new RegExp(`\\b${escapeRegExp(word)}\\b`, 'i');
+      if (pattern.test(working)) {
+        priceIntent = 'desc';
+        working = working.replace(pattern, ' ');
+        matchedAnything = true;
+        break;
+      }
+    }
+  }
 
-  // Category (transaction type) -- English + Krio terms from the dictionary.
+  // Category (transaction type)
   let category: ListingCategory | null = null;
-  for (const entry of categoryTerms) {
-    const pattern = new RegExp(`\\b${escapeRegExp(entry.term)}\\b`, 'i');
-    if (pattern.test(working)) {
-      category = entry.mapsToValue as ListingCategory;
-      working = working.replace(pattern, ' ');
-      matchedAnything = true;
-      matchedFilterCount++;
-      break;
+  outer: for (const group of CATEGORY_WORDS) {
+    for (const word of group.words) {
+      const pattern = new RegExp(`\\b${escapeRegExp(word)}\\b`, 'i');
+      if (pattern.test(working)) {
+        category = group.category;
+        working = working.replace(pattern, ' ');
+        matchedAnything = true;
+        break outer;
+      }
     }
   }
 
   // Physical property-type keywords (can match more than one, e.g. "self
   // contained apartment" -- both get ANDed against title/description).
   const keywordTerms: string[] = [];
-  for (const term of typeKeywordTerms) {
-    const pattern = new RegExp(`\\b${escapeRegExp(term)}\\b`, 'i');
+  for (const word of TYPE_KEYWORDS) {
+    const pattern = new RegExp(`\\b${escapeRegExp(word)}\\b`, 'i');
     if (pattern.test(working)) {
-      keywordTerms.push(term);
+      keywordTerms.push(word);
       working = working.replace(pattern, ' ');
       matchedAnything = true;
     }
   }
-  if (keywordTerms.length > 0) matchedFilterCount++;
 
   // Location (District/City/Location name)
   let locationTerm: string | null = null;
@@ -139,12 +158,11 @@ export function parseSearchQuery(rawText: string): ParsedSearchQuery {
       locationTerm = alias;
       working = working.replace(pattern, ' ');
       matchedAnything = true;
-      matchedFilterCount++;
       break;
     }
   }
 
-  const leftoverText = working.replace(/\b(in|at|near|for|a|an|the|na|dae|wan)\b/gi, ' ').replace(/\s+/g, ' ').trim();
+  const leftoverText = working.replace(/\b(in|at|near|for|a|an|the)\b/gi, ' ').replace(/\s+/g, ' ').trim();
 
-  return { category, bedrooms, priceIntent, locationTerm, keywordTerms, leftoverText, matchedAnything, matchedFilterCount };
+  return { category, bedrooms, priceIntent, locationTerm, keywordTerms, leftoverText, matchedAnything };
 }
