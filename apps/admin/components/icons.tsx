@@ -26,3 +26,4 @@ export const IconX = (p: IconProps) => base(<><path d="M5 5l14 14" /><path d="M1
 export const IconExternalLink = (p: IconProps) => base(<><path d="M9 6H5.5A1.5 1.5 0 0 0 4 7.5v11A1.5 1.5 0 0 0 5.5 20h11a1.5 1.5 0 0 0 1.5-1.5V15" /><path d="M14 4h6v6" /><path d="M20 4 11 13" /></>, p);
 export const IconPin = (p: IconProps) => base(<><path d="M12 21s7-6.3 7-11.5A7 7 0 0 0 5 9.5C5 14.7 12 21 12 21Z" /><circle cx="12" cy="9.5" r="2.3" /></>, p);
 export const IconChevronRight = (p: IconProps) => base(<path d="M9 5l7 7-7 7" />, p);
+export const IconHeadset = (p: IconProps) => base(<><path d="M4 13v-1a8 8 0 0 1 16 0v1" /><rect x="2.5" y="13" width="5" height="7" rx="2" /><rect x="16.5" y="13" width="5" height="7" rx="2" /><path d="M19.5 20v.5A3.5 3.5 0 0 1 16 24h-2.5" /></>, p);

@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase-server';
 import { redirect } from 'next/navigation';
 import { toggleListingFlag, setListingModerationStatus } from '../actions';
+import { formatListingPlace } from '@/lib/format';
 
 type TableName = 'listings' | 'hotels' | 'services';
 
@@ -14,7 +15,7 @@ export default async function ContentPage() {
   if (!isAdmin) redirect('/login');
 
   const [{ data: listings }, { data: hotels }, { data: services }] = await Promise.all([
-    supabase.from('listings').select('id, title, category, location, is_verified, is_premium, is_active, moderation_status, created_at, owner:profiles(full_name)').order('created_at', { ascending: false }),
+    supabase.from('listings').select('id, title, category, city, location, is_verified, is_premium, is_active, moderation_status, created_at, owner:profiles(full_name)').order('created_at', { ascending: false }),
     supabase.from('hotels').select('id, name, location, is_verified, is_premium, is_active, created_at, owner:profiles(full_name)').order('created_at', { ascending: false }),
     supabase.from('services').select('id, business_name, category, location, is_verified, is_premium, is_active, created_at, owner:profiles(full_name)').order('created_at', { ascending: false }),
   ]);
@@ -71,7 +72,7 @@ export default async function ContentPage() {
                     <tr key={l.id}>
                       <td className="truncate" style={{ fontWeight: 600 }}>{l.title}</td>
                       <td><span className="badge badge-gray">{l.category}</span></td>
-                      <td className="muted truncate">{l.location}</td>
+                      <td className="muted truncate">{formatListingPlace(l)}</td>
                       <td className="muted">{(l.owner as any)?.full_name ?? '—'}</td>
                       <td>
                         <div style={{ display: 'flex', gap: 6 }}>
@@ -107,7 +108,7 @@ export default async function ContentPage() {
                   <tr key={l.id}>
                     <td className="truncate" style={{ fontWeight: 600 }}>{l.title}</td>
                     <td><span className="badge badge-gray">{l.category}</span></td>
-                    <td className="muted truncate">{l.location}</td>
+                    <td className="muted truncate">{formatListingPlace(l)}</td>
                     <td className="muted">{(l.owner as any)?.full_name ?? '—'}</td>
                     <td>
                       {l.moderation_status === 'pending' ? (

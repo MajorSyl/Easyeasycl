@@ -38,7 +38,7 @@ export default function SelectRoleScreen() {
     <View style={[styles.container, { paddingTop: insets.top + spacing.xl }]}>
       <Logo size={28} showWordmark={false} style={styles.logo} />
       <Text style={styles.title}>What brings you to Easyfen?</Text>
-      <Text style={styles.subtitle}>This helps us tailor the app for you. You can change it anytime in your profile.</Text>
+      <Text style={styles.subtitle}>This helps us tailor the app for you. Contact support if you need to change it later.</Text>
 
       <View style={styles.choices}>
         {roleChoices.map((choice) => (

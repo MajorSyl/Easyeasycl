@@ -1,8 +1,9 @@
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
-import { colors, fontSize, spacing } from '../constants/theme';
+import { colors, fontSize, radius, spacing } from '../constants/theme';
 
 const LINKS = [
+  { label: 'Download App', href: '/download' },
   { label: 'Privacy Policy', href: '/privacy' },
   { label: 'Terms of Service', href: '/terms' },
   { label: 'Community Guidelines', href: '/guidelines' },
@@ -32,16 +33,25 @@ export function WebFooter() {
 }
 
 const styles = StyleSheet.create({
+  // Matches the rounded-card treatment used everywhere else on Profile
+  // (headerCard, savedRow, etc.) -- this used to be a flat, unbordered
+  // rectangle with no breathing room from the cards around it, which read
+  // as an unstyled leftover rather than part of the same page.
+  //
+  // Stacked column, not a row-with-space-between: `links` is a nested flex
+  // row, and a nested row's `flexWrap` has no width to wrap *within* unless
+  // its parent stretches it to fill the line (the default 'stretch'
+  // cross-axis behavior of a column) -- as a row-sharing-space-with-`brand`
+  // child it only shrinks to its own content and overflows past the card's
+  // (and the viewport's) edge instead of wrapping, which is what cut off
+  // the last one or two links on narrow screens.
   footer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: spacing.lg,
-    paddingHorizontal: spacing.xl,
+    padding: spacing.lg,
     backgroundColor: colors.card,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    marginTop: spacing.lg,
     gap: spacing.sm,
   },
   brand: {
@@ -50,6 +60,7 @@ const styles = StyleSheet.create({
   },
   links: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     alignItems: 'center',
     gap: spacing.xs,
   },
